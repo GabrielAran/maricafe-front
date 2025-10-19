@@ -142,7 +142,7 @@ export default function HomePage({ onNavigate }) {
                 <div className="flex items-center justify-between">
                   <span className="text-2xl font-bold text-primary">$65.000</span>
                   <button 
-                    onClick={() => onNavigate && onNavigate('tortas')}
+                    onClick={() => onNavigate && onNavigate('productos')}
                     className="bg-primary text-primary-foreground px-4 py-2 rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors"
                   >
                     Ver Detalles
@@ -166,7 +166,7 @@ export default function HomePage({ onNavigate }) {
                 <div className="flex items-center justify-between">
                   <span className="text-2xl font-bold text-primary">$8.500</span>
                   <button 
-                    onClick={() => onNavigate && onNavigate('tazas')}
+                    onClick={() => onNavigate && onNavigate('productos')}
                     className="bg-primary text-primary-foreground px-4 py-2 rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors"
                   >
                     Ver Detalles

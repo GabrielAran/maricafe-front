@@ -5,8 +5,6 @@ import Header from './components/Header.jsx'
 import Footer from './components/Footer.jsx'
 import HomePage from './pages/HomePage.jsx'
 import ProductosPage from './pages/ProductosPage.jsx'
-import TortasPage from './pages/TortasPage.jsx'
-import TazasPage from './pages/TazasPage.jsx'
 import LoginPage from './pages/LoginPage.jsx'
 import RegisterPage from './pages/RegisterPage.jsx'
 import AdminPanel from './pages/AdminPanel.jsx'
@@ -21,12 +19,8 @@ function App() {
         return <HomePage onNavigate={setCurrentPage} />
       case 'productos':
         return <ProductosPage />
-      case 'tortas':
-        return <TortasPage />
       case 'catering':
         return <div>Página de Catering (próximamente)</div>
-      case 'tazas':
-        return <TazasPage />
       case 'contacto':
         return <div>Página de Contacto (próximamente)</div>
       case 'login':

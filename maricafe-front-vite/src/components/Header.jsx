@@ -51,22 +51,10 @@ export default function Header({ onNavigate, currentPage }) {
             Productos
           </button>
           <button 
-            className={`transition-colors ${currentPage === 'tortas' ? 'text-primary' : 'text-foreground hover:text-primary'}`}
-            onClick={() => handleNavigation('tortas')}
-          >
-            Tortas
-          </button>
-          <button 
             className={`transition-colors ${currentPage === 'catering' ? 'text-primary' : 'text-foreground hover:text-primary'}`}
             onClick={() => handleNavigation('catering')}
           >
             Catering
-          </button>
-          <button 
-            className={`transition-colors ${currentPage === 'tazas' ? 'text-primary' : 'text-foreground hover:text-primary'}`}
-            onClick={() => handleNavigation('tazas')}
-          >
-            Tazas
           </button>
           <button 
             className={`transition-colors ${currentPage === 'contacto' ? 'text-primary' : 'text-foreground hover:text-primary'}`}
@@ -146,22 +134,10 @@ export default function Header({ onNavigate, currentPage }) {
               Productos
             </button>
             <button 
-              className={`text-left transition-colors ${currentPage === 'tortas' ? 'text-primary' : 'text-foreground hover:text-primary'}`}
-              onClick={() => handleNavigation('tortas')}
-            >
-              Tortas
-            </button>
-            <button 
               className={`text-left transition-colors ${currentPage === 'catering' ? 'text-primary' : 'text-foreground hover:text-primary'}`}
               onClick={() => handleNavigation('catering')}
             >
               Catering
-            </button>
-            <button 
-              className={`text-left transition-colors ${currentPage === 'tazas' ? 'text-primary' : 'text-foreground hover:text-primary'}`}
-              onClick={() => handleNavigation('tazas')}
-            >
-              Tazas
             </button>
             <button 
               className={`text-left transition-colors ${currentPage === 'contacto' ? 'text-primary' : 'text-foreground hover:text-primary'}`}
