@@ -6,7 +6,7 @@ function cn(...classes) {
   return classes.filter(Boolean).join(' ')
 }
 
-export default function Checkbox({ 
+export function Checkbox({ 
   checked = false, 
   onCheckedChange, 
   className = '',
@@ -42,3 +42,6 @@ export default function Checkbox({
     </div>
   )
 }
+
+// Default export for backward compatibility
+export default Checkbox

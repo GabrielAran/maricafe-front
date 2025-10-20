@@ -32,51 +32,9 @@ export class ApiService {
     }
   }
 
-  // Get all products with optional sorting
-  static async getProducts(sort) {
-    const url = sort ? `${API_BASE_URL}/products?sort=${sort}` : `${API_BASE_URL}/products`
-    return this.fetchData(url)
-  }
 
-  // Get products by category with sorting
-  static async getProductsByCategory(categoryId, sort) {
-    const url = sort 
-      ? `${API_BASE_URL}/products/category/${categoryId}?sort=${sort}`
-      : `${API_BASE_URL}/products/category/${categoryId}`
-    return this.fetchData(url)
-  }
 
-  // Get product by ID
-  static async getProductById(id) {
-    return this.fetchData(`${API_BASE_URL}/products/${id}`)
-  }
 
-  // Get products with filters (CORREGIDO según tu backend)
-  static async getProductsFiltered(title, priceMin, priceMax) {
-    const params = new URLSearchParams()
-    if (title) params.append('title', title)
-    if (priceMin !== undefined) params.append('priceMin', priceMin)
-    if (priceMax !== undefined) params.append('priceMax', priceMax)
-    
-    const url = `${API_BASE_URL}/products/attributes?${params.toString()}`
-    return this.fetchData(url)
-  }
-
-  // Get all categories with pagination
-  static async getCategories(page = 0, size = 10) {
-    const url = `${API_BASE_URL}/categories?page=${page}&size=${size}`
-    return this.fetchData(url)
-  }
-
-  // Get product images
-  static async getProductImages(productId) {
-    return this.fetchData(`${API_BASE_URL}/products/${productId}/images`)
-  }
-
-  // Get image by ID
-  static async getImageById(imageId) {
-    return this.fetchData(`${API_BASE_URL}/images/${imageId}`)
-  }
 
   // Get all discounts (solo ADMIN)
   static async getDiscounts(authHeaders) {
@@ -111,31 +69,6 @@ export class ApiService {
     })
   }
 
-  // Create product (solo ADMIN)
-  static async createProduct(productData, authHeaders) {
-    return this.fetchData(`${API_BASE_URL}/products`, {
-      method: 'POST',
-      headers: authHeaders,
-      body: JSON.stringify(productData)
-    })
-  }
-
-  // Update product (solo ADMIN)
-  static async updateProduct(productId, productData, authHeaders) {
-    return this.fetchData(`${API_BASE_URL}/products/${productId}`, {
-      method: 'PUT',
-      headers: authHeaders,
-      body: JSON.stringify(productData)
-    })
-  }
-
-  // Delete product (solo ADMIN)
-  static async deleteProduct(productId, authHeaders) {
-    return this.fetchData(`${API_BASE_URL}/products/${productId}`, {
-      method: 'DELETE',
-      headers: authHeaders
-    })
-  }
 
   // Create category (solo ADMIN)
   static async createCategory(categoryData, authHeaders) {
@@ -248,14 +181,6 @@ export class ApiService {
     })
   }
 
-  // Upload image (solo ADMIN)
-  static async uploadImage(imageData, authHeaders) {
-    return this.fetchData(`${API_BASE_URL}/images`, {
-      method: 'POST',
-      headers: authHeaders,
-      body: imageData
-    })
-  }
 }
 
 // Utility function to transform backend data to frontend format

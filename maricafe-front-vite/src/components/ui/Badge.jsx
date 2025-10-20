@@ -5,7 +5,7 @@ function cn(...classes) {
   return classes.filter(Boolean).join(' ')
 }
 
-export default function Badge({ 
+export function Badge({ 
   children, 
   variant = 'default', 
   className = '',
@@ -30,3 +30,6 @@ export default function Badge({
     </div>
   )
 }
+
+// Default export for backward compatibility
+export default Badge

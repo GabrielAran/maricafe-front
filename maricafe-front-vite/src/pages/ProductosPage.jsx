@@ -1,5 +1,5 @@
 import React from 'react'
-import ProductView from '../mvc/views/ProductView.jsx'
+import ProductViewNew from '../components/ProductViewNew.jsx'
 
 export default function ProductosPage() {
 
@@ -15,7 +15,7 @@ export default function ProductosPage() {
         </p>
       </div>
 
-      <ProductView showCategoryFilter={true} showSorting={true} />
+      <ProductViewNew showCategoryFilter={true} showSorting={true} showFilters={true} />
     </div>
   )
 }

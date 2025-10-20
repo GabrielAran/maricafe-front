@@ -4,9 +4,7 @@ const API_BASE_URL = 'http://localhost:4002'
 export class ProductApiService {
   static async fetchData(url, options = {}) {
     try {
-      console.log('ProductApiService: fetchData called with URL:', url, 'Options:', options)
       const response = await fetch(url, options)
-      console.log('ProductApiService: fetch response status:', response.status, 'ok:', response.ok)
       
       if (!response.ok) {
         if (response.status === 404) {
@@ -39,7 +37,23 @@ export class ProductApiService {
   static async getProducts(sort) {
     // Request all products without pagination
     const url = sort ? `${API_BASE_URL}/products?sort=${sort}&size=1000` : `${API_BASE_URL}/products?size=1000`
-    console.log('ProductApiService: getProducts called with URL:', url)
+    return this.fetchData(url)
+  }
+
+  // Get products with attributes for filtering
+  static async getProductsWithAttributes(sort) {
+    const url = sort ? `${API_BASE_URL}/products/with-attributes?sort=${sort}` : `${API_BASE_URL}/products/with-attributes`
+    return this.fetchData(url)
+  }
+
+  // Get products filtered by attributes
+  static async getProductsFilteredByAttributes(sort, categoryId, attributeFilters) {
+    const params = new URLSearchParams()
+    if (sort) params.append('sort', sort)
+    if (categoryId) params.append('categoryId', categoryId)
+    if (attributeFilters) params.append('attributeFilters', attributeFilters)
+    
+    const url = `${API_BASE_URL}/products/filter-by-attributes?${params.toString()}`
     return this.fetchData(url)
   }
 
