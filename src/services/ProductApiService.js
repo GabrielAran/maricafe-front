@@ -4,6 +4,16 @@ const API_BASE_URL = 'http://localhost:4002'
 export class ProductApiService {
   static async fetchData(url, options = {}) {
     try {
+      // Add authentication headers if available
+      const token = localStorage.getItem('maricafe-token')
+      if (token && !options.headers?.Authorization) {
+        options.headers = {
+          ...options.headers,
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      }
+      
       const response = await fetch(url, options)
       
       if (!response.ok) {

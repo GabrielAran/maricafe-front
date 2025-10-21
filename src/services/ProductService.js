@@ -121,7 +121,8 @@ export class ProductService {
         const attributeFilters = this.buildAttributeFiltersString()
         apiProducts = await ProductApiService.getProductsFilteredByAttributes(sortParam, categoryId, attributeFilters)
       } else {
-        apiProducts = await ProductApiService.getProductsWithAttributes(sortParam)
+        // The backend will automatically handle role-based filtering based on the authenticated user
+        apiProducts = await ProductApiService.getProducts(sortParam)
       }
       
       // Handle paginated response
