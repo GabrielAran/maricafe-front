@@ -10,7 +10,7 @@ export default function Footer() {
           <div className="space-y-4">
             <div className="flex items-center space-x-3">
               <img
-                src="/maricafe-logo-oficial.png"
+                src="/LOGO_Maricafe_Circular.png"
                 alt="Maricafe"
                 width={32}
                 height={32}

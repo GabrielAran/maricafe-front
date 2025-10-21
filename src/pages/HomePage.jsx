@@ -6,13 +6,13 @@ export default function HomePage({ onNavigate }) {
     <div className="min-h-screen">
       {/* Hero Section */}
       <section className="relative py-20" style={{
-        background: 'linear-gradient(135deg, #FF0018 0%, #FFA52C 16.67%, #FFFF41 33.33%, #008018 50%, #0000F9 66.67%, #86007D 83.33%, #FF0018 100%)'
+        background: 'linear-gradient(135deg, rgba(255, 0, 24, 0.3) 0%, rgba(255, 165, 44, 0.3) 16.67%, rgba(255, 255, 65, 0.3) 33.33%, rgba(0, 128, 24, 0.3) 50%, rgba(0, 0, 249, 0.3) 66.67%, rgba(134, 0, 125, 0.3) 83.33%, rgba(255, 0, 24, 0.3) 100%)'
       }}>
         <div className="container mx-auto px-4">
           <div className="text-center space-y-8 max-w-4xl mx-auto">
             <div className="flex items-center justify-center space-x-3">
               <img
-                src="/maricafe-logo-oficial.png"
+                src="/LOGO_Maricafe_Circular.png"
                 alt="Maricafe"
                 width={60}
                 height={60}
@@ -192,13 +192,13 @@ export default function HomePage({ onNavigate }) {
           <div className="max-w-4xl mx-auto">
             <div className="rounded-lg overflow-hidden shadow-lg">
               <a 
-                href="https://maps.app.goo.gl/kAcPQjqXRcHBwut88?g_st=iw" 
+                href="https://www.google.com/maps/place/Maricaf%C3%A9+-+Caf%C3%A9+%E2%80%A2+Bar+%26+LGBT+BookStore/@-34.5943351,-58.4210023,17z/data=!3m1!4b1!4m6!3m5!1s0x95bccb62920f98fb:0xd36865d11275c69e!8m2!3d-34.5943351!4d-58.4210023!16s%2Fg%2F11g1ppd_6x?entry=ttu&g_ep=EgoyMDI1MTAxOS4wIKXMDSoASAFQAw%3D%3D" 
                 target="_blank" 
                 rel="noopener noreferrer"
                 className="block relative group"
               >
                 <iframe
-                  src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3284.0168936587894!2d-58.38375908477273!3d-34.603722980458976!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zMzTCsDM2JzEzLjQiUyA1OMKwMjInNTIuOSJX!5e0!3m2!1ses!2sar!4v1234567890123!5m2!1ses!2sar"
+                  src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3284.0168936587894!2d-58.4235773!3d-34.594225!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x95bccb62920f98fb%3A0xd36865d11275c69e!2sMaricaf%C3%A9%20-%20Caf%C3%A9%20%E2%80%A2%20Bar%20%26%20LGBT%20BookStore!5e0!3m2!1ses!2sar!4v1234567890123!5m2!1ses!2sar"
                   width="100%"
                   height="450"
                   style={{ border: 0 }}
