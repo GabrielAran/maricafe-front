@@ -5,7 +5,9 @@ export default function HomePage({ onNavigate }) {
   return (
     <div className="min-h-screen">
       {/* Hero Section */}
-      <section className="relative bg-gradient-to-br from-primary/10 via-secondary/5 to-accent/10 py-20">
+      <section className="relative py-20" style={{
+        background: 'linear-gradient(135deg, #FF0018 0%, #FFA52C 16.67%, #FFFF41 33.33%, #008018 50%, #0000F9 66.67%, #86007D 83.33%, #FF0018 100%)'
+      }}>
         <div className="container mx-auto px-4">
           <div className="text-center space-y-8 max-w-4xl mx-auto">
             <div className="flex items-center justify-center space-x-3">
@@ -21,16 +23,16 @@ export default function HomePage({ onNavigate }) {
               </h1>
             </div>
             
-            <h2 className="text-2xl lg:text-3xl font-semibold text-foreground">
+            <h2 className="text-2xl lg:text-3xl font-semibold text-white">
               Cafetería LGBT+ Especializada
             </h2>
             
-            <p className="text-lg lg:text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
+            <p className="text-lg lg:text-xl text-white max-w-3xl mx-auto leading-relaxed">
               Tortas artesanales, catering inclusivo y tazas únicas. Un espacio seguro donde 
               la diversidad se celebra con cada bocado y cada sorbo. Opciones veganas y sin TACC disponibles.
             </p>
             
-            <div className="flex items-center justify-center space-x-2 text-primary">
+            <div className="flex items-center justify-center space-x-2 text-white">
               <Heart className="h-6 w-6" />
               <span className="text-lg font-medium">Hecho con amor y orgullo</span>
             </div>
@@ -38,14 +40,14 @@ export default function HomePage({ onNavigate }) {
             <div className="flex flex-col sm:flex-row items-center justify-center space-y-4 sm:space-y-0 sm:space-x-6 pt-8">
               <button 
                 onClick={() => onNavigate && onNavigate('productos')}
-                className="bg-primary text-primary-foreground px-8 py-3 rounded-lg font-semibold hover:bg-primary/90 transition-colors flex items-center space-x-2"
+                className="bg-white text-foreground px-8 py-3 rounded-lg font-semibold hover:bg-white/90 transition-colors flex items-center space-x-2"
               >
                 <span>Ver Nuestros Productos</span>
                 <ArrowRight className="h-4 w-4" />
               </button>
               <button 
                 onClick={() => onNavigate && onNavigate('contacto')}
-                className="border border-primary text-primary px-8 py-3 rounded-lg font-semibold hover:bg-primary/10 transition-colors"
+                className="border-2 border-white text-white px-8 py-3 rounded-lg font-semibold hover:bg-white/10 transition-colors"
               >
                 Hacer Pedido
               </button>
@@ -119,10 +121,10 @@ export default function HomePage({ onNavigate }) {
         <div className="container mx-auto px-4">
           <div className="text-center space-y-4 mb-12">
             <h2 className="text-3xl lg:text-4xl font-bold">
-              Nuestros <span className="rainbow-text">Productos</span> Destacados
+              Nuestras <span className="rainbow-text">Tortas</span>
             </h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Descubre nuestras creaciones más populares, hechas con ingredientes premium y mucho amor
+              Conocé algunos de nuestras tortas más destacadas
             </p>
           </div>
           
@@ -132,70 +134,85 @@ export default function HomePage({ onNavigate }) {
               <img
                 src="/rainbow-cake-colorful-layers.jpg"
                 alt="Rainbow Cake"
-                className="w-full h-48 object-cover"
+                className="w-full h-64 object-cover"
               />
               <div className="p-6 space-y-3">
-                <h3 className="text-xl font-semibold">Rainbow Cake Clásica</h3>
+                <h3 className="text-xl font-semibold">Rainbow Cake</h3>
                 <p className="text-sm text-muted-foreground">
                   Nuestra torta insignia con 6 capas de colores del arcoíris y crema de vainilla suave.
                 </p>
-                <div className="flex items-center justify-between">
-                  <span className="text-2xl font-bold text-primary">$65.000</span>
-                  <button 
-                    onClick={() => onNavigate && onNavigate('productos')}
-                    className="bg-primary text-primary-foreground px-4 py-2 rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors"
-                  >
-                    Ver Detalles
-                  </button>
-                </div>
               </div>
             </div>
             
-            {/* Taza Pride */}
+            {/* Red Velvet */}
             <div className="bg-background rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-shadow">
               <img
-                src="/pride-mug-love-is-love-rainbow.jpg"
-                alt="Taza Pride"
-                className="w-full h-48 object-cover"
+                src="/red-velvet-cake-with-rainbow-decoration.jpg"
+                alt="Red Velvet Cake"
+                className="w-full h-64 object-cover"
               />
               <div className="p-6 space-y-3">
-                <h3 className="text-xl font-semibold">Taza Pride "Love is Love"</h3>
+                <h3 className="text-xl font-semibold">Red Velvet con Decoración Arcoíris</h3>
                 <p className="text-sm text-muted-foreground">
-                  Taza de cerámica premium con diseño arcoíris y mensaje de amor inclusivo.
+                  Clásica torta red velvet con un toque especial de decoración arcoíris que celebra la diversidad.
                 </p>
-                <div className="flex items-center justify-between">
-                  <span className="text-2xl font-bold text-primary">$8.500</span>
-                  <button 
-                    onClick={() => onNavigate && onNavigate('productos')}
-                    className="bg-primary text-primary-foreground px-4 py-2 rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors"
-                  >
-                    Ver Detalles
-                  </button>
-                </div>
               </div>
             </div>
             
-            {/* Catering */}
+            {/* Carrot Cake */}
             <div className="bg-background rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-shadow">
               <img
-                src="/pride-themed-catering-rainbow-decorations-premium.jpg"
-                alt="Catering Pride"
-                className="w-full h-48 object-cover"
+                src="/carrot-cake-cream-cheese.png"
+                alt="Carrot Cake"
+                className="w-full h-64 object-cover"
               />
               <div className="p-6 space-y-3">
-                <h3 className="text-xl font-semibold">Catering Pride Premium</h3>
+                <h3 className="text-xl font-semibold">Carrot Cake</h3>
                 <p className="text-sm text-muted-foreground">
-                  Servicio completo de catering para eventos especiales con decoración temática.
+                  Deliciosa torta de zanahoria con frosting de queso crema, perfecta para cualquier ocasión.
                 </p>
-                <div className="flex items-center justify-between">
-                  <span className="text-2xl font-bold text-primary">Desde $150.000</span>
-                  <button 
-                    onClick={() => onNavigate && onNavigate('catering')}
-                    className="bg-primary text-primary-foreground px-4 py-2 rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors"
-                  >
-                    Consultar
-                  </button>
-                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Nuestro Local Section */}
+      <section className="py-16 bg-background">
+        <div className="container mx-auto px-4">
+          <div className="text-center space-y-4 mb-12">
+            <h2 className="text-3xl lg:text-4xl font-bold">
+              Nuestro <span className="rainbow-text">Local</span>
+            </h2>
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+              Visitanos en nuestro espacio inclusivo y acogedor
+            </p>
+          </div>
+          
+          <div className="max-w-4xl mx-auto">
+            <div className="rounded-lg overflow-hidden shadow-lg">
+              <a 
+                href="https://maps.app.goo.gl/kAcPQjqXRcHBwut88?g_st=iw" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="block relative group"
+              >
+                <iframe
+                  src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3284.0168936587894!2d-58.38375908477273!3d-34.603722980458976!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zMzTCsDM2JzEzLjQiUyA1OMKwMjInNTIuOSJX!5e0!3m2!1ses!2sar!4v1234567890123!5m2!1ses!2sar"
+                  width="100%"
+                  height="450"
+                  style={{ border: 0 }}
+                  allowFullScreen=""
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                  title="Ubicación de Maricafe"
+                />
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors pointer-events-none" />
+              </a>
+              <div className="bg-background p-6 text-center">
+                <p className="text-muted-foreground">
+                  Hacé click en el mapa para abrir en Google Maps
+                </p>
               </div>
             </div>
           </div>
