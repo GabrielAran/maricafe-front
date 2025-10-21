@@ -27,7 +27,7 @@ export default function Header({ onNavigate, currentPage }) {
           onClick={() => handleNavigation('home')}
         >
           <img
-            src="/maricafe-logo-oficial.png"
+            src="/LOGO_Maricafe_Circular.png"
             alt="Maricafe - Café Bar & LGBT Bookstore"
             width={40}
             height={40}
