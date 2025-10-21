@@ -4,6 +4,7 @@ import { AuthProvider } from './context/AuthContext.jsx'
 import Header from './components/Header.jsx'
 import Footer from './components/Footer.jsx'
 import HomePage from './pages/HomePage.jsx'
+import ContactoPage from "./pages/ContactoPage"
 import ProductosPage from './pages/ProductosPage.jsx'
 import LoginPage from './pages/LoginPage.jsx'
 import RegisterPage from './pages/RegisterPage.jsx'
@@ -22,7 +23,7 @@ function App() {
       case 'catering':
         return <div>Página de Catering (próximamente)</div>
       case 'contacto':
-        return <div>Página de Contacto (próximamente)</div>
+        return <ContactoPage />;
       case 'login':
         return <LoginPage onNavigate={setCurrentPage} />
       case 'register':
