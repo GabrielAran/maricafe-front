@@ -198,7 +198,7 @@ export function transformProduct(backendProduct) {
     precio: backendProduct.new_price || backendProduct.price, // Usar precio con descuento si existe
     precioOriginal: backendProduct.price,
     descuento: backendProduct.discount_percentage || 0,
-    imagen: "/placeholder-product.jpg", // Se manejará con las imágenes del backend
+    imagen: null, // Se cargará desde el backend
     descripcion: descripcion,
     vegana: text.includes('vegan') || text.includes('vegana'),
     sinTacc: text.includes('tacc') || text.includes('gluten') || text.includes('celiac'),

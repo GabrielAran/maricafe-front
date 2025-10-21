@@ -93,7 +93,7 @@ export class ProductApiService {
 
   // Get product images
   static async getProductImages(productId) {
-    return this.fetchData(`${API_BASE_URL}/products/${productId}/images`)
+    return this.fetchData(`${API_BASE_URL}/images/${productId}`)
   }
 
   // Get image by ID
@@ -129,10 +129,39 @@ export class ProductApiService {
 
   // Upload image (ADMIN only)
   static async uploadImage(imageData, authHeaders) {
-    return this.fetchData(`${API_BASE_URL}/images`, {
-      method: 'POST',
-      headers: authHeaders,
-      body: imageData
-    })
+    try {
+      const token = localStorage.getItem('maricafe-token')
+      const headers = {
+        'Authorization': `Bearer ${token}`,
+        // Don't set Content-Type for FormData, let browser set it with boundary
+        ...authHeaders
+      }
+      
+      console.log('Uploading image with headers:', headers)
+      console.log('Image data type:', typeof imageData)
+      console.log('Image data constructor:', imageData.constructor.name)
+      
+      const response = await fetch(`${API_BASE_URL}/images`, {
+        method: 'POST',
+        headers: headers,
+        body: imageData
+      })
+      
+      console.log('Image upload response status:', response.status)
+      console.log('Image upload response headers:', Object.fromEntries(response.headers.entries()))
+      
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error('Image upload error response:', errorText)
+        throw new Error(`HTTP error! status: ${response.status} - ${errorText}`)
+      }
+      
+      const text = await response.text()
+      console.log('Image upload success response:', text)
+      return text
+    } catch (error) {
+      console.error('Image upload error:', error)
+      throw error
+    }
   }
 }

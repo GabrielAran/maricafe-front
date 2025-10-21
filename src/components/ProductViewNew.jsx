@@ -10,6 +10,7 @@ import PriceSort from './PriceSort.jsx'
 import AttributeFilter from './AttributeFilter.jsx'
 import { useProductService } from '../hooks/useProductService.js'
 import { useAttributeService } from '../hooks/useAttributeService.js'
+import { useAuth } from '../context/AuthContext.jsx'
 
 export default function ProductViewNew({ 
   showFilters = false,
@@ -42,11 +43,22 @@ export default function ProductViewNew({
   } = useProductService()
 
   const { attributes, loading: attributesLoading, loadAttributes, getAttributesByCategory } = useAttributeService()
+  const { isAdmin, isAuthenticated, user } = useAuth()
   
   // Debug: Log attributes when they change
   React.useEffect(() => {
     console.log('ProductViewNew: Attributes updated:', attributes)
   }, [attributes])
+
+  // Debug: Log admin status and user info
+  React.useEffect(() => {
+    console.log('ProductViewNew: User info:', { 
+      isAuthenticated, 
+      isAdmin: isAdmin(), 
+      user: user,
+      userRole: user?.role 
+    })
+  }, [isAuthenticated, isAdmin, user])
 
   const hasLoadedProducts = React.useRef(false)
   const hasLoadedCategories = React.useRef(false)
@@ -230,17 +242,25 @@ export default function ProductViewNew({
           <Card key={product.id} className="group hover:shadow-lg transition-shadow">
             <CardContent className="p-4">
               <div className="aspect-square bg-muted rounded-lg mb-4 flex items-center justify-center">
-                <img
-                  src={product.imagen}
-                  alt={product.nombre}
-                  className="w-full h-full object-cover rounded-lg"
-                  onError={(e) => {
-                    // Only set placeholder if not already set to prevent infinite loop
-                    if (!e.target.src.includes('placeholder-product.jpg')) {
-                      e.target.src = '/placeholder-product.jpg'
-                    }
-                  }}
-                />
+                {product.imagen ? (
+                  <img
+                    src={product.imagen}
+                    alt={product.nombre}
+                    className="w-full h-full object-cover rounded-lg"
+                    onLoad={() => console.log(`Image loaded for product ${product.id}:`, product.imagen)}
+                    onError={(e) => {
+                      console.log(`Image failed to load for product ${product.id}:`, product.imagen ? 'base64 data present' : 'no image data', e)
+                      // Only set placeholder if not already set to prevent infinite loop
+                      if (!e.target.src.includes('placeholder-product.jpg')) {
+                        e.target.src = '/placeholder-product.jpg'
+                      }
+                    }}
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                  </div>
+                )}
               </div>
               
               <div className="space-y-2">
@@ -271,7 +291,7 @@ export default function ProductViewNew({
             <CardFooter className="p-4 pt-0">
               <AddToCartButton
                 product={product}
-                disabled={!isProductAvailable(product)}
+                disabled={!isProductAvailable(product, isAdmin())}
                 className="w-full"
               />
             </CardFooter>

@@ -7,12 +7,14 @@ export default function AddToCartButton({
   product, 
   className = '', 
   size = "default", 
-  children 
+  children,
+  disabled = false
 }) {
   const { dispatch } = useCart()
   const [added, setAdded] = useState(false)
 
   const handleAddToCart = () => {
+    if (disabled) return
     dispatch({ type: "ADD_ITEM", payload: product })
     setAdded(true)
     
@@ -27,7 +29,7 @@ export default function AddToCartButton({
       onClick={handleAddToCart} 
       className={className} 
       size={size}
-      disabled={added}
+      disabled={disabled || added}
     >
       {children || (
         <>
@@ -35,6 +37,11 @@ export default function AddToCartButton({
             <>
               <Check className="h-4 w-4 mr-2" />
               ¡Agregado!
+            </>
+          ) : disabled ? (
+            <>
+              <ShoppingCart className="h-4 w-4 mr-2" />
+              Sin stock
             </>
           ) : (
             <>

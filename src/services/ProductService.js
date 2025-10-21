@@ -92,13 +92,100 @@ export class ProductService {
       precio: discountedPrice,
       precioOriginal: originalPrice,
       descuento: backendProduct.discount_percentage || 0,
-      imagen: "/placeholder-product.jpg",
+      imagen: null, // Will be set when images are loaded
       descripcion: descripcion,
       vegana: text.includes('vegan') || text.includes('vegana') || Object.values(attributes).some(attr => attr.name === 'Vegano' && attr.value === 'true'),
       sinTacc: text.includes('tacc') || text.includes('gluten') || text.includes('celiac') || Object.values(attributes).some(attr => attr.name === 'Sin TACC' && attr.value === 'true'),
       destacado: text.includes('pride') || text.includes('rainbow') || text.includes('arcoíris'),
       stock: backendProduct.stock || 0,
       attributes: attributes
+    }
+  }
+
+  // Fetch images for a product
+  async fetchProductImages(productId) {
+    try {
+      const images = await ProductApiService.getProductImages(productId)
+      console.log(`Fetched images for product ${productId}: ${images.length} image(s)`)
+      if (images.length > 0) {
+        const base64Data = images[0]
+        console.log(`Base64 data for product ${productId} (length: ${base64Data.length} chars)`)
+        
+        // Now let's try to fix the backend base64 data
+        try {
+          console.log(`Attempting to fix base64 data for product ${productId}...`)
+          
+          // Try to clean the base64 data (remove any whitespace, newlines, etc.)
+          const cleanBase64 = base64Data.replace(/\s/g, '')
+          console.log(`Cleaned base64 length: ${cleanBase64.length}`)
+          
+          // Test if the cleaned base64 is valid
+          try {
+            const testDecode = atob(cleanBase64.substring(0, 100))
+            console.log(`Cleaned base64 is valid for product ${productId}`)
+            
+            // Try with PNG first (since your images are PNG)
+            const dataUrl = `data:image/png;base64,${cleanBase64}`
+            console.log(`Created PNG data URL for product ${productId}`)
+            return dataUrl
+          } catch (decodeError) {
+            console.log(`Cleaned base64 still invalid for product ${productId}:`, decodeError)
+            
+            // If cleaning didn't work, try the original data with different MIME types
+            const mimeTypes = ['image/png', 'image/jpeg', 'image/gif']
+            for (const mimeType of mimeTypes) {
+              try {
+                const testUrl = `data:${mimeType};base64,${base64Data}`
+                // Test if this works by creating a temporary image
+                const testImg = new Image()
+                testImg.onload = () => {
+                  console.log(`✅ ${mimeType} works for product ${productId}`)
+                }
+                testImg.onerror = () => {
+                  console.log(`❌ ${mimeType} failed for product ${productId}`)
+                }
+                testImg.src = testUrl
+                
+                // Return the first one for now
+                return testUrl
+              } catch (e) {
+                console.log(`MIME type ${mimeType} failed for product ${productId}`)
+              }
+            }
+            
+            // If all else fails, return placeholder
+            return "/placeholder-product.jpg"
+          }
+        } catch (e) {
+          console.error(`Error processing base64 for product ${productId}:`, e)
+          return "/placeholder-product.jpg"
+        }
+      }
+      return "/placeholder-product.jpg"
+    } catch (error) {
+      console.warn(`Failed to fetch images for product ${productId}:`, error)
+      return "/placeholder-product.jpg"
+    }
+  }
+
+  // Load images for all products
+  async loadProductImages() {
+    try {
+      console.log('Loading images for products:', this.products.map(p => ({ id: p.id, nombre: p.nombre, stock: p.stock, imagen: p.imagen })))
+      const imagePromises = this.products.map(async (product) => {
+        console.log(`Loading image for product ${product.id} (${product.nombre}) with stock ${product.stock}`)
+        const imageUrl = await this.fetchProductImages(product.id)
+        product.imagen = imageUrl
+        console.log(`Updated product ${product.id} (${product.nombre}) with image:`, imageUrl)
+        return product
+      })
+      
+      await Promise.all(imagePromises)
+      console.log('All images loaded, notifying listeners')
+      console.log('Final products with images:', this.products.map(p => ({ id: p.id, nombre: p.nombre, stock: p.stock, hasImage: !!p.imagen })))
+      this.notify() // Notify listeners that images have been loaded
+    } catch (error) {
+      console.error('Error loading product images:', error)
     }
   }
 
@@ -116,12 +203,21 @@ export class ProductService {
       const hasAttributeFilters = this.filters.attributes && Object.keys(this.filters.attributes).length > 0
       const categoryId = this.filters.category !== 'all' ? this.filters.category : null
       
+      console.log('ProductService: Loading products with filters:', { 
+        sortParam, 
+        hasAttributeFilters, 
+        categoryId,
+        attributeFilters: this.filters.attributes 
+      })
+      
       let apiProducts
       if (hasAttributeFilters) {
         const attributeFilters = this.buildAttributeFiltersString()
+        console.log('ProductService: Using attribute filtering with filters:', attributeFilters)
         apiProducts = await ProductApiService.getProductsFilteredByAttributes(sortParam, categoryId, attributeFilters)
       } else {
         // The backend will automatically handle role-based filtering based on the authenticated user
+        console.log('ProductService: Using standard product loading')
         apiProducts = await ProductApiService.getProducts(sortParam)
       }
       
@@ -136,6 +232,13 @@ export class ProductService {
       }
       
       this.products = productsArray.map(product => this.transformProduct(product))
+      
+      console.log('ProductService: Loaded products:', this.products.length, 'products')
+      console.log('ProductService: Products with zero stock:', this.products.filter(p => p.stock === 0).length)
+      console.log('ProductService: Products with zero stock details:', this.products.filter(p => p.stock === 0).map(p => ({ id: p.id, nombre: p.nombre, stock: p.stock })))
+      
+      // Load images for each product
+      await this.loadProductImages()
       
       // Clear cache when products are loaded
       this.cachedFilteredProducts = null
@@ -437,8 +540,9 @@ export class ProductService {
   }
 
   // Check if product is available
-  isProductAvailable(product) {
-    return product.stock > 0
+  isProductAvailable(product, isAdmin = false) {
+    // Admin users can see all products, regular users only see products with stock
+    return isAdmin || product.stock > 0
   }
 
   // Get product availability status
