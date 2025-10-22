@@ -15,7 +15,8 @@ import { useAuth } from '../context/AuthContext.jsx'
 export default function ProductViewNew({ 
   showFilters = false,
   showSorting = false,
-  showCategoryFilter = false
+  showCategoryFilter = false,
+  onNavigate
 }) {
   const {
     products,
@@ -44,6 +45,9 @@ export default function ProductViewNew({
 
   const { attributes, loading: attributesLoading, loadAttributes, getAttributesByCategory } = useAttributeService()
   const { isAdmin, isAuthenticated, user } = useAuth()
+  
+  // State for managing product quantities
+  const [productQuantities, setProductQuantities] = React.useState({})
   
   // Debug: Log attributes when they change
   React.useEffect(() => {
@@ -281,24 +285,67 @@ export default function ProductViewNew({
                   {product.sinTacc && <Badge variant="secondary">Sin TACC</Badge>}
                   {product.destacado && <Badge variant="default">Destacado</Badge>}
                 </div>
-
-                <div className="text-sm text-muted-foreground">
-                  Stock: {product.stock} unidades
-                </div>
               </div>
             </CardContent>
             
             <CardFooter className="p-4 pt-0">
               {!isAdmin() && (
-                <AddToCartButton
-                  product={product}
-                  disabled={!isProductAvailable(product, false)}
-                  className="w-full"
-                />
-              )}
-              {isAdmin() && (
-                <div className="w-full text-center py-2 text-sm text-muted-foreground">
-                  Administrador - Gestión de productos
+                <div className="w-full space-y-3">
+                  {/* Quantity Selector */}
+                  <div className="flex items-center justify-center space-x-3">
+                    <label className="text-sm font-medium text-muted-foreground">
+                      Cantidad:
+                    </label>
+                    <div className="flex items-center space-x-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 w-8 p-0"
+                        onClick={() => {
+                          const currentQty = productQuantities[product.id] || 1
+                          if (currentQty > 1) {
+                            setProductQuantities(prev => ({
+                              ...prev,
+                              [product.id]: currentQty - 1
+                            }))
+                          }
+                        }}
+                        disabled={!isProductAvailable(product, false)}
+                      >
+                        -
+                      </Button>
+                      <span className="text-sm font-medium w-8 text-center">
+                        {productQuantities[product.id] || 1}
+                      </span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 w-8 p-0"
+                        onClick={() => {
+                          const currentQty = productQuantities[product.id] || 1
+                          const maxQty = Math.min(product.stock, 10) // Limit to stock or 10 max
+                          if (currentQty < maxQty) {
+                            setProductQuantities(prev => ({
+                              ...prev,
+                              [product.id]: currentQty + 1
+                            }))
+                          }
+                        }}
+                        disabled={!isProductAvailable(product, false)}
+                      >
+                        +
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  {/* Add to Cart Button */}
+                  <AddToCartButton
+                    product={product}
+                    quantity={productQuantities[product.id] || 1}
+                    disabled={!isProductAvailable(product, false)}
+                    className="w-full"
+                    onNavigate={onNavigate}
+                  />
                 </div>
               )}
             </CardFooter>

@@ -19,7 +19,7 @@ function App() {
       case 'home':
         return <HomePage onNavigate={setCurrentPage} />
       case 'productos':
-        return <ProductosPage />
+        return <ProductosPage onNavigate={setCurrentPage} />
       case 'catering':
         return <div>Página de Catering (próximamente)</div>
       case 'contacto':

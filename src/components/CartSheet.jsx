@@ -1,11 +1,38 @@
-import React, { useState } from 'react'
-import { ShoppingCart, Plus, Minus, Trash2, X } from 'lucide-react'
+import React, { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
+import { ShoppingCart, Plus, Minus, Trash2, X, AlertCircle } from 'lucide-react'
 import { useCart } from '../context/CartContext.jsx'
+import { useAuth } from '../context/AuthContext.jsx'
+import { getTempCartRemainingTime } from '../utils/cartPersistence.js'
 import Button from './ui/Button.jsx'
 
 export default function CartSheet({ onNavigate }) {
   const { state, dispatch } = useCart()
+  const { isAuthenticated, user, token } = useAuth()
   const [isOpen, setIsOpen] = useState(false)
+  const [isTempCart, setIsTempCart] = useState(false)
+
+  // Track temporary cart expiration
+  useEffect(() => {
+    if (!isAuthenticated && state.items.length > 0 && token) {
+      setIsTempCart(true)
+      const checkExpiration = () => {
+        const time = getTempCartRemainingTime(token)
+        if (time === 0) {
+          // Cart expired, clear it
+          dispatch({ type: "CLEAR_TEMP_CART" })
+          setIsTempCart(false)
+        }
+      }
+      
+      checkExpiration()
+      const interval = setInterval(checkExpiration, 1000) // Check every second
+      
+      return () => clearInterval(interval)
+    } else {
+      setIsTempCart(false)
+    }
+  }, [isAuthenticated, state.items.length, token, dispatch])
 
   const formatearPrecio = (precio) => {
     return new Intl.NumberFormat("es-AR", {
@@ -16,6 +43,16 @@ export default function CartSheet({ onNavigate }) {
   }
 
   const updateQuantity = (id, cantidad) => {
+    // Find the item to check stock
+    const item = state.items.find(item => item.id === id)
+    if (item && cantidad > item.stock) {
+      // Don't allow quantity to exceed stock
+      return
+    }
+    if (cantidad < 1) {
+      // Don't allow quantity below 1
+      return
+    }
     dispatch({ type: "UPDATE_QUANTITY", payload: { id, cantidad } })
   }
 
@@ -38,12 +75,35 @@ export default function CartSheet({ onNavigate }) {
     onNavigate && onNavigate('productos')
   }
 
+  const handleCartClick = () => {
+    // Check if user is not authenticated
+    if (!isAuthenticated) {
+      onNavigate && onNavigate('login')
+      return
+    }
+    
+    // Check if user is admin (admins can't access cart)
+    if (user?.role === 'ADMIN') {
+      alert('Los administradores no pueden acceder al carrito de compras.')
+      return
+    }
+    
+    // Check if user has USER role
+    if (user?.role !== 'USER') {
+      alert('Solo los usuarios registrados pueden acceder al carrito de compras.')
+      return
+    }
+    
+    // Open cart for authenticated USER
+    setIsOpen(true)
+  }
+
   return (
     <>
       {/* Cart Button */}
       <button 
         className="relative p-2 text-foreground hover:text-primary transition-colors"
-        onClick={() => setIsOpen(true)}
+        onClick={handleCartClick}
       >
         <ShoppingCart className="h-5 w-5" />
         {state.itemCount > 0 && (
@@ -54,16 +114,29 @@ export default function CartSheet({ onNavigate }) {
       </button>
 
       {/* Cart Modal */}
-      {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
+      {isOpen && createPortal(
+        <div 
+          className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            zIndex: 9999
+          }}
+        >
           {/* Backdrop */}
           <div 
-            className="fixed inset-0 bg-black/50"
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
             onClick={() => setIsOpen(false)}
           />
           
           {/* Modal */}
-          <div className="relative bg-background border rounded-lg shadow-xl w-full max-w-lg max-h-[90vh] mx-4 flex flex-col">
+          <div 
+            className="relative bg-background border rounded-lg shadow-2xl w-full max-w-lg flex flex-col overflow-hidden"
+            style={{ maxHeight: 'calc(100vh - 2rem)' }}
+          >
             {/* Header */}
             <div className="flex items-center justify-between p-6 border-b">
               <div className="flex items-center space-x-2">
@@ -80,8 +153,19 @@ export default function CartSheet({ onNavigate }) {
 
             {/* Content */}
             <div className="flex-1 overflow-hidden flex flex-col">
+              {/* Temporary cart warning */}
+              {isTempCart && (
+                <div className="mx-6 mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-start space-x-2">
+                  <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                  <div className="text-sm text-amber-800">
+                    <p className="font-medium">Carrito temporal</p>
+                    <p>Tu carrito se guardará temporalmente. Inicia sesión para guardarlo permanentemente.</p>
+                  </div>
+                </div>
+              )}
+              
               {state.items.length === 0 ? (
-                <div className="flex-1 flex flex-col items-center justify-center space-y-4 p-8">
+                <div className="flex-1 flex flex-col items-center justify-center space-y-4 p-8 min-h-0">
                   <ShoppingCart className="h-16 w-16 text-muted-foreground" />
                   <div className="text-center space-y-2">
                     <h3 className="font-semibold">Tu carrito está vacío</h3>
@@ -94,7 +178,7 @@ export default function CartSheet({ onNavigate }) {
               ) : (
                 <>
                   {/* Items del carrito */}
-                  <div className="flex-1 overflow-y-auto p-6 space-y-4">
+                  <div className="flex-1 overflow-y-auto p-6 space-y-4 min-h-0">
                     {state.items.map((item) => (
                       <div key={item.id} className="flex space-x-3 p-3 border rounded-lg">
                         <img
@@ -106,53 +190,42 @@ export default function CartSheet({ onNavigate }) {
                         <div className="flex-1 space-y-2">
                           <div>
                             <h4 className="font-medium text-sm">{item.nombre}</h4>
-                            <div className="flex items-center space-x-2 mt-1">
-                              <span className="text-xs bg-muted text-muted-foreground px-2 py-1 rounded capitalize">
-                                {item.categoria}
-                              </span>
-                              {item.vegana && (
-                                <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
-                                  Vegana
-                                </span>
-                              )}
-                              {item.sinTacc && (
-                                <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
-                                  Sin TACC
-                                </span>
-                              )}
-                            </div>
                           </div>
 
                           <div className="flex items-center justify-between">
-                            <div className="flex items-center space-x-2">
+                            <div className="flex items-center space-x-3">
                               <Button
                                 variant="outline"
                                 size="sm"
-                                className="h-6 w-6 p-0"
+                                className="h-10 w-10 p-0 flex items-center justify-center"
                                 onClick={() => updateQuantity(item.id, item.cantidad - 1)}
+                                disabled={item.cantidad <= 1}
                               >
-                                <Minus className="h-3 w-3" />
+                                <Minus className="h-5 w-5" />
                               </Button>
                               <span className="text-sm font-medium w-8 text-center">{item.cantidad}</span>
                               <Button
                                 variant="outline"
                                 size="sm"
-                                className="h-6 w-6 p-0"
+                                className="h-10 w-10 p-0 flex items-center justify-center"
                                 onClick={() => updateQuantity(item.id, item.cantidad + 1)}
+                                disabled={item.cantidad >= item.stock}
+                                title={item.cantidad >= item.stock ? `Stock máximo: ${item.stock}` : 'Aumentar cantidad'}
                               >
-                                <Plus className="h-3 w-3" />
+                                <Plus className="h-5 w-5" />
                               </Button>
                             </div>
 
-                            <div className="flex items-center space-x-2">
+                            <div className="flex items-center space-x-3">
                               <span className="text-sm font-bold">{formatearPrecio(item.precio * item.cantidad)}</span>
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                className="h-6 w-6 p-0 text-destructive hover:text-destructive"
+                                className="h-10 w-10 p-0 text-destructive hover:text-destructive hover:bg-destructive/10 flex items-center justify-center"
                                 onClick={() => removeItem(item.id)}
+                                title="Eliminar del carrito"
                               >
-                                <Trash2 className="h-3 w-3" />
+                                <Trash2 className="h-5 w-5" />
                               </Button>
                             </div>
                           </div>
@@ -169,13 +242,23 @@ export default function CartSheet({ onNavigate }) {
                     </div>
 
                     <div className="space-y-2">
-                      <Button 
-                        className="w-full" 
-                        size="lg"
-                        onClick={handleCheckout}
-                      >
-                        Proceder al Checkout
-                      </Button>
+                      {isTempCart ? (
+                        <Button 
+                          className="w-full" 
+                          size="lg"
+                          onClick={() => onNavigate && onNavigate('login')}
+                        >
+                          Iniciar Sesión para Comprar
+                        </Button>
+                      ) : (
+                        <Button 
+                          className="w-full" 
+                          size="lg"
+                          onClick={handleCheckout}
+                        >
+                          Proceder al Checkout
+                        </Button>
+                      )}
                       <div className="flex space-x-2">
                         <Button
                           variant="outline"
@@ -199,7 +282,8 @@ export default function CartSheet({ onNavigate }) {
               )}
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   )

@@ -1,7 +1,7 @@
 import React from 'react'
 import ProductViewNew from '../components/ProductViewNew.jsx'
 
-export default function ProductosPage() {
+export default function ProductosPage({ onNavigate }) {
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -15,7 +15,12 @@ export default function ProductosPage() {
         </p>
       </div>
 
-      <ProductViewNew showCategoryFilter={true} showSorting={true} showFilters={true} />
+      <ProductViewNew 
+        showCategoryFilter={true} 
+        showSorting={true} 
+        showFilters={true} 
+        onNavigate={onNavigate}
+      />
     </div>
   )
 }

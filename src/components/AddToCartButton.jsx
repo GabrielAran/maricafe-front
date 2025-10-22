@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { ShoppingCart, Check } from 'lucide-react'
 import { useCart } from '../context/CartContext.jsx'
+import { useAuth } from '../context/AuthContext.jsx'
 import Button from './ui/Button.jsx'
 
 export default function AddToCartButton({ 
@@ -8,14 +9,42 @@ export default function AddToCartButton({
   className = '', 
   size = "default", 
   children,
-  disabled = false
+  disabled = false,
+  onNavigate,
+  quantity = 1
 }) {
   const { dispatch } = useCart()
+  const { isAuthenticated, user } = useAuth()
   const [added, setAdded] = useState(false)
 
   const handleAddToCart = () => {
     if (disabled) return
-    dispatch({ type: "ADD_ITEM", payload: product })
+    
+    // Check if user is not authenticated
+    if (!isAuthenticated) {
+      if (onNavigate) {
+        onNavigate('login')
+      } else {
+        alert('Debes iniciar sesión para agregar productos al carrito.')
+      }
+      return
+    }
+    
+    // Check if user is admin (admins can't add to cart)
+    if (user?.role === 'ADMIN') {
+      alert('Los administradores no pueden agregar productos al carrito.')
+      return
+    }
+    
+    // Check if user has USER role
+    if (user?.role !== 'USER') {
+      alert('Solo los usuarios registrados pueden agregar productos al carrito.')
+      return
+    }
+    
+    // Add to cart for authenticated USER with selected quantity
+    const productWithQuantity = { ...product, cantidad: quantity }
+    dispatch({ type: "ADD_ITEM", payload: productWithQuantity })
     setAdded(true)
     
     // Reset the "added" state after 2 seconds
