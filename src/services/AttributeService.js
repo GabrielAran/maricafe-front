@@ -56,7 +56,7 @@ export class AttributeService {
         name: attribute.name,
         data_type: attribute.data_type,
         required: attribute.required,
-        select_options: attribute.options || []
+        select_options: attribute.select_options || []
       }))
       
     } catch (error) {
@@ -98,7 +98,7 @@ export class AttributeService {
         name: attribute.name,
         data_type: attribute.data_type,
         required: attribute.required,
-        select_options: attribute.options || []
+        select_options: attribute.select_options || []
       }))
       
       // Update the service's attributes array with category-specific attributes

@@ -75,8 +75,8 @@ export default function Header({ onNavigate, currentPage }) {
               Admin
             </button>
           )}
-          {/* Cart */}
-          <CartSheet onNavigate={onNavigate} />
+          {/* Cart - Only for non-admin users */}
+          {!isAdmin() && <CartSheet onNavigate={onNavigate} />}
 
           {/* User menu */}
           {isAuthenticated ? (

@@ -1,5 +1,5 @@
 // API service for connecting with maricafe-back
-const API_BASE_URL = 'http://localhost:4002'
+const API_BASE_URL = 'http://127.0.0.1:4002'
 
 // API service functions
 export class ApiService {

@@ -289,11 +289,18 @@ export default function ProductViewNew({
             </CardContent>
             
             <CardFooter className="p-4 pt-0">
-              <AddToCartButton
-                product={product}
-                disabled={!isProductAvailable(product, isAdmin())}
-                className="w-full"
-              />
+              {!isAdmin() && (
+                <AddToCartButton
+                  product={product}
+                  disabled={!isProductAvailable(product, false)}
+                  className="w-full"
+                />
+              )}
+              {isAdmin() && (
+                <div className="w-full text-center py-2 text-sm text-muted-foreground">
+                  Administrador - Gestión de productos
+                </div>
+              )}
             </CardFooter>
           </Card>
         ))}

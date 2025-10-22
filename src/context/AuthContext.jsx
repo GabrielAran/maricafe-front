@@ -74,7 +74,7 @@ export function AuthProvider({ children }) {
     try {
       dispatch({ type: 'SET_LOADING', payload: true })
       
-      const response = await fetch('http://localhost:4002/maricafe/auth/login', {
+      const response = await fetch('http://127.0.0.1:4002/maricafe/auth/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
