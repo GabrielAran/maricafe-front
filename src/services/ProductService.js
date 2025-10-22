@@ -92,6 +92,7 @@ export class ProductService {
       precio: discountedPrice,
       precioOriginal: originalPrice,
       descuento: backendProduct.discount_percentage || 0,
+      descuentoId: backendProduct.discount_id || null,
       imagen: null, // Will be set when images are loaded
       descripcion: descripcion,
       vegana: text.includes('vegan') || text.includes('vegana') || Object.values(attributes).some(attr => attr.name === 'Vegano' && attr.value === 'true'),

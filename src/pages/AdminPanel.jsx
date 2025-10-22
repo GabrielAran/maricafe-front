@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { useAuth } from '../context/AuthContext.jsx'
 import AdminProductManagement from '../components/AdminProductManagement.jsx'
+import AdminDiscountManagement from '../components/AdminDiscountManagement.jsx'
 
 export default function AdminPanel() {
   const { isAuthenticated, isAdmin, user } = useAuth()
@@ -27,12 +28,7 @@ export default function AdminPanel() {
           </div>
         )
       case 'discounts':
-        return (
-          <div className="text-center py-12">
-            <h2 className="text-xl font-semibold mb-2">Gestión de Descuentos</h2>
-            <p className="text-muted-foreground">Funcionalidad en desarrollo...</p>
-          </div>
-        )
+        return <AdminDiscountManagement />
       default:
         return (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

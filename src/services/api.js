@@ -198,6 +198,7 @@ export function transformProduct(backendProduct) {
     precio: backendProduct.new_price || backendProduct.price, // Usar precio con descuento si existe
     precioOriginal: backendProduct.price,
     descuento: backendProduct.discount_percentage || 0,
+    descuentoId: backendProduct.discount_id || null, // ID del descuento para poder editarlo/eliminarlo
     imagen: null, // Se cargará desde el backend
     descripcion: descripcion,
     vegana: text.includes('vegan') || text.includes('vegana'),

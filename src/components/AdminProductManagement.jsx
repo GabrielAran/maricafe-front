@@ -78,6 +78,7 @@ export default function AdminProductManagement() {
   }
 
   const handleEditProduct = (product) => {
+    console.log('handleEditProduct called with product:', product)
     setEditingProduct(product)
     setFormData({
       title: product.nombre,
@@ -90,7 +91,9 @@ export default function AdminProductManagement() {
   }
 
   const handleDeleteProduct = (productId) => {
+    console.log('handleDeleteProduct called with productId:', productId)
     const product = products.find(p => p.id === productId)
+    console.log('Found product:', product)
     setConfirmationModal({
       isVisible: true,
       title: 'Eliminar Producto',
@@ -100,7 +103,13 @@ export default function AdminProductManagement() {
   }
 
   const handleConfirmDelete = async () => {
-    if (!confirmationModal.productId) return
+    console.log('handleConfirmDelete called')
+    console.log('confirmationModal:', confirmationModal)
+    
+    if (!confirmationModal.productId) {
+      console.log('No productId in confirmationModal, returning')
+      return
+    }
     
     try {
       const token = localStorage.getItem('maricafe-token')
@@ -108,6 +117,8 @@ export default function AdminProductManagement() {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
       }
+      
+      console.log('Sending delete request for product ID:', confirmationModal.productId)
       
       await ProductApiService.deleteProduct(confirmationModal.productId, authHeaders)
       showNotification('Producto eliminado exitosamente', 'success')
@@ -161,7 +172,28 @@ export default function AdminProductManagement() {
   }
 
   const handleSaveProduct = async () => {
-    if (!editingProduct) return
+    console.log('handleSaveProduct called')
+    console.log('editingProduct:', editingProduct)
+    console.log('formData:', formData)
+    
+    if (!editingProduct) {
+      console.log('No editing product, returning')
+      return
+    }
+    
+    // Validaciones
+    if (!formData.title.trim()) {
+      showNotification('El título es obligatorio', 'error')
+      return
+    }
+    if (formData.price < 0) {
+      showNotification('El precio no puede ser negativo', 'error')
+      return
+    }
+    if (formData.stock < 0) {
+      showNotification('El stock no puede ser negativo', 'error')
+      return
+    }
     
     try {
       setSaving(true)
@@ -176,8 +208,11 @@ export default function AdminProductManagement() {
         description: formData.description,
         price: parseFloat(formData.price),
         stock: parseInt(formData.stock),
-        category_id: editingProduct.categoriaId || editingProduct.category?.category_id
+        category_id: formData.category_id || editingProduct.categoriaId || editingProduct.category?.category_id
       }
+      
+      console.log('Sending update request with data:', productData)
+      console.log('Product ID:', editingProduct.id)
       
       await ProductApiService.updateProduct(editingProduct.id, productData, authHeaders)
       showNotification('Producto actualizado exitosamente', 'success')
@@ -414,14 +449,22 @@ export default function AdminProductManagement() {
                     <Button 
                       size="sm" 
                       variant="outline"
-                      onClick={() => handleEditProduct(product)}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        console.log('Edit button clicked for product:', product)
+                        handleEditProduct(product)
+                      }}
                     >
                       Editar
                     </Button>
                     <Button 
                       size="sm" 
                       variant="destructive"
-                      onClick={() => handleDeleteProduct(product.id)}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        console.log('Delete button clicked for product ID:', product.id)
+                        handleDeleteProduct(product.id)
+                      }}
                     >
                       Eliminar
                     </Button>
@@ -460,11 +503,11 @@ export default function AdminProductManagement() {
       {/* Edit Product Modal */}
       {showEditModal && editingProduct && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto">
             <h3 className="text-lg font-semibold mb-4">Editar Producto</h3>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium mb-1">Nombre</label>
+                <label className="block text-sm font-medium mb-1">Nombre *</label>
                 <input 
                   type="text" 
                   className="w-full border rounded px-3 py-2"
@@ -482,19 +525,36 @@ export default function AdminProductManagement() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Precio</label>
+                <label className="block text-sm font-medium mb-1">Categoría</label>
+                <select 
+                  className="w-full border rounded px-3 py-2"
+                  value={formData.category_id}
+                  onChange={(e) => handleInputChange('category_id', e.target.value)}
+                >
+                  <option value="">Seleccione una categoría</option>
+                  {categories.map(category => (
+                    <option key={category.id} value={category.id}>
+                      {category.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Precio *</label>
                 <input 
                   type="number" 
                   step="0.01"
+                  min="0"
                   className="w-full border rounded px-3 py-2"
                   value={formData.price}
                   onChange={(e) => handleInputChange('price', e.target.value)}
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Stock</label>
+                <label className="block text-sm font-medium mb-1">Stock *</label>
                 <input 
                   type="number" 
+                  min="0"
                   className="w-full border rounded px-3 py-2"
                   value={formData.stock}
                   onChange={(e) => handleInputChange('stock', e.target.value)}
