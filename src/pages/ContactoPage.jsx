@@ -17,7 +17,7 @@ export default function ContactoPage() {
                   <Phone className="w-4 h-4" />
                   <h3 className="font-semibold text-gray-900">Teléfono</h3>
                 </div>
-                <p className="ml-6 text-gray-700">+54 11 1234-5678</p>
+                <p className="ml-6 text-gray-700">+54 11 2277-7434</p>
                 <p className="ml-6 text-xs text-gray-500">WhatsApp disponible</p>
               </div>
 
@@ -35,7 +35,7 @@ export default function ContactoPage() {
                   <MapPin className="w-4 h-4" />
                   <h3 className="font-semibold text-gray-900">Ubicación</h3>
                 </div>
-                <p className="ml-6 text-gray-700">Palermo, Buenos Aires</p>
+                <p className="ml-6 text-gray-700">Honduras 4096, Palermo, Buenos Aires</p>
                 <p className="ml-6 text-xs text-gray-500">Argentina</p>
               </div>
 
@@ -66,7 +66,7 @@ export default function ContactoPage() {
                   <span className="font-medium">Facebook</span>
                 </a>
                 <a
-                  href="https://www.facebook.com/maricafeok/?locale=es_LA"
+                  href="https://www.instagram.com/maricafeok/"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center gap-4 p-4 rounded-xl border border-fuchsia-300 text-fuchsia-600 hover:bg-fuchsia-50 transition-colors flex-1"

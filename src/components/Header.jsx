@@ -51,12 +51,6 @@ export default function Header({ onNavigate, currentPage }) {
             Productos
           </button>
           <button 
-            className={`transition-colors ${currentPage === 'catering' ? 'text-primary' : 'text-foreground hover:text-primary'}`}
-            onClick={() => handleNavigation('catering')}
-          >
-            Catering
-          </button>
-          <button 
             className={`transition-colors ${currentPage === 'contacto' ? 'text-primary' : 'text-foreground hover:text-primary'}`}
             onClick={() => handleNavigation('contacto')}
           >
@@ -132,12 +126,6 @@ export default function Header({ onNavigate, currentPage }) {
               onClick={() => handleNavigation('productos')}
             >
               Productos
-            </button>
-            <button 
-              className={`text-left transition-colors ${currentPage === 'catering' ? 'text-primary' : 'text-foreground hover:text-primary'}`}
-              onClick={() => handleNavigation('catering')}
-            >
-              Catering
             </button>
             <button 
               className={`text-left transition-colors ${currentPage === 'contacto' ? 'text-primary' : 'text-foreground hover:text-primary'}`}

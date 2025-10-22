@@ -57,19 +57,19 @@ export default function Footer() {
               <div className="flex items-center space-x-3">
                 <MapPin className="h-4 w-4 text-primary" />
                 <span className="text-sm text-muted-foreground">
-                  Av. Corrientes 1234, Buenos Aires
+                Honduras 4096, Palermo, Buenos Aires
                 </span>
               </div>
               <div className="flex items-center space-x-3">
                 <Phone className="h-4 w-4 text-primary" />
                 <span className="text-sm text-muted-foreground">
-                  +54 11 1234-5678
+                +54 11 2277-7434
                 </span>
               </div>
               <div className="flex items-center space-x-3">
                 <Mail className="h-4 w-4 text-primary" />
                 <span className="text-sm text-muted-foreground">
-                  hola@maricafe.com
+                contacto@maricafe.com
                 </span>
               </div>
             </div>

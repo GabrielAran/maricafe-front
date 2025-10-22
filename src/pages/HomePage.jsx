@@ -23,16 +23,16 @@ export default function HomePage({ onNavigate }) {
               </h1>
             </div>
             
-            <h2 className="text-2xl lg:text-3xl font-semibold text-white">
+            <h2 className="text-2xl lg:text-3xl font-semibold text-black">
               Cafetería LGBT+ Especializada
             </h2>
             
-            <p className="text-lg lg:text-xl text-white max-w-3xl mx-auto leading-relaxed">
+            <p className="text-lg lg:text-xl text-black max-w-3xl mx-auto leading-relaxed">
               Tortas artesanales, catering inclusivo y tazas únicas. Un espacio seguro donde 
               la diversidad se celebra con cada bocado y cada sorbo. Opciones veganas y sin TACC disponibles.
             </p>
             
-            <div className="flex items-center justify-center space-x-2 text-white">
+            <div className="flex items-center justify-center space-x-2 text-black">
               <Heart className="h-6 w-6" />
               <span className="text-lg font-medium">Hecho con amor y orgullo</span>
             </div>
@@ -47,7 +47,7 @@ export default function HomePage({ onNavigate }) {
               </button>
               <button 
                 onClick={() => onNavigate && onNavigate('contacto')}
-                className="border-2 border-white text-white px-8 py-3 rounded-lg font-semibold hover:bg-white/10 transition-colors"
+                className="border-2 border-black text-black px-8 py-3 rounded-lg font-semibold hover:bg-black/10 transition-colors"
               >
                 Hacer Pedido
               </button>
