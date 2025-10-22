@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import { ShoppingCart, Plus, Minus, Trash2, X, AlertCircle } from 'lucide-react'
 import { useCart } from '../context/CartContext.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
-import { getTempCartRemainingTime } from '../utils/cartPersistence.js'
+import { getLoginRemainingTime, clearCart } from '../utils/cartPersistence.js'
 import Button from './ui/Button.jsx'
 
 export default function CartSheet({ onNavigate }) {
@@ -12,15 +12,18 @@ export default function CartSheet({ onNavigate }) {
   const [isOpen, setIsOpen] = useState(false)
   const [isTempCart, setIsTempCart] = useState(false)
 
-  // Track temporary cart expiration
+  // Track login session expiration
   useEffect(() => {
-    if (!isAuthenticated && state.items.length > 0 && token) {
+    if (isAuthenticated && user?.role === 'USER' && token) {
       setIsTempCart(true)
       const checkExpiration = () => {
-        const time = getTempCartRemainingTime(token)
-        if (time === 0) {
-          // Cart expired, clear it
-          dispatch({ type: "CLEAR_TEMP_CART" })
+        const time = getLoginRemainingTime(token)
+        console.log('Login session check - remaining time:', time, 'minutes')
+        if (time <= 0) {
+          console.log('Login session expired! Clearing cart...')
+          // Session expired, clear cart from localStorage and state
+          clearCart(token)
+          dispatch({ type: "CLEAR_CART" })
           setIsTempCart(false)
         }
       }
@@ -32,7 +35,7 @@ export default function CartSheet({ onNavigate }) {
     } else {
       setIsTempCart(false)
     }
-  }, [isAuthenticated, state.items.length, token, dispatch])
+  }, [isAuthenticated, user?.role, token, dispatch])
 
   const formatearPrecio = (precio) => {
     return new Intl.NumberFormat("es-AR", {

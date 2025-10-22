@@ -5,9 +5,8 @@
 import { getUserIdentifierFromToken } from './jwtDecoder.js'
 
 const CART_KEY_PREFIX = 'maricafe-cart-'
-const TEMP_CART_KEY_PREFIX = 'maricafe-temp-cart-'
-const CART_TIMESTAMP_KEY_PREFIX = 'maricafe-cart-timestamp-'
-const CART_EXPIRY_MINUTES = 5
+const LOGIN_TIMESTAMP_KEY_PREFIX = 'maricafe-login-timestamp-'
+const CART_EXPIRY_MINUTES = 0.17 // 10 seconds for testing
 
 // Helper function to get user-specific keys from JWT token
 const getUserKeys = (token) => {
@@ -20,13 +19,12 @@ const getUserKeys = (token) => {
   
   return {
     cartKey: `${CART_KEY_PREFIX}${userId}`,
-    tempCartKey: `${TEMP_CART_KEY_PREFIX}${userId}`,
-    timestampKey: `${CART_TIMESTAMP_KEY_PREFIX}${userId}`
+    loginTimestampKey: `${LOGIN_TIMESTAMP_KEY_PREFIX}${userId}`
   }
 }
 
 /**
- * Save cart to localStorage with timestamp
+ * Save cart to localStorage
  * @param {Array} cartItems - Array of cart items
  * @param {string} token - Authorization token for cart isolation
  */
@@ -40,8 +38,8 @@ export const saveCart = (cartItems, token) => {
     const keys = getUserKeys(token)
     if (!keys) return
     
+    console.log('Saving cart items:', cartItems.length)
     localStorage.setItem(keys.cartKey, JSON.stringify(cartItems))
-    localStorage.setItem(keys.timestampKey, Date.now().toString())
   } catch (error) {
     console.error('Error saving cart to localStorage:', error)
   }
@@ -70,71 +68,10 @@ export const loadCart = (token) => {
   }
 }
 
-/**
- * Save cart as temporary (for logged out users)
- * @param {Array} cartItems - Array of cart items
- * @param {string} token - Authorization token for cart isolation
- */
-export const saveTempCart = (cartItems, token) => {
-  if (!token) {
-    console.error('Token is required to save temporary cart')
-    return
-  }
-  
-  try {
-    const keys = getUserKeys(token)
-    if (!keys) return
-    
-    localStorage.setItem(keys.tempCartKey, JSON.stringify(cartItems))
-    localStorage.setItem(keys.timestampKey, Date.now().toString())
-  } catch (error) {
-    console.error('Error saving temporary cart to localStorage:', error)
-  }
-}
+
 
 /**
- * Load temporary cart if it hasn't expired
- * @param {string} token - Authorization token for cart isolation
- * @returns {Object} { items: Array, isValid: boolean }
- */
-export const loadTempCart = (token) => {
-  if (!token) {
-    console.error('Token is required to load temporary cart')
-    return { items: [], isValid: false }
-  }
-  
-  try {
-    const keys = getUserKeys(token)
-    if (!keys) return { items: [], isValid: false }
-    
-    const tempCart = localStorage.getItem(keys.tempCartKey)
-    const timestamp = localStorage.getItem(keys.timestampKey)
-    
-    if (!tempCart || !timestamp) {
-      return { items: [], isValid: false }
-    }
-    
-    const cartItems = JSON.parse(tempCart)
-    const cartTime = parseInt(timestamp)
-    const now = Date.now()
-    const timeDiffMinutes = (now - cartTime) / (1000 * 60)
-    
-    // Check if cart has expired (more than 5 minutes)
-    if (timeDiffMinutes > CART_EXPIRY_MINUTES) {
-      // Clear expired temporary cart
-      clearTempCart(token)
-      return { items: [], isValid: false }
-    }
-    
-    return { items: cartItems, isValid: true }
-  } catch (error) {
-    console.error('Error loading temporary cart from localStorage:', error)
-    return { items: [], isValid: false }
-  }
-}
-
-/**
- * Clear regular cart from localStorage
+ * Clear cart from localStorage
  * @param {string} token - Authorization token for cart isolation
  */
 export const clearCart = (token) => {
@@ -148,33 +85,10 @@ export const clearCart = (token) => {
     if (!keys) return
     
     localStorage.removeItem(keys.cartKey)
-    localStorage.removeItem(keys.timestampKey)
   } catch (error) {
     console.error('Error clearing cart from localStorage:', error)
   }
 }
-
-/**
- * Clear temporary cart from localStorage
- * @param {string} token - Authorization token for cart isolation
- */
-export const clearTempCart = (token) => {
-  if (!token) {
-    console.error('Token is required to clear temporary cart')
-    return
-  }
-  
-  try {
-    const keys = getUserKeys(token)
-    if (!keys) return
-    
-    localStorage.removeItem(keys.tempCartKey)
-    localStorage.removeItem(keys.timestampKey)
-  } catch (error) {
-    console.error('Error clearing temporary cart from localStorage:', error)
-  }
-}
-
 
 /**
  * Clear both regular and temporary carts for a specific user
@@ -187,43 +101,90 @@ export const clearAllCarts = (token) => {
   }
   
   clearCart(token)
-  clearTempCart(token)
 }
 
 /**
- * Check if there's a valid temporary cart available
+ * Set login timestamp when user logs in
  * @param {string} token - Authorization token for cart isolation
- * @returns {boolean} True if there's a valid temporary cart
  */
-export const hasValidTempCart = (token) => {
-  if (!token) return false
-  const { isValid } = loadTempCart(token)
-  return isValid
+export const setLoginTimestamp = (token) => {
+  if (!token) {
+    console.error('Token is required to set login timestamp')
+    return
+  }
+  
+  try {
+    const keys = getUserKeys(token)
+    if (!keys) return
+    
+    const timestamp = Date.now()
+    console.log('Setting login timestamp:', timestamp)
+    localStorage.setItem(keys.loginTimestampKey, timestamp.toString())
+  } catch (error) {
+    console.error('Error setting login timestamp:', error)
+  }
 }
 
 /**
- * Get remaining time for temporary cart in minutes
+ * Refresh login timestamp (reset timer when user is active)
+ * @param {string} token - Authorization token for cart isolation
+ */
+export const refreshLoginTimestamp = (token) => {
+  if (!token) {
+    console.error('Token is required to refresh login timestamp')
+    return
+  }
+  
+  try {
+    const keys = getUserKeys(token)
+    if (!keys) return
+    
+    const timestamp = Date.now()
+    console.log('Refreshing login timestamp:', timestamp)
+    localStorage.setItem(keys.loginTimestampKey, timestamp.toString())
+  } catch (error) {
+    console.error('Error refreshing login timestamp:', error)
+  }
+}
+
+/**
+ * Get remaining time since login in minutes
  * @param {string} token - Authorization token for cart isolation
  * @returns {number} Remaining minutes or 0 if expired/invalid
  */
-export const getTempCartRemainingTime = (token) => {
+export const getLoginRemainingTime = (token) => {
   if (!token) return 0
   
   try {
     const keys = getUserKeys(token)
     if (!keys) return 0
     
-    const timestamp = localStorage.getItem(keys.timestampKey)
-    if (!timestamp) return 0
+    const timestamp = localStorage.getItem(keys.loginTimestampKey)
+    if (!timestamp) {
+      console.log('No login timestamp found in localStorage')
+      return 0
+    }
     
-    const cartTime = parseInt(timestamp)
+    const loginTime = parseInt(timestamp)
     const now = Date.now()
-    const timeDiffMinutes = (now - cartTime) / (1000 * 60)
+    const timeDiffMinutes = (now - loginTime) / (1000 * 60)
     const remainingMinutes = CART_EXPIRY_MINUTES - timeDiffMinutes
     
-    return Math.max(0, Math.round(remainingMinutes))
+    console.log('Login time calculation - loginTime:', loginTime, 'now:', now, 'diffMinutes:', timeDiffMinutes, 'remaining:', remainingMinutes)
+    
+    // Return remaining time in minutes with decimal precision for testing
+    return Math.max(0, remainingMinutes)
   } catch (error) {
-    console.error('Error calculating remaining time:', error)
+    console.error('Error calculating login remaining time:', error)
     return 0
   }
+}
+
+/**
+ * Check if login session has expired
+ * @param {string} token - Authorization token for cart isolation
+ * @returns {boolean} True if session has expired
+ */
+export const isLoginExpired = (token) => {
+  return getLoginRemainingTime(token) <= 0
 }
