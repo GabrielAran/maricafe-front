@@ -251,9 +251,8 @@ export default function ProductViewNew({
                     src={product.imagen}
                     alt={product.nombre}
                     className="w-full h-full object-cover rounded-lg"
-                    onLoad={() => console.log(`Image loaded for product ${product.id}:`, product.imagen)}
+                    onLoad={() => {}}
                     onError={(e) => {
-                      console.log(`Image failed to load for product ${product.id}:`, product.imagen ? 'base64 data present' : 'no image data', e)
                       // Only set placeholder if not already set to prevent infinite loop
                       if (!e.target.src.includes('placeholder-product.jpg')) {
                         e.target.src = '/placeholder-product.jpg'

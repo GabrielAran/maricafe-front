@@ -107,30 +107,23 @@ export class ProductService {
   async fetchProductImages(productId) {
     try {
       const images = await ProductApiService.getProductImages(productId)
-      console.log(`Fetched images for product ${productId}: ${images.length} image(s)`)
       if (images.length > 0) {
         const base64Data = images[0]
-        console.log(`Base64 data for product ${productId} (length: ${base64Data.length} chars)`)
         
         // Now let's try to fix the backend base64 data
         try {
-          console.log(`Attempting to fix base64 data for product ${productId}...`)
           
           // Try to clean the base64 data (remove any whitespace, newlines, etc.)
           const cleanBase64 = base64Data.replace(/\s/g, '')
-          console.log(`Cleaned base64 length: ${cleanBase64.length}`)
           
           // Test if the cleaned base64 is valid
           try {
             const testDecode = atob(cleanBase64.substring(0, 100))
-            console.log(`Cleaned base64 is valid for product ${productId}`)
             
             // Try with PNG first (since your images are PNG)
             const dataUrl = `data:image/png;base64,${cleanBase64}`
-            console.log(`Created PNG data URL for product ${productId}`)
             return dataUrl
           } catch (decodeError) {
-            console.log(`Cleaned base64 still invalid for product ${productId}:`, decodeError)
             
             // If cleaning didn't work, try the original data with different MIME types
             const mimeTypes = ['image/png', 'image/jpeg', 'image/gif']
@@ -172,18 +165,13 @@ export class ProductService {
   // Load images for all products
   async loadProductImages() {
     try {
-      console.log('Loading images for products:', this.products.map(p => ({ id: p.id, nombre: p.nombre, stock: p.stock, imagen: p.imagen })))
       const imagePromises = this.products.map(async (product) => {
-        console.log(`Loading image for product ${product.id} (${product.nombre}) with stock ${product.stock}`)
         const imageUrl = await this.fetchProductImages(product.id)
         product.imagen = imageUrl
-        console.log(`Updated product ${product.id} (${product.nombre}) with image:`, imageUrl)
         return product
       })
       
       await Promise.all(imagePromises)
-      console.log('All images loaded, notifying listeners')
-      console.log('Final products with images:', this.products.map(p => ({ id: p.id, nombre: p.nombre, stock: p.stock, hasImage: !!p.imagen })))
       this.notify() // Notify listeners that images have been loaded
     } catch (error) {
       console.error('Error loading product images:', error)

@@ -137,9 +137,6 @@ export class ProductApiService {
         ...authHeaders
       }
       
-      console.log('Uploading image with headers:', headers)
-      console.log('Image data type:', typeof imageData)
-      console.log('Image data constructor:', imageData.constructor.name)
       
       const response = await fetch(`${API_BASE_URL}/images`, {
         method: 'POST',
@@ -147,8 +144,6 @@ export class ProductApiService {
         body: imageData
       })
       
-      console.log('Image upload response status:', response.status)
-      console.log('Image upload response headers:', Object.fromEntries(response.headers.entries()))
       
       if (!response.ok) {
         const errorText = await response.text()
@@ -157,7 +152,6 @@ export class ProductApiService {
       }
       
       const text = await response.text()
-      console.log('Image upload success response:', text)
       return text
     } catch (error) {
       console.error('Image upload error:', error)

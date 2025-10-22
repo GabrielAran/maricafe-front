@@ -272,7 +272,6 @@ export default function AdminProductManagement() {
       if (selectedImage && createdProduct) {
         const productId = createdProduct.product_id || createdProduct.idProduct || createdProduct.id
         console.log('Product created:', createdProduct)
-        console.log('Product ID for image upload:', productId)
         
         if (productId) {
           const formData = new FormData()
@@ -286,7 +285,6 @@ export default function AdminProductManagement() {
           
           try {
             const uploadResult = await ProductApiService.uploadImage(formData, imageAuthHeaders)
-            console.log('Image upload result:', uploadResult)
           } catch (uploadError) {
             console.error('Image upload error:', uploadError)
             showNotification('Producto creado pero error al subir imagen: ' + uploadError.message, 'error')
