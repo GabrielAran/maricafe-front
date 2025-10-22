@@ -79,9 +79,18 @@ export default function Header({ onNavigate, currentPage }) {
           {isAuthenticated ? (
             <div className="flex items-center space-x-2">
               {!isAdmin() && (
-                <span className="text-sm text-muted-foreground hidden md:block">
-                  Hola, {user?.firstName}
-                </span>
+                <>
+                  <span className="text-sm text-muted-foreground hidden md:block">
+                    Hola, {user?.firstName}
+                  </span>
+                  <button 
+                    onClick={() => handleNavigation('profile')}
+                    className="p-2 text-foreground hover:text-primary transition-colors"
+                    title="Mi Perfil"
+                  >
+                    <User className="h-4 w-4" />
+                  </button>
+                </>
               )}
               {isAdmin() && (
                 <span className="text-xs bg-primary text-primary-foreground px-2 py-1 rounded">
@@ -156,9 +165,18 @@ export default function Header({ onNavigate, currentPage }) {
               {isAuthenticated ? (
                 <div className="space-y-2">
                   {!isAdmin() && (
-                    <div className="text-sm text-muted-foreground">
-                      Hola, {user?.firstName} {user?.lastName}
-                    </div>
+                    <>
+                      <div className="text-sm text-muted-foreground">
+                        Hola, {user?.firstName} {user?.lastName}
+                      </div>
+                      <button 
+                        onClick={() => handleNavigation('profile')}
+                        className="flex items-center space-x-2 text-foreground hover:text-primary transition-colors"
+                      >
+                        <User className="h-4 w-4" />
+                        <span>Mi Perfil</span>
+                      </button>
+                    </>
                   )}
                   {isAdmin() && (
                     <div className="text-xs bg-primary text-primary-foreground px-2 py-1 rounded inline-block">

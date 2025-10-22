@@ -158,6 +158,15 @@ export function AuthProvider({ children }) {
     return state.user?.role === 'ADMIN'
   }
 
+  // Función para actualizar los datos del usuario
+  const updateUser = (updatedUserData) => {
+    console.log('Updating user with data:', updatedUserData) // Debug
+    console.log('Current user before update:', state.user) // Debug
+    localStorage.setItem('maricafe-user', JSON.stringify(updatedUserData))
+    dispatch({ type: 'SET_USER', payload: updatedUserData })
+    console.log('User updated in context') // Debug
+  }
+
   // Función para obtener el token para las peticiones API
   const getAuthHeaders = () => {
     if (state.token) {
@@ -177,6 +186,7 @@ export function AuthProvider({ children }) {
     logout,
     register,
     isAdmin,
+    updateUser,
     getAuthHeaders
   }
 

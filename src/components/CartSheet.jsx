@@ -1,42 +1,17 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import { createPortal } from 'react-dom'
-import { ShoppingCart, Plus, Minus, Trash2, X, AlertCircle } from 'lucide-react'
+import { ShoppingCart, Plus, Minus, Trash2, X } from 'lucide-react'
 import { useCart } from '../context/CartContext.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
-import { getLoginRemainingTime, clearCart } from '../utils/cartPersistence.js'
+import { useToast } from '../context/ToastContext.jsx'
 import Button from './ui/Button.jsx'
 
 export default function CartSheet({ onNavigate }) {
   const { state, dispatch } = useCart()
   const { isAuthenticated, user, token } = useAuth()
+  const { showSuccess, showError } = useToast()
   const [isOpen, setIsOpen] = useState(false)
-  const [isTempCart, setIsTempCart] = useState(false)
 
-  // Track login session expiration
-  useEffect(() => {
-    if (isAuthenticated && user?.role === 'USER' && token) {
-      setIsTempCart(true)
-      const checkExpiration = () => {
-        const time = getLoginRemainingTime(token)
-        console.log('Login session check - remaining time:', time, 'minutes')
-        
-        if (time <= 0) {
-          console.log('Login session expired! Clearing cart...')
-          // Session expired, clear cart from localStorage and state
-          clearCart(token)
-          dispatch({ type: "CLEAR_CART" })
-          setIsTempCart(false)
-        }
-      }
-      
-      checkExpiration()
-      const interval = setInterval(checkExpiration, 1000) // Check every second
-      
-      return () => clearInterval(interval)
-    } else {
-      setIsTempCart(false)
-    }
-  }, [isAuthenticated, user?.role, token, dispatch])
 
   const formatearPrecio = (precio) => {
     return new Intl.NumberFormat("es-AR", {
@@ -68,10 +43,59 @@ export default function CartSheet({ onNavigate }) {
     dispatch({ type: "CLEAR_CART" })
   }
 
-  const handleCheckout = () => {
-    // Mostrar mensaje de funcionalidad próxima
-    const message = 'La funcionalidad de checkout estará disponible próximamente. Por ahora, puedes contactarnos para realizar tu pedido.'
-    alert(message)
+  const handleCheckout = async () => {
+    if (!isAuthenticated || !token) {
+      showError('Debes estar autenticado para proceder al checkout')
+      return
+    }
+
+    if (state.items.length === 0) {
+      showError('Tu carrito está vacío')
+      return
+    }
+
+    try {
+      // Convert cart items to order format
+      const orderItems = state.items.map(item => ({
+        product_id: item.id,
+        quantity: item.cantidad,
+        unit_price: item.precio // Use the discounted price from cart
+      }))
+
+      const response = await fetch('http://localhost:4002/orders', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          items: orderItems
+        })
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.message || 'Error al crear la orden')
+      }
+
+      const data = await response.json()
+      
+      // Show success toast
+      showSuccess('¡Orden creada exitosamente!')
+      
+      // Clear cart after successful order
+      dispatch({ type: "CLEAR_CART" })
+      
+      // Close cart modal
+      setIsOpen(false)
+      
+      // Navigate to profile to see orders
+      onNavigate && onNavigate('profile')
+      
+    } catch (error) {
+      console.error('Error creating order:', error)
+      showError(`Error al crear la orden: ${error.message}`)
+    }
   }
 
   const handleContinueShopping = () => {
@@ -157,16 +181,6 @@ export default function CartSheet({ onNavigate }) {
 
             {/* Content */}
             <div className="flex-1 overflow-hidden flex flex-col">
-              {/* Temporary cart warning */}
-              {isTempCart && (
-                <div className="mx-6 mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-start space-x-2">
-                  <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
-                  <div className="text-sm text-amber-800">
-                    <p className="font-medium">Carrito temporal</p>
-                    <p>Tu carrito se guardará temporalmente. Inicia sesión para guardarlo permanentemente.</p>
-                  </div>
-                </div>
-              )}
               
               {state.items.length === 0 ? (
                 <div className="flex-1 flex flex-col items-center justify-center space-y-4 p-8 min-h-0">
@@ -246,23 +260,13 @@ export default function CartSheet({ onNavigate }) {
                     </div>
 
                     <div className="space-y-2">
-                      {isTempCart ? (
-                        <Button 
-                          className="w-full" 
-                          size="lg"
-                          onClick={() => onNavigate && onNavigate('login')}
-                        >
-                          Iniciar Sesión para Comprar
-                        </Button>
-                      ) : (
-                        <Button 
-                          className="w-full" 
-                          size="lg"
-                          onClick={handleCheckout}
-                        >
-                          Proceder al Checkout
-                        </Button>
-                      )}
+                      <Button 
+                        className="w-full" 
+                        size="lg"
+                        onClick={handleCheckout}
+                      >
+                        Proceder al Checkout
+                      </Button>
                       <div className="flex space-x-2">
                         <Button
                           variant="outline"

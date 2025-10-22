@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { CartProvider } from './context/CartContext.jsx'
 import { AuthProvider } from './context/AuthContext.jsx'
+import { ToastProvider } from './context/ToastContext.jsx'
 import Header from './components/Header.jsx'
 import Footer from './components/Footer.jsx'
 import HomePage from './pages/HomePage.jsx'
@@ -9,45 +10,56 @@ import ProductosPage from './pages/ProductosPage.jsx'
 import LoginPage from './pages/LoginPage.jsx'
 import RegisterPage from './pages/RegisterPage.jsx'
 import AdminPanel from './pages/AdminPanel.jsx'
-import CartTimerDebug from './components/CartTimerDebug.jsx'
+import ProfilePage from './pages/ProfilePage.jsx'
+import OrderDetailsPage from './pages/OrderDetailsPage.jsx'
 import './App.css'
 
 function App() {
   const [currentPage, setCurrentPage] = useState('home')
+  const [pageData, setPageData] = useState(null)
+
+  const handleNavigate = (page, data = null) => {
+    setCurrentPage(page)
+    setPageData(data)
+  }
 
   const renderPage = () => {
     switch (currentPage) {
       case 'home':
-        return <HomePage onNavigate={setCurrentPage} />
+        return <HomePage onNavigate={handleNavigate} />
       case 'productos':
-        return <ProductosPage onNavigate={setCurrentPage} />
+        return <ProductosPage onNavigate={handleNavigate} />
       case 'catering':
         return <div>Página de Catering (próximamente)</div>
       case 'contacto':
         return <ContactoPage />;
       case 'login':
-        return <LoginPage onNavigate={setCurrentPage} />
+        return <LoginPage onNavigate={handleNavigate} />
       case 'register':
-        return <RegisterPage onNavigate={setCurrentPage} />
+        return <RegisterPage onNavigate={handleNavigate} />
       case 'admin':
         return <AdminPanel />
+      case 'profile':
+        return <ProfilePage onNavigate={handleNavigate} />
+      case 'order-details':
+        return <OrderDetailsPage onNavigate={handleNavigate} orderId={pageData?.orderId} />
       default:
-        return <HomePage />
+        return <HomePage onNavigate={handleNavigate} />
     }
   }
 
   return (
     <AuthProvider>
       <CartProvider>
-        <div className="min-h-screen bg-background">
-          <Header onNavigate={setCurrentPage} currentPage={currentPage} />
-          <main className="flex-1">
-            {renderPage()}
-          </main>
-          <Footer />
-          {/* Debug component for testing cart timer - remove in production */}
-          <CartTimerDebug />
-        </div>
+        <ToastProvider>
+          <div className="min-h-screen bg-background">
+            <Header onNavigate={handleNavigate} currentPage={currentPage} />
+            <main className="flex-1">
+              {renderPage()}
+            </main>
+            <Footer />
+          </div>
+        </ToastProvider>
       </CartProvider>
     </AuthProvider>
   )

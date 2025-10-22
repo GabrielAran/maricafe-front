@@ -102,11 +102,18 @@ export function CartProvider({ children }) {
       // Set login timestamp when user logs in
       setLoginTimestamp(token)
       
-      // Load cart for authenticated user
-      const cartItems = loadCart(token)
-      if (cartItems.length > 0) {
-        console.log('Loading cart items:', cartItems)
-        dispatch({ type: "LOAD_CART", payload: cartItems })
+      // Check if session has expired before loading cart
+      if (isLoginExpired(token)) {
+        console.log('Login session expired, clearing cart')
+        clearCart(token)
+        dispatch({ type: "CLEAR_CART" })
+      } else {
+        // Load cart for authenticated user only if session is valid
+        const cartItems = loadCart(token)
+        if (cartItems.length > 0) {
+          console.log('Loading cart items:', cartItems)
+          dispatch({ type: "LOAD_CART", payload: cartItems })
+        }
       }
     } else if (user?.role === 'ADMIN') {
       console.log('Admin user, clearing cart')
@@ -126,12 +133,31 @@ export function CartProvider({ children }) {
     
     if (!isAuthenticated || user?.role !== 'USER' || !token) return // Only save for authenticated users
     
-    // Save cart for logged-in users
-    if (state.items.length > 0) {
-      console.log('Saving cart to localStorage:', state.items)
-      saveCart(state.items, token)
-    }
+    // Always save cart state (including empty cart) to persist removals
+    console.log('Saving cart to localStorage:', state.items)
+    saveCart(state.items, token)
   }, [state.items, isAuthenticated, user?.role, token])
+
+  // Check for session expiration periodically
+  useEffect(() => {
+    if (!isAuthenticated || user?.role !== 'USER' || !token) return
+
+    const checkExpiration = () => {
+      if (isLoginExpired(token)) {
+        console.log('Login session expired, clearing cart')
+        clearCart(token)
+        dispatch({ type: "CLEAR_CART" })
+      }
+    }
+
+    // Check immediately
+    checkExpiration()
+    
+    // Check every minute
+    const interval = setInterval(checkExpiration, 60000)
+    
+    return () => clearInterval(interval)
+  }, [isAuthenticated, user?.role, token, dispatch])
 
 
 
