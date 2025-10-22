@@ -57,7 +57,7 @@ export default function ContactoPage() {
             <div className="space-y-6">
               <div className="flex gap-6">
                 <a
-                  href="https://www.facebook.com/maricafe"
+                  href="https://www.facebook.com/maricafeok/?locale=es_LA"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center gap-4 p-4 rounded-xl border border-fuchsia-300 text-fuchsia-600 hover:bg-fuchsia-50 transition-colors flex-1"
