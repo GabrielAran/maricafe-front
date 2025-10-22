@@ -6,7 +6,7 @@ import { getUserIdentifierFromToken } from './jwtDecoder.js'
 
 const CART_KEY_PREFIX = 'maricafe-cart-'
 const LOGIN_TIMESTAMP_KEY_PREFIX = 'maricafe-login-timestamp-'
-const CART_EXPIRY_MINUTES = 0.17 // 10 seconds for testing
+const CART_EXPIRY_MINUTES = 15 // 15 minutes from login
 
 // Helper function to get user-specific keys from JWT token
 const getUserKeys = (token) => {
@@ -172,7 +172,7 @@ export const getLoginRemainingTime = (token) => {
     
     console.log('Login time calculation - loginTime:', loginTime, 'now:', now, 'diffMinutes:', timeDiffMinutes, 'remaining:', remainingMinutes)
     
-    // Return remaining time in minutes with decimal precision for testing
+    // Return remaining time in minutes
     return Math.max(0, remainingMinutes)
   } catch (error) {
     console.error('Error calculating login remaining time:', error)
@@ -188,3 +188,4 @@ export const getLoginRemainingTime = (token) => {
 export const isLoginExpired = (token) => {
   return getLoginRemainingTime(token) <= 0
 }
+

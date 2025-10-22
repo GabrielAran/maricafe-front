@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { ShoppingCart, Check } from 'lucide-react'
 import { useCart } from '../context/CartContext.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
+import { getLoginRemainingTime } from '../utils/cartPersistence.js'
 import Button from './ui/Button.jsx'
 
 export default function AddToCartButton({ 
@@ -14,7 +15,7 @@ export default function AddToCartButton({
   quantity = 1
 }) {
   const { dispatch } = useCart()
-  const { isAuthenticated, user } = useAuth()
+  const { isAuthenticated, user, token } = useAuth()
   const [added, setAdded] = useState(false)
 
   const handleAddToCart = () => {
@@ -40,6 +41,15 @@ export default function AddToCartButton({
     if (user?.role !== 'USER') {
       alert('Solo los usuarios registrados pueden agregar productos al carrito.')
       return
+    }
+    
+    // Check if login session has expired (15 minutes)
+    if (token) {
+      const remainingTime = getLoginRemainingTime(token)
+      if (remainingTime <= 0) {
+        alert('Tu sesión ha expirado. Por favor, inicia sesión nuevamente para continuar comprando.')
+        return
+      }
     }
     
     // Add to cart for authenticated USER with selected quantity

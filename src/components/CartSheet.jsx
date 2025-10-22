@@ -19,6 +19,7 @@ export default function CartSheet({ onNavigate }) {
       const checkExpiration = () => {
         const time = getLoginRemainingTime(token)
         console.log('Login session check - remaining time:', time, 'minutes')
+        
         if (time <= 0) {
           console.log('Login session expired! Clearing cart...')
           // Session expired, clear cart from localStorage and state

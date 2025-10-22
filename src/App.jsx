@@ -9,6 +9,7 @@ import ProductosPage from './pages/ProductosPage.jsx'
 import LoginPage from './pages/LoginPage.jsx'
 import RegisterPage from './pages/RegisterPage.jsx'
 import AdminPanel from './pages/AdminPanel.jsx'
+import CartTimerDebug from './components/CartTimerDebug.jsx'
 import './App.css'
 
 function App() {
@@ -44,6 +45,8 @@ function App() {
             {renderPage()}
           </main>
           <Footer />
+          {/* Debug component for testing cart timer - remove in production */}
+          <CartTimerDebug />
         </div>
       </CartProvider>
     </AuthProvider>
