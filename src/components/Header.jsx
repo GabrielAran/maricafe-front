@@ -44,40 +44,45 @@ export default function Header({ onNavigate, currentPage }) {
           >
             Inicio
           </button>
-          <button 
-            className={`transition-colors ${currentPage === 'productos' ? 'text-primary' : 'text-foreground hover:text-primary'}`}
-            onClick={() => handleNavigation('productos')}
-          >
-            Productos
-          </button>
-          <button 
-            className={`transition-colors ${currentPage === 'contacto' ? 'text-primary' : 'text-foreground hover:text-primary'}`}
-            onClick={() => handleNavigation('contacto')}
-          >
-            Contacto
-          </button>
+          {!isAdmin() && (
+            <>
+              <button 
+                className={`transition-colors ${currentPage === 'productos' ? 'text-primary' : 'text-foreground hover:text-primary'}`}
+                onClick={() => handleNavigation('productos')}
+              >
+                Productos
+              </button>
+              <button 
+                className={`transition-colors ${currentPage === 'contacto' ? 'text-primary' : 'text-foreground hover:text-primary'}`}
+                onClick={() => handleNavigation('contacto')}
+              >
+                Contacto
+              </button>
+            </>
+          )}
+          {isAuthenticated && isAdmin() && (
+            <button 
+              className={`transition-colors ${currentPage === 'admin' ? 'text-primary' : 'text-foreground hover:text-primary'}`}
+              onClick={() => handleNavigation('admin')}
+            >
+              Panel de Administración
+            </button>
+          )}
         </nav>
 
         {/* Right side actions */}
         <div className="flex items-center space-x-4">
-          {/* Admin link (desktop) */}
-          {isAuthenticated && isAdmin() && (
-            <button 
-              className={`hidden md:inline transition-colors ${currentPage === 'admin' ? 'text-primary' : 'text-foreground hover:text-primary'}`}
-              onClick={() => handleNavigation('admin')}
-            >
-              Admin
-            </button>
-          )}
           {/* Cart - Visible to all except admins, but access controlled */}
           {!isAdmin() && <CartSheet onNavigate={onNavigate} />}
 
           {/* User menu */}
           {isAuthenticated ? (
             <div className="flex items-center space-x-2">
-              <span className="text-sm text-muted-foreground hidden md:block">
-                Hola, {user?.firstName}
-              </span>
+              {!isAdmin() && (
+                <span className="text-sm text-muted-foreground hidden md:block">
+                  Hola, {user?.firstName}
+                </span>
+              )}
               {isAdmin() && (
                 <span className="text-xs bg-primary text-primary-foreground px-2 py-1 rounded">
                   ADMIN
@@ -121,38 +126,44 @@ export default function Header({ onNavigate, currentPage }) {
             >
               Inicio
             </button>
-            <button 
-              className={`text-left transition-colors ${currentPage === 'productos' ? 'text-primary' : 'text-foreground hover:text-primary'}`}
-              onClick={() => handleNavigation('productos')}
-            >
-              Productos
-            </button>
-            <button 
-              className={`text-left transition-colors ${currentPage === 'contacto' ? 'text-primary' : 'text-foreground hover:text-primary'}`}
-              onClick={() => handleNavigation('contacto')}
-            >
-              Contacto
-            </button>
+            {!isAdmin() && (
+              <>
+                <button 
+                  className={`text-left transition-colors ${currentPage === 'productos' ? 'text-primary' : 'text-foreground hover:text-primary'}`}
+                  onClick={() => handleNavigation('productos')}
+                >
+                  Productos
+                </button>
+                <button 
+                  className={`text-left transition-colors ${currentPage === 'contacto' ? 'text-primary' : 'text-foreground hover:text-primary'}`}
+                  onClick={() => handleNavigation('contacto')}
+                >
+                  Contacto
+                </button>
+              </>
+            )}
+            {isAuthenticated && isAdmin() && (
+              <button 
+                className={`text-left transition-colors ${currentPage === 'admin' ? 'text-primary' : 'text-foreground hover:text-primary'}`}
+                onClick={() => handleNavigation('admin')}
+              >
+                Panel de Administración
+              </button>
+            )}
             
             {/* Mobile user actions */}
             <div className="border-t pt-4 mt-4">
               {isAuthenticated ? (
                 <div className="space-y-2">
-                  <div className="text-sm text-muted-foreground">
-                    Hola, {user?.firstName} {user?.lastName}
-                  </div>
+                  {!isAdmin() && (
+                    <div className="text-sm text-muted-foreground">
+                      Hola, {user?.firstName} {user?.lastName}
+                    </div>
+                  )}
                   {isAdmin() && (
                     <div className="text-xs bg-primary text-primary-foreground px-2 py-1 rounded inline-block">
                       ADMINISTRADOR
                     </div>
-                  )}
-                  {isAdmin() && (
-                    <button 
-                      onClick={() => handleNavigation('admin')}
-                      className="text-left text-foreground hover:text-primary transition-colors"
-                    >
-                      Ir al Panel Admin
-                    </button>
                   )}
                   <button 
                     onClick={handleLogout}

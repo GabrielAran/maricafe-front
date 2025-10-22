@@ -3,12 +3,11 @@ import { useAuth } from './AuthContext.jsx'
 import { 
   saveCart, 
   loadCart, 
-  saveTempCart, 
-  loadTempCart, 
   clearCart, 
-  clearTempCart, 
   clearAllCarts,
-  hasValidTempCart 
+  setLoginTimestamp,
+  getLoginRemainingTime,
+  isLoginExpired
 } from '../utils/cartPersistence.js'
 
 // Cart Context - Sin TypeScript, solo JavaScript
@@ -18,6 +17,7 @@ const CartContext = createContext(null)
 function cartReducer(state, action) {
   switch (action.type) {
     case "ADD_ITEM": {
+      console.log('ADD_ITEM action received:', action.payload, 'current state:', state)
       const existingItem = state.items.find((item) => item.id === action.payload.id)
       const quantityToAdd = action.payload.cantidad || 1
 
@@ -33,6 +33,7 @@ function cartReducer(state, action) {
       const total = newItems.reduce((sum, item) => sum + item.precio * item.cantidad, 0)
       const itemCount = newItems.reduce((sum, item) => sum + item.cantidad, 0)
 
+      console.log('ADD_ITEM result:', { items: newItems, total, itemCount })
       return { items: newItems, total, itemCount }
     }
 
@@ -61,7 +62,6 @@ function cartReducer(state, action) {
       return { items: [], total: 0, itemCount: 0 }
 
     case "CLEAR_TEMP_CART":
-      clearTempCart()
       return { items: [], total: 0, itemCount: 0 }
 
     case "LOAD_CART": {
@@ -87,75 +87,53 @@ export function CartProvider({ children }) {
 
   // Track user changes and load appropriate cart
   useEffect(() => {
+    console.log('CartContext useEffect - isAuthenticated:', isAuthenticated, 'user:', user, 'token:', !!token, 'currentToken:', !!currentToken)
+    
     // If token changed, clear current cart first
     if (currentToken && currentToken !== token) {
+      console.log('Token changed, clearing cart')
       dispatch({ type: "CLEAR_CART" })
     }
     
     setCurrentToken(token)
     
     if (isAuthenticated && user?.role === 'USER' && token) {
-      // User is logged in - first check for temporary cart, then regular cart
-      const { items: tempCartItems, isValid: tempCartValid } = loadTempCart(token)
+      console.log('User logged in, setting login timestamp and loading cart')
+      // Set login timestamp when user logs in
+      setLoginTimestamp(token)
       
-      if (tempCartValid && tempCartItems.length > 0) {
-        // Restore temporary cart and convert to regular cart
-        dispatch({ type: "LOAD_CART", payload: tempCartItems })
-        // Clear the temporary cart since we're now logged in
-        clearTempCart(token)
-      } else {
-        // No valid temporary cart, load regular cart
-        const cartItems = loadCart(token)
-        if (cartItems.length > 0) {
-          dispatch({ type: "LOAD_CART", payload: cartItems })
-        }
+      // Load cart for authenticated user
+      const cartItems = loadCart(token)
+      if (cartItems.length > 0) {
+        console.log('Loading cart items:', cartItems)
+        dispatch({ type: "LOAD_CART", payload: cartItems })
       }
-    } else if (token) {
-      // User is not logged in but we have a token - check for temporary cart
-      const { items: tempCartItems, isValid } = loadTempCart(token)
-      if (isValid && tempCartItems.length > 0) {
-        dispatch({ type: "LOAD_CART", payload: tempCartItems })
-      } else if (!isValid) {
-        // Clear expired temporary cart from state
-        dispatch({ type: "CLEAR_TEMP_CART" })
-      }
+    } else if (user?.role === 'ADMIN') {
+      console.log('Admin user, clearing cart')
+      // Admin logged in - clear cart (admins can't use cart)
+      dispatch({ type: "CLEAR_CART" })
+      if (token) clearAllCarts(token)
     } else {
-      // No token - clear cart
+      console.log('Not authenticated or no token, clearing cart')
+      // Not logged in or no token - clear cart
       dispatch({ type: "CLEAR_CART" })
     }
   }, [isAuthenticated, user?.role, token, currentToken])
 
   // Guardar carrito en localStorage cuando cambie
   useEffect(() => {
-    if (!token) return // Don't save if no token
+    console.log('Cart save effect - isAuthenticated:', isAuthenticated, 'user role:', user?.role, 'token:', !!token, 'items:', state.items.length)
     
-    if (isAuthenticated && user?.role === 'USER') {
-      // User is logged in - save to regular cart
+    if (!isAuthenticated || user?.role !== 'USER' || !token) return // Only save for authenticated users
+    
+    // Save cart for logged-in users
+    if (state.items.length > 0) {
+      console.log('Saving cart to localStorage:', state.items)
       saveCart(state.items, token)
-    } else {
-      // User is not logged in - save to temporary cart
-      if (state.items.length > 0) {
-        saveTempCart(state.items, token)
-      }
     }
   }, [state.items, isAuthenticated, user?.role, token])
 
-  // Handle cart when user logs out or when admin logs in
-  useEffect(() => {
-    if (!token) return
-    
-    if (!isAuthenticated) {
-      // User logged out - save current cart as temporary if it has items
-      if (state.items.length > 0) {
-        saveTempCart(state.items, token)
-      }
-      // Don't clear the cart immediately - let it persist temporarily
-    } else if (user?.role === 'ADMIN') {
-      // Admin logged in - clear cart (admins can't use cart)
-      dispatch({ type: "CLEAR_CART" })
-      clearAllCarts(token)
-    }
-  }, [isAuthenticated, user?.role, token, state.items])
+
 
   return <CartContext.Provider value={{ state, dispatch }}>{children}</CartContext.Provider>
 }
