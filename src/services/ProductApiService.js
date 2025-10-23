@@ -158,4 +158,34 @@ export class ProductApiService {
       throw error
     }
   }
+
+  // Upload multiple images (ADMIN only)
+  static async uploadMultipleImages(imageData, authHeaders) {
+    try {
+      const token = localStorage.getItem('maricafe-token')
+      const headers = {
+        'Authorization': `Bearer ${token}`,
+        // Don't set Content-Type for FormData, let browser set it with boundary
+        ...authHeaders
+      }
+      
+      const response = await fetch(`${API_BASE_URL}/images/multiple`, {
+        method: 'POST',
+        headers: headers,
+        body: imageData
+      })
+      
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error('Multiple images upload error response:', errorText)
+        throw new Error(`HTTP error! status: ${response.status} - ${errorText}`)
+      }
+      
+      const text = await response.text()
+      return text
+    } catch (error) {
+      console.error('Multiple images upload error:', error)
+      throw error
+    }
+  }
 }

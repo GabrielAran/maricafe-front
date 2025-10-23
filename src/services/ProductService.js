@@ -121,57 +121,47 @@ export class ProductService {
     try {
       const images = await ProductApiService.getProductImages(productId)
       if (images.length > 0) {
-        const base64Data = images[0]
-        
-        // Now let's try to fix the backend base64 data
-        try {
-          
-          // Try to clean the base64 data (remove any whitespace, newlines, etc.)
-          const cleanBase64 = base64Data.replace(/\s/g, '')
-          
-          // Test if the cleaned base64 is valid
+        // Return all images as an array, with main image first
+        const processedImages = images.map((base64Data, index) => {
           try {
-            const testDecode = atob(cleanBase64.substring(0, 100))
+            // Try to clean the base64 data (remove any whitespace, newlines, etc.)
+            const cleanBase64 = base64Data.replace(/\s/g, '')
             
-            // Try with PNG first (since your images are PNG)
-            const dataUrl = `data:image/png;base64,${cleanBase64}`
-            return dataUrl
-          } catch (decodeError) {
-            
-            // If cleaning didn't work, try the original data with different MIME types
-            const mimeTypes = ['image/png', 'image/jpeg', 'image/gif']
-            for (const mimeType of mimeTypes) {
-              try {
-                const testUrl = `data:${mimeType};base64,${base64Data}`
-                // Test if this works by creating a temporary image
-                const testImg = new Image()
-                testImg.onload = () => {
-                  console.log(`✅ ${mimeType} works for product ${productId}`)
+            // Test if the cleaned base64 is valid
+            try {
+              const testDecode = atob(cleanBase64.substring(0, 100))
+              
+              // Try with PNG first (since your images are PNG)
+              const dataUrl = `data:image/png;base64,${cleanBase64}`
+              return dataUrl
+            } catch (decodeError) {
+              // If cleaning didn't work, try the original data with different MIME types
+              const mimeTypes = ['image/png', 'image/jpeg', 'image/gif']
+              for (const mimeType of mimeTypes) {
+                try {
+                  const testUrl = `data:${mimeType};base64,${base64Data}`
+                  return testUrl
+                } catch (e) {
+                  console.log(`MIME type ${mimeType} failed for product ${productId} image ${index}`)
                 }
-                testImg.onerror = () => {
-                  console.log(`❌ ${mimeType} failed for product ${productId}`)
-                }
-                testImg.src = testUrl
-                
-                // Return the first one for now
-                return testUrl
-              } catch (e) {
-                console.log(`MIME type ${mimeType} failed for product ${productId}`)
               }
+              
+              // If all else fails, return placeholder
+              return "/placeholder-product.jpg"
             }
-            
-            // If all else fails, return placeholder
+          } catch (e) {
+            console.error(`Error processing base64 for product ${productId} image ${index}:`, e)
             return "/placeholder-product.jpg"
           }
-        } catch (e) {
-          console.error(`Error processing base64 for product ${productId}:`, e)
-          return "/placeholder-product.jpg"
-        }
+        })
+        
+        return processedImages
       }
-      return "/placeholder-product.jpg"
+      
+      return ["/placeholder-product.jpg"]
     } catch (error) {
       console.warn(`Failed to fetch images for product ${productId}:`, error)
-      return "/placeholder-product.jpg"
+      return ["/placeholder-product.jpg"]
     }
   }
 
@@ -179,8 +169,9 @@ export class ProductService {
   async loadProductImages() {
     try {
       const imagePromises = this.products.map(async (product) => {
-        const imageUrl = await this.fetchProductImages(product.id)
-        product.imagen = imageUrl
+        const imageUrls = await this.fetchProductImages(product.id)
+        product.imagen = imageUrls[0] // Main image (first in array)
+        product.images = imageUrls // All images array
         return product
       })
       

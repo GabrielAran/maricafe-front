@@ -243,7 +243,11 @@ export default function ProductViewNew({
         <div className="flex-1 order-1 lg:order-2">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {filteredProducts.map((product) => (
-          <Card key={product.id} className="group hover:shadow-lg transition-shadow">
+          <Card 
+            key={product.id} 
+            className="group hover:shadow-lg transition-shadow cursor-pointer"
+            onClick={() => onNavigate && onNavigate('product', { productId: product.id })}
+          >
             <CardContent className="p-4">
               <div className="aspect-square bg-muted rounded-lg mb-4 flex items-center justify-center">
                 {product.imagen ? (
@@ -291,7 +295,7 @@ export default function ProductViewNew({
               {!isAdmin() && (
                 <div className="w-full space-y-3">
                   {/* Quantity Selector */}
-                  <div className="flex items-center justify-center space-x-3">
+                  <div className="flex items-center justify-center space-x-3" onClick={(e) => e.stopPropagation()}>
                     <label className="text-sm font-medium text-muted-foreground">
                       Cantidad:
                     </label>
@@ -338,13 +342,15 @@ export default function ProductViewNew({
                   </div>
                   
                   {/* Add to Cart Button */}
-                  <AddToCartButton
-                    product={product}
-                    quantity={productQuantities[product.id] || 1}
-                    disabled={!isProductAvailable(product, false)}
-                    className="w-full"
-                    onNavigate={onNavigate}
-                  />
+                  <div onClick={(e) => e.stopPropagation()}>
+                    <AddToCartButton
+                      product={product}
+                      quantity={productQuantities[product.id] || 1}
+                      disabled={!isProductAvailable(product, false)}
+                      className="w-full"
+                      onNavigate={onNavigate}
+                    />
+                  </div>
                 </div>
               )}
             </CardFooter>

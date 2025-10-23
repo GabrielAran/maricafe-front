@@ -31,8 +31,8 @@ export default function AdminProductManagement() {
     stock: 0,
     category_id: ''
   })
-  const [selectedImage, setSelectedImage] = useState(null)
-  const [imagePreview, setImagePreview] = useState(null)
+  const [selectedImages, setSelectedImages] = useState([])
+  const [imagePreviews, setImagePreviews] = useState([])
   const [saving, setSaving] = useState(false)
   const [notification, setNotification] = useState({
     isVisible: false,
@@ -72,8 +72,8 @@ export default function AdminProductManagement() {
       stock: 0,
       category_id: ''
     })
-    setSelectedImage(null)
-    setImagePreview(null)
+    setSelectedImages([])
+    setImagePreviews([])
     setShowAddModal(true)
   }
 
@@ -167,8 +167,8 @@ export default function AdminProductManagement() {
       stock: 0,
       category_id: ''
     })
-    setSelectedImage(null)
-    setImagePreview(null)
+    setSelectedImages([])
+    setImagePreviews([])
   }
 
   const handleSaveProduct = async () => {
@@ -268,14 +268,16 @@ export default function AdminProductManagement() {
       const createdProduct = response.data || response
       console.log('Extracted product data:', createdProduct)
       
-      // Upload image if selected
-      if (selectedImage && createdProduct) {
+      // Upload images if selected
+      if (selectedImages.length > 0 && createdProduct) {
         const productId = createdProduct.product_id || createdProduct.idProduct || createdProduct.id
         console.log('Product created:', createdProduct)
         
         if (productId) {
           const formData = new FormData()
-          formData.append('file', selectedImage)
+          selectedImages.forEach((file, index) => {
+            formData.append('files', file)
+          })
           formData.append('productId', productId)
           
           const imageAuthHeaders = {
@@ -284,14 +286,15 @@ export default function AdminProductManagement() {
           }
           
           try {
-            const uploadResult = await ProductApiService.uploadImage(formData, imageAuthHeaders)
+            const uploadResult = await ProductApiService.uploadMultipleImages(formData, imageAuthHeaders)
+            console.log('Images uploaded successfully:', uploadResult)
           } catch (uploadError) {
-            console.error('Image upload error:', uploadError)
-            showNotification('Producto creado pero error al subir imagen: ' + uploadError.message, 'error')
+            console.error('Images upload error:', uploadError)
+            showNotification('Producto creado pero error al subir imágenes: ' + uploadError.message, 'error')
           }
         } else {
           console.error('No product ID found for image upload')
-          showNotification('Producto creado pero no se pudo obtener ID para subir imagen', 'error')
+          showNotification('Producto creado pero no se pudo obtener ID para subir imágenes', 'error')
         }
       }
       
@@ -315,34 +318,50 @@ export default function AdminProductManagement() {
   }
 
   const handleImageSelect = (event) => {
-    const file = event.target.files[0]
-    if (file) {
+    const files = Array.from(event.target.files)
+    
+    if (files.length === 0) return
+    
+    // Validate total number of images (max 10)
+    if (selectedImages.length + files.length > 10) {
+      showNotification('Máximo 10 imágenes permitidas', 'error')
+      return
+    }
+    
+    const validFiles = []
+    const validPreviews = []
+    
+    files.forEach((file, index) => {
       // Validate file type
       if (!file.type.startsWith('image/')) {
-        showNotification('Por favor selecciona un archivo de imagen válido', 'error')
+        showNotification(`Archivo ${index + 1} no es una imagen válida`, 'error')
         return
       }
       
       // Validate file size (max 5MB)
       if (file.size > 5 * 1024 * 1024) {
-        showNotification('La imagen debe ser menor a 5MB', 'error')
+        showNotification(`Imagen ${index + 1} debe ser menor a 5MB`, 'error')
         return
       }
       
-      setSelectedImage(file)
+      validFiles.push(file)
       
       // Create preview
       const reader = new FileReader()
       reader.onload = (e) => {
-        setImagePreview(e.target.result)
+        validPreviews.push(e.target.result)
+        if (validPreviews.length === validFiles.length) {
+          setSelectedImages(prev => [...prev, ...validFiles])
+          setImagePreviews(prev => [...prev, ...validPreviews])
+        }
       }
       reader.readAsDataURL(file)
-    }
+    })
   }
 
-  const handleRemoveImage = () => {
-    setSelectedImage(null)
-    setImagePreview(null)
+  const handleRemoveImage = (index) => {
+    setSelectedImages(prev => prev.filter((_, i) => i !== index))
+    setImagePreviews(prev => prev.filter((_, i) => i !== index))
   }
 
   const showNotification = (message, type = 'success') => {
@@ -644,13 +663,16 @@ export default function AdminProductManagement() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Imagen del Producto</label>
+                <label className="block text-sm font-medium mb-1">
+                  Imágenes del Producto ({selectedImages.length}/10)
+                </label>
                 <div className="space-y-2">
-                  {!imagePreview ? (
+                  {imagePreviews.length === 0 ? (
                     <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
                       <input
                         type="file"
                         accept="image/*"
+                        multiple
                         onChange={handleImageSelect}
                         className="hidden"
                         id="image-upload"
@@ -663,25 +685,53 @@ export default function AdminProductManagement() {
                           <svg className="w-8 h-8 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                           </svg>
-                          <span>Haz clic para seleccionar una imagen</span>
-                          <span className="text-xs text-gray-500 mt-1">PNG, JPG, GIF hasta 5MB</span>
+                          <span>Haz clic para seleccionar imágenes</span>
+                          <span className="text-xs text-gray-500 mt-1">PNG, JPG, GIF hasta 5MB cada una</span>
+                          <span className="text-xs text-gray-500">Máximo 10 imágenes (la primera será la principal)</span>
                         </div>
                       </label>
                     </div>
                   ) : (
-                    <div className="relative">
-                      <img
-                        src={imagePreview}
-                        alt="Preview"
-                        className="w-full h-32 object-cover rounded-lg"
-                      />
-                      <button
-                        type="button"
-                        onClick={handleRemoveImage}
-                        className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm hover:bg-red-600"
-                      >
-                        ×
-                      </button>
+                    <div className="space-y-2">
+                      <div className="grid grid-cols-2 gap-2">
+                        {imagePreviews.map((preview, index) => (
+                          <div key={index} className="relative">
+                            <img
+                              src={preview}
+                              alt={`Preview ${index + 1}`}
+                              className="w-full h-24 object-cover rounded-lg"
+                            />
+                            <div className="absolute top-1 left-1 bg-black bg-opacity-50 text-white text-xs px-1 rounded">
+                              {index === 0 ? 'Principal' : index + 1}
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveImage(index)}
+                              className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs hover:bg-red-600"
+                            >
+                              ×
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                      {selectedImages.length < 10 && (
+                        <div className="border-2 border-dashed border-gray-300 rounded-lg p-2 text-center">
+                          <input
+                            type="file"
+                            accept="image/*"
+                            multiple
+                            onChange={handleImageSelect}
+                            className="hidden"
+                            id="add-more-images"
+                          />
+                          <label
+                            htmlFor="add-more-images"
+                            className="cursor-pointer text-xs text-gray-600 hover:text-gray-800"
+                          >
+                            + Agregar más imágenes
+                          </label>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

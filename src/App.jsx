@@ -7,6 +7,7 @@ import Footer from './components/Footer.jsx'
 import HomePage from './pages/HomePage.jsx'
 import ContactoPage from "./pages/ContactoPage"
 import ProductosPage from './pages/ProductosPage.jsx'
+import ProductPage from './pages/ProductPage.jsx'
 import LoginPage from './pages/LoginPage.jsx'
 import RegisterPage from './pages/RegisterPage.jsx'
 import AdminPanel from './pages/AdminPanel.jsx'
@@ -29,6 +30,8 @@ function App() {
         return <HomePage onNavigate={handleNavigate} />
       case 'productos':
         return <ProductosPage onNavigate={handleNavigate} />
+      case 'product':
+        return <ProductPage onNavigate={handleNavigate} productId={pageData?.productId} />
       case 'catering':
         return <div>Página de Catering (próximamente)</div>
       case 'contacto':
