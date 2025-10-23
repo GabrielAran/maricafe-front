@@ -64,13 +64,13 @@ export class OrderService {
       })
 
       console.log('OrderService: Loaded orders:', this.orders.length)
-      this.notify()
+      this.error = null
     } catch (error) {
       console.error('OrderService: Error loading orders:', error)
       this.error = error.message
-      this.notify()
     } finally {
       this.loading = false
+      this.notify() // Move notify here to ensure loading state is always updated
     }
   }
 
@@ -108,6 +108,13 @@ export class OrderService {
 
   // Transform order data for display
   transformOrder(backendOrder) {
+    const items = (backendOrder.items || []).map(item => ({
+      name: item.name,
+      quantity: item.quantity,
+      price: item.unit_price,
+      total: (item.quantity || 1) * (item.unit_price || 0)
+    }));
+
     return {
       id: backendOrder.order_id || backendOrder.id,
       userId: backendOrder.user_id,
@@ -116,7 +123,7 @@ export class OrderService {
       total: backendOrder.total_price || 0,
       status: backendOrder.active ? 'pending' : 'cancelled',
       createdAt: backendOrder.order_date,
-      items: backendOrder.items || [],
+      items: items,
       deliveryAddress: backendOrder.delivery_address || '',
       notes: backendOrder.notes || ''
     }
@@ -125,22 +132,27 @@ export class OrderService {
   // Format date for display
   formatDate(dateString) {
     if (!dateString) return 'Fecha no disponible'
-    const date = new Date(dateString)
-    return date.toLocaleString('es-ES', {
+    
+    // Create a date object in Argentina timezone
+    const date = new Date(dateString + '-03:00') // Add Argentina offset
+    return date.toLocaleString('es-AR', {
       year: 'numeric',
-      month: 'short',
-      day: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
       hour: '2-digit',
-      minute: '2-digit'
+      minute: '2-digit',
+      hour12: false
     })
   }
 
   // Format currency for display
   formatCurrency(amount) {
-    return new Intl.NumberFormat('es-ES', {
+    return new Intl.NumberFormat('es-AR', {
       style: 'currency',
-      currency: 'EUR'
-    }).format(amount)
+      currency: 'ARS',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    }).format(amount).replace('ARS', '$')
   }
 
   // Get status badge class

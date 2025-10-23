@@ -58,11 +58,17 @@ export default function ConfirmationModal({
   const typeStyles = getTypeStyles()
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-xl">
+    <div className="fixed inset-0 z-[100]">
+      <div className="fixed inset-0 bg-gray-500/60" />
+      <div className="fixed inset-0 flex items-center justify-center p-4">
+        <div className="relative bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-xl border border-pink-200">
         <div className="flex items-center space-x-3 mb-4">
-          {typeStyles.icon}
-          <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
+          <svg className="w-6 h-6 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+          </svg>
+          <h3 className="text-lg font-semibold text-gray-900">
+            {title}
+          </h3>
         </div>
         
         <div className="mb-6">
@@ -80,7 +86,7 @@ export default function ConfirmationModal({
           </Button>
           <Button
             onClick={onConfirm}
-            className={`flex-1 ${typeStyles.confirmButton}`}
+            className="flex-1 bg-pink-500 hover:bg-pink-600 text-white transition-colors"
             disabled={isLoading}
           >
             {isLoading ? (
@@ -92,6 +98,7 @@ export default function ConfirmationModal({
               confirmText
             )}
           </Button>
+        </div>
         </div>
       </div>
     </div>
