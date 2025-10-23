@@ -18,6 +18,7 @@ export default function AdminOrdersManagement() {
   const [filteredOrders, setFilteredOrders] = useState([])
   const [dateFilter, setDateFilter] = useState('')
   const [orderNumberFilter, setOrderNumberFilter] = useState('')
+  const [sortBy, setSortBy] = useState('dateDesc') // Default sort: newest first
   const { showToast } = useToast()
 
   useEffect(() => {
@@ -39,10 +40,16 @@ export default function AdminOrdersManagement() {
 
     // Filter by date
     if (dateFilter) {
-      const filterDate = new Date(dateFilter)
+      // Create start and end of the selected date in Argentina timezone
+      const filterDate = new Date(dateFilter + 'T00:00:00-03:00')
+      const nextDay = new Date(filterDate)
+      nextDay.setDate(nextDay.getDate() + 1)
+      
       filtered = filtered.filter(order => {
-        const orderDate = new Date(order.createdAt)
-        return orderDate.toDateString() === filterDate.toDateString()
+        // Parse order date with Argentina timezone
+        const orderDate = new Date(order.createdAt + '-03:00')
+        // Check if order date is within the selected day
+        return orderDate >= filterDate && orderDate < nextDay
       })
     }
 
@@ -53,14 +60,38 @@ export default function AdminOrdersManagement() {
       )
     }
 
+    // Apply sorting
+    filtered.sort((a, b) => {
+      switch (sortBy) {
+        case 'priceAsc':
+          return a.total - b.total;
+        case 'priceDesc':
+          return b.total - a.total;
+        case 'dateAsc':
+          return new Date(a.createdAt) - new Date(b.createdAt);
+        case 'dateDesc':
+          return new Date(b.createdAt) - new Date(a.createdAt);
+        default:
+          return 0;
+      }
+    });
+
     setFilteredOrders(filtered)
-  }, [orders, dateFilter, orderNumberFilter])
+  }, [orders, dateFilter, orderNumberFilter, sortBy])
+
+  const [isRefreshing, setIsRefreshing] = useState(false)
 
   const loadOrders = async () => {
+    if (loading || isRefreshing) return
+    
+    setIsRefreshing(true)
     try {
       await orderService.loadOrders()
     } catch (error) {
       showToast('Error al cargar las órdenes', 'error')
+    } finally {
+      // Keep animation visible for a moment even after load completes
+      setTimeout(() => setIsRefreshing(false), 500)
     }
   }
 
@@ -103,6 +134,7 @@ export default function AdminOrdersManagement() {
   const clearFilters = () => {
     setDateFilter('')
     setOrderNumberFilter('')
+    setSortBy('dateDesc') // Reset to default sort
   }
 
   if (loading && orders.length === 0) {
@@ -139,11 +171,31 @@ export default function AdminOrdersManagement() {
         <div>
           <h2 className="text-2xl font-bold">Gestión de Órdenes</h2>
           <p className="text-muted-foreground">
-            Administra todas las órdenes del sistema ({filteredOrders.length} de {orders.length} órdenes)
+            Administra todas las órdenes del sistema
           </p>
         </div>
-        <Button onClick={loadOrders} variant="outline" disabled={loading}>
-          {loading ? 'Actualizando...' : 'Actualizar'}
+        <Button 
+          onClick={loadOrders} 
+          variant="outline" 
+          disabled={loading || isRefreshing}
+          className="flex items-center gap-2"
+        >
+          <svg
+            className={`w-4 h-4 ${isRefreshing ? 'animate-spin-once' : ''} ${loading ? 'animate-spin' : ''}`}
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+            />
+          </svg>
+          <span>
+            {loading ? 'Actualizando...' : 'Actualizar'}
+          </span>
         </Button>
       </div>
 
@@ -172,6 +224,21 @@ export default function AdminOrdersManagement() {
               onChange={(e) => setOrderNumberFilter(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
+          </div>
+          <div className="flex-1">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Ordenar por
+            </label>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="dateDesc">Fecha más reciente</option>
+              <option value="dateAsc">Fecha más antigua</option>
+              <option value="priceDesc">Mayor precio</option>
+              <option value="priceAsc">Menor precio</option>
+            </select>
           </div>
           <div className="flex items-end">
             <Button
@@ -303,7 +370,8 @@ export default function AdminOrdersManagement() {
         message={`¿Estás seguro de que deseas cancelar la orden #${deleteOrderId}? El stock de los productos será restaurado automáticamente.`}
         confirmText="Cancelar Orden"
         cancelText="No cancelar"
-        type="warning"
+        type="destructive"
+        className="bg-pink-50 border-pink-200"
       />
     </div>
   )
@@ -387,16 +455,13 @@ function OrderDetailsModal({ order, onClose }) {
                       <tr key={index}>
                         <td className="px-4 py-2 text-sm">
                           <div>
-                            <div className="font-medium">{item.name || item.productName}</div>
-                            {item.description && (
-                              <div className="text-gray-500 text-xs">{item.description}</div>
-                            )}
+                            <div className="font-medium">{item.name}</div>
                           </div>
                         </td>
-                        <td className="px-4 py-2 text-sm">{item.quantity || 1}</td>
-                        <td className="px-4 py-2 text-sm">{orderService.formatCurrency(item.price || item.unitPrice || 0)}</td>
+                        <td className="px-4 py-2 text-sm">{item.quantity}</td>
+                        <td className="px-4 py-2 text-sm">{orderService.formatCurrency(item.price)}</td>
                         <td className="px-4 py-2 text-sm font-medium">
-                          {orderService.formatCurrency((item.quantity || 1) * (item.price || item.unitPrice || 0))}
+                          {orderService.formatCurrency(item.total)}
                         </td>
                       </tr>
                     ))}

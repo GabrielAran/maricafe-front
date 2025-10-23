@@ -57,7 +57,7 @@ body {
   font-feature-settings: "rlig" 1, "calt" 1;
 }
 
-/* Rainbow text effect */
+/* Rainbow animations and effects */
 .rainbow-text {
   background: linear-gradient(45deg, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #4b0082, #9400d3);
   background-size: 400% 400%;
@@ -70,4 +70,27 @@ body {
 @keyframes rainbow {
   0%, 100% { background-position: 0% 50%; }
   50% { background-position: 100% 50%; }
+}
+
+@keyframes rainbow-border {
+  0%, 100% { border-color: #ff0080; }
+  20% { border-color: #ff00ff; }
+  40% { border-color: #8000ff; }
+  60% { border-color: #0000ff; }
+  80% { border-color: #00ffff; }
+}
+
+.animate-rainbow-border {
+  animation: rainbow-border 3s linear infinite;
+}
+
+.border-rainbow {
+  border-image: linear-gradient(45deg, 
+    #ff0080,
+    #ff00ff,
+    #8000ff,
+    #0000ff,
+    #00ffff,
+    #00ff80
+  ) 1;
 }
