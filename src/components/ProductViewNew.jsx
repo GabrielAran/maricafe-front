@@ -11,6 +11,7 @@ import AttributeFilter from './AttributeFilter.jsx'
 import { useProductService } from '../hooks/useProductService.js'
 import { useAttributeService } from '../hooks/useAttributeService.js'
 import { useAuth } from '../context/AuthContext.jsx'
+import { ProductApiService } from '../services/ProductApiService.js'
 
 export default function ProductViewNew({ 
   showFilters = false,
@@ -46,8 +47,32 @@ export default function ProductViewNew({
   const { attributes, loading: attributesLoading, loadAttributes, getAttributesByCategory } = useAttributeService()
   const { isAdmin, isAuthenticated, user } = useAuth()
   
-  // State for managing product quantities
+  // State for managing product quantities and images
   const [productQuantities, setProductQuantities] = React.useState({})
+  const [productImages, setProductImages] = React.useState({})
+
+  // Load images for products
+  const loadProductImages = React.useCallback(async (products) => {
+    const imagesMap = {}
+    for (const product of products) {
+      try {
+        const images = await ProductApiService.getProductImages(product.id)
+        if (images && images.length > 0) {
+          imagesMap[product.id] = images[0].url // Store first image URL as primary
+        }
+      } catch (error) {
+        console.error(`Error loading images for product ${product.id}:`, error)
+      }
+    }
+    setProductImages(imagesMap)
+  }, [])
+
+  // Load images when products change
+  React.useEffect(() => {
+    if (products && products.length > 0) {
+      loadProductImages(products)
+    }
+  }, [products, loadProductImages])
   
   // Debug: Log attributes when they change
   React.useEffect(() => {
@@ -250,22 +275,21 @@ export default function ProductViewNew({
           >
             <CardContent className="p-4">
               <div className="aspect-square bg-muted rounded-lg mb-4 flex items-center justify-center">
-                {product.imagen ? (
+                {productImages[product.id] ? (
                   <img
-                    src={product.imagen}
+                    src={productImages[product.id]}
                     alt={product.nombre}
                     className="w-full h-full object-cover rounded-lg"
-                    onLoad={() => {}}
                     onError={(e) => {
-                      // Only set placeholder if not already set to prevent infinite loop
-                      if (!e.target.src.includes('placeholder-product.jpg')) {
-                        e.target.src = '/placeholder-product.jpg'
-                      }
+                      console.error('Error loading image for product:', product.id)
+                      e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjIwMCIgaGVpZ2h0PSIyMDAiIGZpbGw9IiNFNUU3RUIiLz48cGF0aCBkPSJNODAgOTBIMTIwVjExMEg4MFY5MFoiIGZpbGw9IiM5Q0EzQUYiLz48L3N2Zz4=' // Placeholder SVG
                     }}
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                    <svg className="w-12 h-12 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
                   </div>
                 )}
               </div>

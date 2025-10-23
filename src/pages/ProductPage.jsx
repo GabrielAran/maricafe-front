@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { ArrowLeft, Loader2, ShoppingCart, Star, Heart } from 'lucide-react'
+import { ArrowLeft, Loader2, ShoppingCart, Star } from 'lucide-react'
 import { Card, CardContent } from '../components/ui/Card.jsx'
 import Badge from '../components/ui/Badge.jsx'
 import Button from '../components/ui/Button.jsx'
@@ -310,9 +310,6 @@ export default function ProductPage({ onNavigate, productId }) {
                 onNavigate={onNavigate}
                 className="flex-1"
               />
-              <Button variant="outline" size="icon">
-                <Heart className="h-4 w-4" />
-              </Button>
             </div>
           </div>
 
