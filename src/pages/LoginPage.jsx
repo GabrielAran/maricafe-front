@@ -3,7 +3,7 @@ import Button from '../components/ui/Button.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 
 export default function LoginPage({ onNavigate }) {
-  const { login, loading } = useAuth()
+  const { login, loading, user } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -17,7 +17,13 @@ export default function LoginPage({ onNavigate }) {
       setError(result.error || 'Error de autenticación')
       return
     }
-    onNavigate && onNavigate('home')
+    
+    // Redirect based on user role
+    if (user?.role === 'ADMIN') {
+      onNavigate && onNavigate('admin')
+    } else {
+      onNavigate && onNavigate('home')
+    }
   }
 
   return (

@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { ShoppingCart, Check } from 'lucide-react'
 import { useCart } from '../context/CartContext.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
+import { useToast } from '../context/ToastContext.jsx'
 import { getLoginRemainingTime } from '../utils/cartPersistence.js'
 import Button from './ui/Button.jsx'
 
@@ -17,6 +18,7 @@ export default function AddToCartButton({
 }) {
   const { dispatch } = useCart()
   const { isAuthenticated, user, token } = useAuth()
+  const { showError } = useToast()
   const [added, setAdded] = useState(false)
 
   const handleAddToCart = () => {
@@ -27,20 +29,20 @@ export default function AddToCartButton({
       if (onNavigate) {
         onNavigate('login')
       } else {
-        alert('Debes iniciar sesión para agregar productos al carrito.')
+        showError('Debes iniciar sesión para agregar productos al carrito.')
       }
       return
     }
     
     // Check if user is admin (admins can't add to cart)
     if (user?.role === 'ADMIN') {
-      alert('Los administradores no pueden agregar productos al carrito.')
+      showError('Los administradores no pueden agregar productos al carrito.')
       return
     }
     
     // Check if user has USER role
     if (user?.role !== 'USER') {
-      alert('Solo los usuarios registrados pueden agregar productos al carrito.')
+      showError('Solo los usuarios registrados pueden agregar productos al carrito.')
       return
     }
     
@@ -48,7 +50,7 @@ export default function AddToCartButton({
     if (token) {
       const remainingTime = getLoginRemainingTime(token)
       if (remainingTime <= 0) {
-        alert('Tu sesión ha expirado. Por favor, inicia sesión nuevamente para continuar comprando.')
+        showError('Tu sesión ha expirado. Por favor, inicia sesión nuevamente para continuar comprando.')
         return
       }
     }

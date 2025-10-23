@@ -3,9 +3,11 @@ import { Cake, Gift, Users, Heart, ArrowRight } from 'lucide-react'
 import CakeCarousel from '../components/CakeCarousel.jsx'
 import { useProductService } from '../hooks/useProductService.js'
 import { ProductApiService } from '../services/ProductApiService.js'
+import { useAuth } from '../context/AuthContext.jsx'
 
 export default function HomePage({ onNavigate }) {
   const { products, loading, loadProducts, getProductsByCategoryName } = useProductService()
+  const { user, isAdmin } = useAuth()
   const [cakeProducts, setCakeProducts] = useState([])
 
   // Load products when component mounts
@@ -77,6 +79,17 @@ export default function HomePage({ onNavigate }) {
     }
   }
 
+  // Handle navigation based on user role
+  const handleProductsNavigation = () => {
+    if (onNavigate) {
+      if (isAdmin()) {
+        onNavigate('admin')
+      } else {
+        onNavigate('productos')
+      }
+    }
+  }
+
   return (
     <div className="min-h-screen">
       {/* Hero Section */}
@@ -107,7 +120,7 @@ export default function HomePage({ onNavigate }) {
             
             <div className="flex flex-col sm:flex-row items-center justify-center space-y-4 sm:space-y-0 sm:space-x-6 pt-8">
               <button 
-                onClick={() => onNavigate && onNavigate('productos')}
+                onClick={handleProductsNavigation}
                 className="bg-white text-foreground px-8 py-3 rounded-lg font-semibold hover:bg-white/90 transition-colors flex items-center space-x-2"
               >
                 <span>Ver Nuestros Productos</span>
@@ -185,13 +198,17 @@ export default function HomePage({ onNavigate }) {
       </section>
 
       {/* Productos destacados */}
-      <section className="py-16 bg-muted/20">
-        <div className="container mx-auto px-4">
+      <section className="py-16 relative overflow-hidden" style={{
+        background: 'linear-gradient(135deg, #ff6b6b 0%, #ff8e53 14%, #ff6b9d 28%, #c44569 42%, #f8b500 56%, #ff9ff3 70%, #54a0ff 84%, #5f27cd 100%)'
+      }}>
+        {/* Subtle overlay for better text readability */}
+        <div className="absolute inset-0 bg-white/10"></div>
+        <div className="container mx-auto px-4 relative z-10">
           <div className="text-center space-y-4 mb-12">
-            <h2 className="text-3xl lg:text-4xl font-bold">
+            <h2 className="text-3xl lg:text-4xl font-bold text-white drop-shadow-lg">
               Nuestras <span className="rainbow-text">Tortas</span>
             </h2>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+            <p className="text-lg text-white/90 max-w-2xl mx-auto drop-shadow-md">
               Conocé algunos de nuestras tortas más destacadas
             </p>
           </div>
@@ -200,14 +217,14 @@ export default function HomePage({ onNavigate }) {
             <div className="flex justify-center items-center py-12">
               <div className="text-center">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-                <p className="text-muted-foreground">Cargando nuestras tortas...</p>
+                <p className="text-white/90 drop-shadow-md">Cargando nuestras tortas...</p>
               </div>
             </div>
           ) : cakeProducts.length > 0 ? (
             <CakeCarousel cakes={cakeProducts} onCakeClick={handleCakeClick} />
           ) : (
             <div className="text-center py-12">
-              <p className="text-muted-foreground">No se encontraron tortas disponibles en este momento.</p>
+              <p className="text-white/90 drop-shadow-md">No se encontraron tortas disponibles en este momento.</p>
             </div>
           )}
         </div>
@@ -268,7 +285,7 @@ export default function HomePage({ onNavigate }) {
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center space-y-4 sm:space-y-0 sm:space-x-6 pt-6">
               <button 
-                onClick={() => onNavigate && onNavigate('productos')}
+                onClick={handleProductsNavigation}
                 className="bg-background text-foreground px-8 py-3 rounded-lg font-semibold hover:bg-background/90 transition-colors"
               >
                 Ver Catálogo Completo

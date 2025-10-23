@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { orderService } from '../services/OrderService.js'
 import Button from './ui/Button.jsx'
 import { Badge } from './ui/Badge.jsx'
@@ -22,6 +22,11 @@ export default function AdminOrdersManagement() {
   const [sortBy, setSortBy] = useState('dateDesc') // Default sort: newest first
   const [dateRangeError, setDateRangeError] = useState('')
   const { showToast } = useToast()
+  
+  // Refs for direct input control
+  const startDateRef = useRef(null)
+  const endDateRef = useRef(null)
+  const orderNumberRef = useRef(null)
 
   useEffect(() => {
     loadOrders()
@@ -143,15 +148,59 @@ export default function AdminOrdersManagement() {
   }
 
   const clearFilters = () => {
+    // Clear all state variables
     setStartDateFilter('')
     setEndDateFilter('')
     setOrderNumberFilter('')
     setSortBy('dateDesc') // Reset to default sort
     setDateRangeError('')
+    
+    // Clear input values using refs for more reliable clearing
+    if (startDateRef.current) startDateRef.current.value = ''
+    if (endDateRef.current) endDateRef.current.value = ''
+    if (orderNumberRef.current) orderNumberRef.current.value = ''
+    
+    // Force a complete reset by clearing all filter states
+    setTimeout(() => {
+      setFilteredOrders([...orders])
+    }, 0)
   }
 
   // Validate date range
   const validateDateRange = (startDate, endDate) => {
+    // Helper function to validate a single date
+    const isValidDate = (dateString) => {
+      if (!dateString) return true
+      
+      // Check if it matches YYYY-MM-DD format
+      const dateRegex = /^\d{4}-\d{2}-\d{2}$/
+      if (!dateRegex.test(dateString)) {
+        return false
+      }
+      
+      // Parse the date components
+      const [year, month, day] = dateString.split('-').map(Number)
+      
+      // Create a date object and check if it's valid
+      const date = new Date(year, month - 1, day)
+      
+      // Check if the date is valid by comparing with original values
+      return date.getFullYear() === year &&
+             date.getMonth() === month - 1 &&
+             date.getDate() === day
+    }
+    
+    // Check if start date is valid
+    if (startDate && !isValidDate(startDate)) {
+      return 'La fecha desde no es válida'
+    }
+    
+    // Check if end date is valid
+    if (endDate && !isValidDate(endDate)) {
+      return 'La fecha hasta no es válida'
+    }
+    
+    // Check if end date is after start date
     if (startDate && endDate) {
       const start = new Date(startDate)
       const end = new Date(endDate)
@@ -159,21 +208,22 @@ export default function AdminOrdersManagement() {
         return 'La fecha hasta debe ser posterior a la fecha desde'
       }
     }
+    
     return ''
   }
 
-  // Handle start date change
+  // Handle start date change (simplified - no real-time validation)
   const handleStartDateChange = (value) => {
     setStartDateFilter(value)
-    const error = validateDateRange(value, endDateFilter)
-    setDateRangeError(error)
+    // Clear any existing error when user starts typing
+    setDateRangeError('')
   }
 
-  // Handle end date change
+  // Handle end date change (simplified - no real-time validation)
   const handleEndDateChange = (value) => {
     setEndDateFilter(value)
-    const error = validateDateRange(startDateFilter, value)
-    setDateRangeError(error)
+    // Clear any existing error when user starts typing
+    setDateRangeError('')
   }
 
   if (loading && orders.length === 0) {
@@ -246,6 +296,7 @@ export default function AdminOrdersManagement() {
               Fecha desde
             </label>
             <input
+              ref={startDateRef}
               type="date"
               value={startDateFilter}
               onChange={(e) => handleStartDateChange(e.target.value)}
@@ -262,6 +313,7 @@ export default function AdminOrdersManagement() {
               Fecha hasta
             </label>
             <input
+              ref={endDateRef}
               type="date"
               value={endDateFilter}
               onChange={(e) => handleEndDateChange(e.target.value)}
@@ -278,6 +330,7 @@ export default function AdminOrdersManagement() {
               Filtrar por número de orden
             </label>
             <input
+              ref={orderNumberRef}
               type="text"
               placeholder="Ej: 123"
               value={orderNumberFilter}
