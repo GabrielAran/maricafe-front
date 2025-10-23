@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { useAuth } from '../context/AuthContext.jsx'
 import AdminProductManagement from '../components/AdminProductManagement.jsx'
 import AdminDiscountManagement from '../components/AdminDiscountManagement.jsx'
+import AdminOrdersManagement from '../components/AdminOrdersManagement.jsx'
 
 export default function AdminPanel() {
   const { isAuthenticated, isAdmin, user } = useAuth()
@@ -29,6 +30,8 @@ export default function AdminPanel() {
         )
       case 'discounts':
         return <AdminDiscountManagement />
+      case 'orders':
+        return <AdminOrdersManagement />
       default:
         return (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -60,6 +63,16 @@ export default function AdminPanel() {
                 className="text-primary hover:text-primary/80 transition-colors"
               >
                 Gestionar Descuentos →
+              </button>
+            </div>
+            <div className="border rounded-lg p-4">
+              <h2 className="font-semibold mb-2">Órdenes</h2>
+              <p className="text-sm text-muted-foreground mb-4">Gestiona todas las órdenes.</p>
+              <button 
+                onClick={() => setActiveTab('orders')}
+                className="text-primary hover:text-primary/80 transition-colors"
+              >
+                Gestionar Órdenes →
               </button>
             </div>
           </div>
@@ -118,6 +131,16 @@ export default function AdminPanel() {
             }`}
           >
             Descuentos
+          </button>
+          <button
+            onClick={() => setActiveTab('orders')}
+            className={`py-2 px-1 border-b-2 font-medium text-sm ${
+              activeTab === 'orders'
+                ? 'border-primary text-primary'
+                : 'border-transparent text-muted-foreground hover:text-foreground hover:border-gray-300'
+            }`}
+          >
+            Órdenes
           </button>
         </nav>
       </div>
