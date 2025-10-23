@@ -9,16 +9,29 @@ export class ProductService {
     this.loading = false
     this.categoriesLoading = false
     this.error = null
-    this.filters = {
+    this.filters = this.getDefaultFilters()
+    this.listeners = []
+    this.cachedFilteredProducts = null
+    this.lastFiltersHash = null
+  }
+
+  // Get default filters
+  getDefaultFilters() {
+    return {
       category: 'all',
       vegan: false,
       sinTacc: false,
       sort: 'price-asc',
       attributes: {} // Dynamic attribute filters
     }
-    this.listeners = []
+  }
+
+  // Reset all filters to default state
+  resetAllFilters() {
+    this.filters = this.getDefaultFilters()
     this.cachedFilteredProducts = null
     this.lastFiltersHash = null
+    this.notify()
   }
 
   // Subscribe to state changes
