@@ -313,7 +313,6 @@ export default function ProductPage({ onNavigate, productId }) {
           {/* Additional Info */}
           <div className="text-sm text-gray-500 space-y-1">
             <p>• Envío gratuito en compras superiores a $50.000</p>
-            <p>• Devolución gratuita en 30 días</p>
             <p>• Soporte al cliente 24/7</p>
           </div>
         </div>

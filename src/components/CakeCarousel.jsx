@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 
-export default function CakeCarousel({ cakes = [] }) {
+export default function CakeCarousel({ cakes = [], onCakeClick }) {
   const [currentIndex, setCurrentIndex] = useState(0)
   const [isAutoPlaying, setIsAutoPlaying] = useState(true)
 
@@ -59,11 +59,14 @@ export default function CakeCarousel({ cakes = [] }) {
             return (
             <div 
               key={index}
-              className="flex-shrink-0 px-3 flex items-end w-1/3"
+              className="flex-shrink-0 px-3 flex items-center justify-center w-1/3"
             >
-              <div className={`bg-background rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300 flex flex-col h-96 ${
-                isCenter ? 'scale-110 z-10' : 'scale-95 opacity-80'
-              }`}>
+              <div 
+                className={`bg-background rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300 flex flex-col h-96 cursor-pointer w-full ${
+                  isCenter ? 'scale-110 z-10' : 'scale-95 opacity-80'
+                }`}
+                onClick={() => onCakeClick && onCakeClick(cake)}
+              >
                 <img
                   src={cake.image}
                   alt={cake.name}
@@ -71,21 +74,12 @@ export default function CakeCarousel({ cakes = [] }) {
                     isCenter ? 'h-72' : 'h-64'
                   }`}
                 />
-                <div className={`flex flex-col justify-between flex-1 ${
+                <div className={`flex flex-col justify-center items-center flex-1 ${
                   isCenter ? 'p-6' : 'p-4'
                 }`}>
-                  <div>
-                    <h3 className={`font-semibold ${
-                      isCenter ? 'text-xl' : 'text-lg'
-                    }`}>{cake.name}</h3>
-                    <p className={`text-muted-foreground ${
-                      isCenter ? 'text-sm' : 'text-xs'
-                    }`}>
-                      {cake.description}
-                    </p>
-                  </div>
-                  {/* Spacer to push content to top */}
-                  <div className="flex-1"></div>
+                  <h3 className={`font-semibold text-center ${
+                    isCenter ? 'text-xl' : 'text-lg'
+                  }`}>{cake.name}</h3>
                 </div>
               </div>
             </div>

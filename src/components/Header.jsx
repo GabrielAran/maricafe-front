@@ -23,17 +23,14 @@ export default function Header({ onNavigate, currentPage }) {
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
         {/* Logo */}
         <div 
-          className="flex items-center space-x-3 cursor-pointer"
+          className="flex items-center cursor-pointer"
           onClick={() => handleNavigation('home')}
         >
           <img
-            src="/LOGO_Maricafe_Circular.png"
+            src="/cropped-LogoMaricafe-header.png"
             alt="Maricafe - Café Bar & LGBT Bookstore"
-            width={40}
-            height={40}
-            className="rounded-full"
+            className="h-12 w-auto"
           />
-          <div className="text-2xl font-bold rainbow-text">Maricafe</div>
         </div>
 
         {/* Desktop Navigation */}

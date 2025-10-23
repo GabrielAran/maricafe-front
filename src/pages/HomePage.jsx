@@ -1,15 +1,91 @@
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import { Cake, Gift, Users, Heart, ArrowRight } from 'lucide-react'
 import CakeCarousel from '../components/CakeCarousel.jsx'
+import { useProductService } from '../hooks/useProductService.js'
+import { ProductApiService } from '../services/ProductApiService.js'
 
 export default function HomePage({ onNavigate }) {
+  const { products, loading, loadProducts, getProductsByCategoryName } = useProductService()
+  const [cakeProducts, setCakeProducts] = useState([])
+
+  // Load products when component mounts
+  useEffect(() => {
+    loadProducts()
+  }, [loadProducts])
+
+  // Filter products to get only cakes when products are loaded
+  useEffect(() => {
+    const loadCakeProducts = async () => {
+      if (products && products.length > 0) {
+        // Try different possible category names for cakes
+        const possibleCakeCategories = ['tortas', 'torta', 'cakes', 'cake', 'tortas artesanales']
+        let cakeProducts = []
+        
+        for (const categoryName of possibleCakeCategories) {
+          const categoryProducts = getProductsByCategoryName(categoryName)
+          if (categoryProducts && categoryProducts.length > 0) {
+            cakeProducts = categoryProducts
+            break
+          }
+        }
+        
+        // If no specific cake category found, filter by product name containing cake-related keywords
+        if (cakeProducts.length === 0) {
+          cakeProducts = products.filter(product => {
+            const name = product.nombre?.toLowerCase() || ''
+            const description = product.descripcion?.toLowerCase() || ''
+            return name.includes('torta') || name.includes('cake') || 
+                   description.includes('torta') || description.includes('cake')
+          })
+        }
+        
+        // Load images for each cake product
+        const transformedCakes = []
+        for (const product of cakeProducts.slice(0, 5)) {
+          try {
+            const images = await ProductApiService.getProductImages(product.id)
+            const imageUrl = images && images.length > 0 ? images[0].url : '/placeholder.jpg'
+            
+            transformedCakes.push({
+              id: product.id,
+              name: product.nombre,
+              image: imageUrl,
+              description: product.descripcion || 'Deliciosa torta artesanal'
+            })
+          } catch (error) {
+            console.error(`Error loading image for product ${product.id}:`, error)
+            transformedCakes.push({
+              id: product.id,
+              name: product.nombre,
+              image: '/placeholder.jpg',
+              description: product.descripcion || 'Deliciosa torta artesanal'
+            })
+          }
+        }
+        
+        setCakeProducts(transformedCakes)
+      }
+    }
+
+    loadCakeProducts()
+  }, [products, getProductsByCategoryName])
+
+  // Handle cake click navigation
+  const handleCakeClick = (cake) => {
+    if (onNavigate && cake.id) {
+      onNavigate('product', { productId: cake.id })
+    }
+  }
+
   return (
     <div className="min-h-screen">
       {/* Hero Section */}
-      <section className="relative py-20" style={{
-        background: 'linear-gradient(135deg, rgba(255, 0, 24, 0.3) 0%, rgba(255, 165, 44, 0.3) 16.67%, rgba(255, 255, 65, 0.3) 33.33%, rgba(0, 128, 24, 0.3) 50%, rgba(0, 0, 249, 0.3) 66.67%, rgba(134, 0, 125, 0.3) 83.33%, rgba(255, 0, 24, 0.3) 100%)'
+      <section className="relative py-20 bg-cover bg-center bg-no-repeat bg-fixed" style={{
+        backgroundImage: 'url(/maricafe_local.png)'
       }}>
-        <div className="container mx-auto px-4">
+        {/* Overlay for better text readability */}
+        <div className="absolute inset-0 bg-black/20"></div>
+        <div className="container mx-auto px-4 relative z-10">
           <div className="text-center space-y-8 max-w-4xl mx-auto">
             <div className="flex items-center justify-center space-x-3">
               <img
@@ -24,16 +100,16 @@ export default function HomePage({ onNavigate }) {
               </h1>
             </div>
             
-            <h2 className="text-2xl lg:text-3xl font-semibold text-black">
+            <h2 className="text-2xl lg:text-3xl font-semibold text-white drop-shadow-lg">
               Cafetería LGBT+ Especializada
             </h2>
             
-            <p className="text-lg lg:text-xl text-black max-w-3xl mx-auto leading-relaxed">
+            <p className="text-lg lg:text-xl text-white max-w-3xl mx-auto leading-relaxed drop-shadow-md">
               Tortas artesanales, catering inclusivo y tazas únicas. Un espacio seguro donde 
               la diversidad se celebra con cada bocado y cada sorbo. Opciones veganas y sin TACC disponibles.
             </p>
             
-            <div className="flex items-center justify-center space-x-2 text-black">
+            <div className="flex items-center justify-center space-x-2 text-white drop-shadow-md">
               <Heart className="h-6 w-6" />
               <span className="text-lg font-medium">Hecho con amor y orgullo</span>
             </div>
@@ -129,35 +205,20 @@ export default function HomePage({ onNavigate }) {
             </p>
           </div>
           
-          <CakeCarousel
-            cakes={[
-              {
-                name: "Rainbow Cake",
-                image: "/rainbow-cake-colorful-layers.jpg",
-                description: "Nuestra torta insignia con 6 capas de colores del arcoíris y crema de vainilla suave."
-              },
-              {
-                name: "Red Velvet con Decoración Arcoíris",
-                image: "/red-velvet-cake-with-rainbow-decoration.jpg",
-                description: "Clásica torta red velvet con un toque especial de decoración arcoíris que celebra la diversidad."
-              },
-              {
-                name: "Carrot Cake",
-                image: "/carrot-cake-cream-cheese.png",
-                description: "Deliciosa torta de zanahoria con frosting de queso crema, perfecta para cualquier ocasión."
-              },
-              {
-                name: "Chocolate Cake Arcoíris",
-                image: "/chocolate-cake-with-rainbow-frosting.jpg",
-                description: "Deliciosa torta de chocolate con frosting arcoíris, perfecta para celebrar la diversidad."
-              },
-              {
-                name: "Vanilla Cake con Sprinkles",
-                image: "/vanilla-cake-with-rainbow-sprinkles.jpg",
-                description: "Suave torta de vainilla decorada con sprinkles arcoíris, ideal para cualquier celebración."
-              }
-            ]}
-          />
+          {loading ? (
+            <div className="flex justify-center items-center py-12">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+                <p className="text-muted-foreground">Cargando nuestras tortas...</p>
+              </div>
+            </div>
+          ) : cakeProducts.length > 0 ? (
+            <CakeCarousel cakes={cakeProducts} onCakeClick={handleCakeClick} />
+          ) : (
+            <div className="text-center py-12">
+              <p className="text-muted-foreground">No se encontraron tortas disponibles en este momento.</p>
+            </div>
+          )}
         </div>
       </section>
 
