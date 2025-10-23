@@ -126,12 +126,12 @@ export default function AdminProductManagement() {
     setCurrentImages([]) // Clear current images while loading
 
     try {
-      // Load the product's current images
-      const images = await ProductApiService.getProductImages(product.id)
-      console.log('Loaded images:', images)
+      // Load the product's current images with actual database IDs
+      const images = await ProductApiService.getProductImagesWithIds(product.id)
+      console.log('Loaded images with IDs:', images)
       
       if (images && images.length > 0) {
-        setCurrentImages(images) // Images already have id and url properties
+        setCurrentImages(images) // Images now have actual database IDs
       }
     } catch (error) {
       console.error('Error loading product images:', error)
@@ -293,12 +293,9 @@ export default function AdminProductManagement() {
           console.log('Upload response:', uploadResponse)
           
           // Get updated images and set them in state
-          const updatedImages = await ProductApiService.getProductImages(editingProduct.id)
+          const updatedImages = await ProductApiService.getProductImagesWithIds(editingProduct.id)
           if (updatedImages && updatedImages.length > 0) {
-            setCurrentImages(updatedImages.map((url, index) => ({
-              url,
-              id: index
-            })))
+            setCurrentImages(updatedImages) // Images already have correct database IDs
           }
         } catch (uploadError) {
           console.error('Error uploading new images:', uploadError)
@@ -313,11 +310,11 @@ export default function AdminProductManagement() {
       
       // Update the product's images in the state
       if (editingProduct.id) {
-        const updatedImages = await ProductApiService.getProductImages(editingProduct.id)
+        const updatedImages = await ProductApiService.getProductImagesWithIds(editingProduct.id)
         if (updatedImages && updatedImages.length > 0) {
           setProductImages(prev => ({
             ...prev,
-            [editingProduct.id]: updatedImages[0]
+            [editingProduct.id]: updatedImages[0].url
           }))
         }
       }
@@ -357,12 +354,9 @@ export default function AdminProductManagement() {
       await ProductApiService.deleteImage(imageId, authHeaders)
       
       // Get updated images after deletion
-      const updatedImages = await ProductApiService.getProductImages(editingProduct.id)
+      const updatedImages = await ProductApiService.getProductImagesWithIds(editingProduct.id)
       if (updatedImages) {
-        setCurrentImages(updatedImages.map((image, index) => ({
-          id: index + 1,
-          url: image.url
-        })))
+        setCurrentImages(updatedImages) // Images already have correct database IDs
       } else {
         setCurrentImages([])
       }
@@ -641,8 +635,7 @@ export default function AdminProductManagement() {
           </Button>
         </div>
         <p className="text-muted-foreground mb-4">
-          Como administrador, puedes ver todos los productos, incluyendo aquellos sin stock.
-          El sistema automáticamente muestra todos los productos basado en tu rol de administrador.
+          Crea, edita y elimina productos.
         </p>
       </div>
 
@@ -736,20 +729,6 @@ export default function AdminProductManagement() {
         </div>
       )}
 
-      <div className="mt-8 p-4 bg-muted rounded-lg">
-        <h3 className="font-semibold mb-2">Información del Sistema</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-          <div>
-            <span className="font-medium">Total de Productos:</span> {products.length}
-          </div>
-          <div>
-            <span className="font-medium">Con Stock:</span> {products.filter(p => p.stock > 0).length}
-          </div>
-          <div>
-            <span className="font-medium">Sin Stock:</span> {products.filter(p => p.stock === 0).length}
-          </div>
-        </div>
-      </div>
 
       {/* Edit Product Modal */}
       {showEditModal && editingProduct && (

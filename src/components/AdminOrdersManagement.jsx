@@ -16,7 +16,8 @@ export default function AdminOrdersManagement() {
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [isCancelling, setIsCancelling] = useState(false)
   const [filteredOrders, setFilteredOrders] = useState([])
-  const [dateFilter, setDateFilter] = useState('')
+  const [startDateFilter, setStartDateFilter] = useState('')
+  const [endDateFilter, setEndDateFilter] = useState('')
   const [orderNumberFilter, setOrderNumberFilter] = useState('')
   const [sortBy, setSortBy] = useState('dateDesc') // Default sort: newest first
   const { showToast } = useToast()
@@ -38,18 +39,27 @@ export default function AdminOrdersManagement() {
   useEffect(() => {
     let filtered = [...orders]
 
-    // Filter by date
-    if (dateFilter) {
-      // Create start and end of the selected date in Argentina timezone
-      const filterDate = new Date(dateFilter + 'T00:00:00-03:00')
-      const nextDay = new Date(filterDate)
-      nextDay.setDate(nextDay.getDate() + 1)
-      
+    // Filter by date range
+    if (startDateFilter || endDateFilter) {
       filtered = filtered.filter(order => {
         // Parse order date with Argentina timezone
         const orderDate = new Date(order.createdAt + '-03:00')
-        // Check if order date is within the selected day
-        return orderDate >= filterDate && orderDate < nextDay
+        
+        let isInRange = true
+        
+        // Check start date filter
+        if (startDateFilter) {
+          const startDate = new Date(startDateFilter + 'T00:00:00-03:00')
+          isInRange = isInRange && orderDate >= startDate
+        }
+        
+        // Check end date filter
+        if (endDateFilter) {
+          const endDate = new Date(endDateFilter + 'T23:59:59-03:00')
+          isInRange = isInRange && orderDate <= endDate
+        }
+        
+        return isInRange
       })
     }
 
@@ -77,7 +87,7 @@ export default function AdminOrdersManagement() {
     });
 
     setFilteredOrders(filtered)
-  }, [orders, dateFilter, orderNumberFilter, sortBy])
+  }, [orders, startDateFilter, endDateFilter, orderNumberFilter, sortBy])
 
   const [isRefreshing, setIsRefreshing] = useState(false)
 
@@ -132,7 +142,8 @@ export default function AdminOrdersManagement() {
   }
 
   const clearFilters = () => {
-    setDateFilter('')
+    setStartDateFilter('')
+    setEndDateFilter('')
     setOrderNumberFilter('')
     setSortBy('dateDesc') // Reset to default sort
   }
@@ -204,12 +215,23 @@ export default function AdminOrdersManagement() {
         <div className="flex flex-col sm:flex-row gap-4">
           <div className="flex-1">
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Filtrar por fecha
+              Fecha desde
             </label>
             <input
               type="date"
-              value={dateFilter}
-              onChange={(e) => setDateFilter(e.target.value)}
+              value={startDateFilter}
+              onChange={(e) => setStartDateFilter(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          <div className="flex-1">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Fecha hasta
+            </label>
+            <input
+              type="date"
+              value={endDateFilter}
+              onChange={(e) => setEndDateFilter(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>

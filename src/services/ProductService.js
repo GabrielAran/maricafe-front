@@ -110,7 +110,6 @@ export class ProductService {
       descripcion: descripcion,
       vegana: text.includes('vegan') || text.includes('vegana') || Object.values(attributes).some(attr => attr.name === 'Vegano' && attr.value === 'true'),
       sinTacc: text.includes('tacc') || text.includes('gluten') || text.includes('celiac') || Object.values(attributes).some(attr => attr.name === 'Sin TACC' && attr.value === 'true'),
-      destacado: text.includes('pride') || text.includes('rainbow') || text.includes('arcoíris'),
       stock: backendProduct.stock || 0,
       attributes: attributes
     }
@@ -479,11 +478,7 @@ export class ProductService {
         break
       case 'featured':
       default:
-        filtered.sort((a, b) => {
-          if (a.destacado && !b.destacado) return -1
-          if (!a.destacado && b.destacado) return 1
-          return 0
-        })
+        // No special sorting for featured products
         break
     }
 
@@ -524,7 +519,6 @@ export class ProductService {
       total: products.length,
       vegan: products.filter(p => p.vegana).length,
       sinTacc: products.filter(p => p.sinTacc).length,
-      destacados: products.filter(p => p.destacado).length,
       categories: [...new Set(products.map(p => p.categoria))]
     }
   }

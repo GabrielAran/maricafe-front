@@ -61,11 +61,26 @@ export default function AttributeFilter({
                   name={`${attribute_id}-group`}
                   value="true"
                   checked={currentValue === 'true'}
-                  onCheckedChange={(checked) => 
-                    handleFilterChange(attribute_id, checked ? 'true' : null, data_type)
-                  }
+                  onCheckedChange={(checked) => {
+                    if (checked) {
+                      handleFilterChange(attribute_id, 'true', data_type)
+                    }
+                  }}
                 />
-                <Label htmlFor={`${attribute_id}-true`} className="text-sm">
+                <Label 
+                  className="text-sm cursor-pointer"
+                  onClick={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    if (currentValue === 'true') {
+                      // If already selected, deselect it
+                      handleFilterChange(attribute_id, null, data_type)
+                    } else {
+                      // If not selected, select it
+                      handleFilterChange(attribute_id, 'true', data_type)
+                    }
+                  }}
+                >
                   Sí
                 </Label>
               </div>
@@ -75,11 +90,26 @@ export default function AttributeFilter({
                   name={`${attribute_id}-group`}
                   value="false"
                   checked={currentValue === 'false'}
-                  onCheckedChange={(checked) => 
-                    handleFilterChange(attribute_id, checked ? 'false' : null, data_type)
-                  }
+                  onCheckedChange={(checked) => {
+                    if (checked) {
+                      handleFilterChange(attribute_id, 'false', data_type)
+                    }
+                  }}
                 />
-                <Label htmlFor={`${attribute_id}-false`} className="text-sm">
+                <Label 
+                  className="text-sm cursor-pointer"
+                  onClick={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    if (currentValue === 'false') {
+                      // If already selected, deselect it
+                      handleFilterChange(attribute_id, null, data_type)
+                    } else {
+                      // If not selected, select it
+                      handleFilterChange(attribute_id, 'false', data_type)
+                    }
+                  }}
+                >
                   No
                 </Label>
               </div>
@@ -184,7 +214,6 @@ export default function AttributeFilter({
           <div className="flex items-center space-x-2">
             <Label className="text-sm font-medium cursor-pointer">
               {name}
-              {required && <span className="text-red-500 ml-1">*</span>}
             </Label>
             {currentValue && (
               <Badge variant="secondary" className="text-xs">
@@ -272,7 +301,7 @@ export default function AttributeFilter({
           </p>
         )}
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-4 max-h-96 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
         {attributes && attributes.length > 0 ? attributes.map(renderAttributeFilter) : null}
       </CardContent>
     </Card>

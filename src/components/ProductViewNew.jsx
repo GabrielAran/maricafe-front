@@ -192,7 +192,7 @@ export default function ProductViewNew({
       const category = categories.find(cat => cat.id == currentCategory)
       if (category) {
         tags.push({
-          label: category.nombre,
+          label: category.name,
           onRemove: () => handleCategoryChange('all')
         })
       }
@@ -343,7 +343,7 @@ export default function ProductViewNew({
               attributeFilters={getCurrentAttributeFilters()}
               onAttributeFilterChange={handleAttributeChange}
               selectedCategory={getCurrentCategoryFilter()}
-              className="sticky top-4"
+              className="sticky top-4 max-h-[calc(100vh-2rem)]"
             />
           </div>
         )}
@@ -457,6 +457,7 @@ export default function ProductViewNew({
                       disabled={!isProductAvailable(product, false)}
                       className="w-full"
                       onNavigate={onNavigate}
+                      image={productImages[product.id]}
                     />
                   </div>
                 </div>

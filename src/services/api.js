@@ -203,7 +203,6 @@ export function transformProduct(backendProduct) {
     descripcion: descripcion,
     vegana: text.includes('vegan') || text.includes('vegana'),
     sinTacc: text.includes('tacc') || text.includes('gluten') || text.includes('celiac'),
-    destacado: text.includes('pride') || text.includes('rainbow') || text.includes('arcoíris'),
     stock: backendProduct.stock
   }
 }

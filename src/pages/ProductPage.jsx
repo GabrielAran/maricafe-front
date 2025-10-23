@@ -103,9 +103,6 @@ export default function ProductPage({ onNavigate, productId }) {
             if (attrName === 'sin tacc' || attrName === 'gluten-free') {
               transformedProduct.sinTacc = attrValue === 'true' || attrValue === 'si' || attrValue === 'yes'
             }
-            if (attrName === 'destacado' || attrName === 'featured') {
-              transformedProduct.destacado = attrValue === 'true' || attrValue === 'si' || attrValue === 'yes'
-            }
           }
         })
         
@@ -235,7 +232,6 @@ export default function ProductPage({ onNavigate, productId }) {
           <div>
             <div className="flex items-center gap-2 mb-2">
               <Badge variant="secondary">{product.categoria}</Badge>
-              {product.destacado && <Badge variant="default">Destacado</Badge>}
             </div>
             <h1 className="text-3xl font-bold mb-2">{product.nombre}</h1>
             <p className="text-gray-600 text-lg">{product.descripcion}</p>
@@ -309,6 +305,7 @@ export default function ProductPage({ onNavigate, productId }) {
                 onAddToCart={handleAddToCart}
                 onNavigate={onNavigate}
                 className="flex-1"
+                image={product.imagen}
               />
             </div>
           </div>
