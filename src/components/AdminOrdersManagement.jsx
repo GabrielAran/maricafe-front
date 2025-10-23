@@ -20,6 +20,7 @@ export default function AdminOrdersManagement() {
   const [endDateFilter, setEndDateFilter] = useState('')
   const [orderNumberFilter, setOrderNumberFilter] = useState('')
   const [sortBy, setSortBy] = useState('dateDesc') // Default sort: newest first
+  const [dateRangeError, setDateRangeError] = useState('')
   const { showToast } = useToast()
 
   useEffect(() => {
@@ -39,8 +40,8 @@ export default function AdminOrdersManagement() {
   useEffect(() => {
     let filtered = [...orders]
 
-    // Filter by date range
-    if (startDateFilter || endDateFilter) {
+    // Filter by date range (only if no date range error)
+    if ((startDateFilter || endDateFilter) && !dateRangeError) {
       filtered = filtered.filter(order => {
         // Parse order date with Argentina timezone
         const orderDate = new Date(order.createdAt + '-03:00')
@@ -87,7 +88,7 @@ export default function AdminOrdersManagement() {
     });
 
     setFilteredOrders(filtered)
-  }, [orders, startDateFilter, endDateFilter, orderNumberFilter, sortBy])
+  }, [orders, startDateFilter, endDateFilter, orderNumberFilter, sortBy, dateRangeError])
 
   const [isRefreshing, setIsRefreshing] = useState(false)
 
@@ -146,6 +147,33 @@ export default function AdminOrdersManagement() {
     setEndDateFilter('')
     setOrderNumberFilter('')
     setSortBy('dateDesc') // Reset to default sort
+    setDateRangeError('')
+  }
+
+  // Validate date range
+  const validateDateRange = (startDate, endDate) => {
+    if (startDate && endDate) {
+      const start = new Date(startDate)
+      const end = new Date(endDate)
+      if (end < start) {
+        return 'La fecha hasta debe ser posterior a la fecha desde'
+      }
+    }
+    return ''
+  }
+
+  // Handle start date change
+  const handleStartDateChange = (value) => {
+    setStartDateFilter(value)
+    const error = validateDateRange(value, endDateFilter)
+    setDateRangeError(error)
+  }
+
+  // Handle end date change
+  const handleEndDateChange = (value) => {
+    setEndDateFilter(value)
+    const error = validateDateRange(startDateFilter, value)
+    setDateRangeError(error)
   }
 
   if (loading && orders.length === 0) {
@@ -220,8 +248,13 @@ export default function AdminOrdersManagement() {
             <input
               type="date"
               value={startDateFilter}
-              onChange={(e) => setStartDateFilter(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              onChange={(e) => handleStartDateChange(e.target.value)}
+              max={endDateFilter || undefined}
+              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
+                dateRangeError 
+                  ? 'border-red-300 focus:ring-red-500' 
+                  : 'border-gray-300 focus:ring-blue-500'
+              }`}
             />
           </div>
           <div className="flex-1">
@@ -231,8 +264,13 @@ export default function AdminOrdersManagement() {
             <input
               type="date"
               value={endDateFilter}
-              onChange={(e) => setEndDateFilter(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              onChange={(e) => handleEndDateChange(e.target.value)}
+              min={startDateFilter || undefined}
+              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
+                dateRangeError 
+                  ? 'border-red-300 focus:ring-red-500' 
+                  : 'border-gray-300 focus:ring-blue-500'
+              }`}
             />
           </div>
           <div className="flex-1">
@@ -272,6 +310,16 @@ export default function AdminOrdersManagement() {
             </Button>
           </div>
         </div>
+        {dateRangeError && (
+          <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-md">
+            <div className="flex items-center">
+              <svg className="w-5 h-5 text-red-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+              </svg>
+              <p className="text-sm text-red-600">{dateRangeError}</p>
+            </div>
+          </div>
+        )}
       </div>
 
       {filteredOrders.length === 0 ? (
