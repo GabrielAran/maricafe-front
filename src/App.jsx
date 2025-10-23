@@ -14,12 +14,15 @@ import AdminPanel from './pages/AdminPanel.jsx'
 import ProfilePage from './pages/ProfilePage.jsx'
 import OrderDetailsPage from './pages/OrderDetailsPage.jsx'
 import './App.css'
+import BackToTopButton from './components/ui/BackToTopButton'
 
 function App() {
   const [currentPage, setCurrentPage] = useState('home')
   const [pageData, setPageData] = useState(null)
 
   const handleNavigate = (page, data = null) => {
+    // Scroll to top smoothly when navigating
+    window.scrollTo({ top: 0, behavior: 'smooth' })
     setCurrentPage(page)
     setPageData(data)
   }
@@ -61,6 +64,7 @@ function App() {
               {renderPage()}
             </main>
             <Footer onNavigate={handleNavigate} />
+            <BackToTopButton />
           </div>
         </ToastProvider>
       </CartProvider>

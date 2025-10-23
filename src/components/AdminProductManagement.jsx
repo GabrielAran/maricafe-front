@@ -34,6 +34,9 @@ export default function AdminProductManagement() {
   const [selectedImages, setSelectedImages] = useState([])
   const [imagePreviews, setImagePreviews] = useState([])
   const [saving, setSaving] = useState(false)
+  const [currentImages, setCurrentImages] = useState([])
+  const [newImages, setNewImages] = useState([])
+  const [newImagePreviews, setNewImagePreviews] = useState([])
   const [notification, setNotification] = useState({
     isVisible: false,
     message: '',
@@ -46,12 +49,36 @@ export default function AdminProductManagement() {
     productId: null
   })
 
+  const [productImages, setProductImages] = useState({})
+
   useEffect(() => {
     if (isAdmin()) {
       loadProducts()
       loadCategories()
     }
   }, [isAdmin, loadProducts])
+
+  // Load images for all products
+  useEffect(() => {
+    const loadProductImages = async () => {
+      const imagesMap = {}
+      for (const product of products) {
+        try {
+          const images = await ProductApiService.getProductImages(product.id)
+          if (images && images.length > 0) {
+            imagesMap[product.id] = images[0].url // Store first image URL as primary
+          }
+        } catch (error) {
+          console.error(`Error loading images for product ${product.id}:`, error)
+        }
+      }
+      setProductImages(imagesMap)
+    }
+
+    if (products.length > 0) {
+      loadProductImages()
+    }
+  }, [products])
 
   const loadCategories = async () => {
     try {
@@ -77,8 +104,14 @@ export default function AdminProductManagement() {
     setShowAddModal(true)
   }
 
-  const handleEditProduct = (product) => {
+  const handleEditProduct = async (product) => {
     console.log('handleEditProduct called with product:', product)
+    if (!product || !product.id) {
+      console.error('Invalid product data:', product)
+      showNotification('Error: Datos del producto inválidos', 'error')
+      return
+    }
+
     setEditingProduct(product)
     setFormData({
       title: product.nombre,
@@ -87,7 +120,23 @@ export default function AdminProductManagement() {
       stock: product.stock,
       category_id: product.categoriaId || product.category?.category_id
     })
-    setShowEditModal(true)
+
+    setShowEditModal(true) // Show modal immediately
+    setCurrentImages([]) // Clear current images while loading
+
+    try {
+      // Load the product's current images
+      const images = await ProductApiService.getProductImages(product.id)
+      console.log('Loaded images:', images)
+      
+      if (images && images.length > 0) {
+        setCurrentImages(images) // Images already have id and url properties
+      }
+    } catch (error) {
+      console.error('Error loading product images:', error)
+      showNotification('Error al cargar las imágenes del producto', 'error')
+      setCurrentImages([])
+    }
   }
 
   const handleDeleteProduct = (productId) => {
@@ -156,6 +205,9 @@ export default function AdminProductManagement() {
       stock: 0,
       category_id: ''
     })
+    setCurrentImages([])
+    setNewImages([])
+    setNewImagePreviews([])
   }
 
   const handleCloseAddModal = () => {
@@ -208,23 +260,161 @@ export default function AdminProductManagement() {
         description: formData.description,
         price: parseFloat(formData.price),
         stock: parseInt(formData.stock),
-        category_id: formData.category_id || editingProduct.categoriaId || editingProduct.category?.category_id
+        category_id: formData.category_id || editingProduct.categoriaId || editingProduct.category?.category_id,
+        images: currentImages.map(img => img.url)
       }
       
       console.log('Sending update request with data:', productData)
       console.log('Product ID:', editingProduct.id)
       
       await ProductApiService.updateProduct(editingProduct.id, productData, authHeaders)
+
+      // Upload new images if any
+      if (newImages.length > 0) {
+        const formData = new FormData()
+        newImages.forEach(file => {
+          formData.append('files', file)
+        })
+        formData.append('productId', editingProduct.id)
+        
+        const imageAuthHeaders = {
+          'Authorization': `Bearer ${token}`
+        }
+        
+        try {
+          const uploadResponse = await ProductApiService.uploadMultipleImages(formData, imageAuthHeaders)
+          console.log('Upload response:', uploadResponse)
+          
+          // Get updated images and set them in state
+          const updatedImages = await ProductApiService.getProductImages(editingProduct.id)
+          if (updatedImages && updatedImages.length > 0) {
+            setCurrentImages(updatedImages.map((url, index) => ({
+              url,
+              id: index
+            })))
+          }
+        } catch (uploadError) {
+          console.error('Error uploading new images:', uploadError)
+          showNotification('Error al subir las nuevas imágenes: ' + uploadError.message, 'error')
+        }
+      }
+
       showNotification('Producto actualizado exitosamente', 'success')
-      handleCloseEditModal()
-      // Reload products after successful update
+      
+      // Reload products and their images after successful update
       await loadProducts()
+      
+      // Update the product's images in the state
+      if (editingProduct.id) {
+        const updatedImages = await ProductApiService.getProductImages(editingProduct.id)
+        if (updatedImages && updatedImages.length > 0) {
+          setProductImages(prev => ({
+            ...prev,
+            [editingProduct.id]: updatedImages[0]
+          }))
+        }
+      }
+      
+      // If no new images were uploaded, we're done
+      if (newImages.length === 0) {
+        handleCloseEditModal()
+      } else {
+        // Wait a moment to show the success message before closing if we uploaded images
+        setTimeout(() => {
+          handleCloseEditModal()
+        }, 1500)
+      }
     } catch (error) {
       console.error('Error updating product:', error)
       showNotification('Error al actualizar el producto: ' + error.message, 'error')
     } finally {
       setSaving(false)
     }
+  }
+
+  // Handle deleting an existing image
+  const handleDeleteImage = async (imageId) => {
+    if (!editingProduct || !editingProduct.id) {
+      showNotification('Error: No se puede identificar el producto', 'error')
+      return
+    }
+
+    try {
+      const token = localStorage.getItem('maricafe-token')
+      const authHeaders = {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+      
+      // Delete image with just the image ID
+      await ProductApiService.deleteImage(imageId, authHeaders)
+      
+      // Get updated images after deletion
+      const updatedImages = await ProductApiService.getProductImages(editingProduct.id)
+      if (updatedImages) {
+        setCurrentImages(updatedImages.map((image, index) => ({
+          id: index + 1,
+          url: image.url
+        })))
+      } else {
+        setCurrentImages([])
+      }
+      
+      showNotification('Imagen eliminada exitosamente', 'success')
+    } catch (error) {
+      console.error('Error deleting image:', error)
+      showNotification('Error al eliminar la imagen: ' + error.message, 'error')
+    }
+  }
+
+  // Handle removing a new image that hasn't been uploaded yet
+  const handleRemoveNewImage = (index) => {
+    setNewImages(prev => prev.filter((_, i) => i !== index))
+    setNewImagePreviews(prev => prev.filter((_, i) => i !== index))
+  }
+
+  // Handler for selecting new images
+  const handleNewImageSelect = (event) => {
+    const files = Array.from(event.target.files)
+    
+    if (files.length === 0) return
+    
+    // Validate total number of images (max 10)
+    const totalImages = currentImages.length + newImages.length + files.length
+    if (totalImages > 10) {
+      showNotification('Máximo 10 imágenes permitidas', 'error')
+      return
+    }
+    
+    const validFiles = []
+    const validPreviews = []
+    
+    files.forEach((file, index) => {
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        showNotification(`Archivo ${index + 1} no es una imagen válida`, 'error')
+        return
+      }
+      
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        showNotification(`Imagen ${index + 1} debe ser menor a 5MB`, 'error')
+        return
+      }
+      
+      validFiles.push(file)
+      
+      // Create preview
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        validPreviews.push(e.target.result)
+        if (validPreviews.length === validFiles.length) {
+          setNewImages(prev => [...prev, ...validFiles])
+          setNewImagePreviews(prev => [...prev, ...validPreviews])
+        }
+      }
+      reader.readAsDataURL(file)
+    })
   }
 
   const handleCreateProduct = async () => {
@@ -435,6 +625,25 @@ export default function AdminProductManagement() {
         {filteredProducts.map((product) => (
           <Card key={product.id} className="relative">
             <CardHeader>
+              <div className="relative w-full h-48 mb-4 bg-gray-100 rounded-t-lg overflow-hidden">
+                {productImages[product.id] ? (
+                  <img
+                    src={productImages[product.id]}
+                    alt={product.nombre}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      console.error('Error loading image for product:', product.id)
+                      e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjIwMCIgaGVpZ2h0PSIyMDAiIGZpbGw9IiNFNUU3RUIiLz48cGF0aCBkPSJNODAgOTBIMTIwVjExMEg4MFY5MFoiIGZpbGw9IiM5Q0EzQUYiLz48L3N2Zz4=' // Placeholder SVG
+                    }}
+                  />
+                ) : (
+                  <div className="flex items-center justify-center w-full h-full">
+                    <svg className="w-12 h-12 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                  </div>
+                )}
+              </div>
               <CardTitle className="flex items-center justify-between">
                 <span className="truncate">{product.nombre}</span>
                 {product.stock === 0 && (
@@ -577,7 +786,105 @@ export default function AdminProductManagement() {
                   onChange={(e) => handleInputChange('stock', e.target.value)}
                 />
               </div>
+
+              {/* Images Section */}
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Imágenes del Producto ({currentImages.length + newImages.length}/10)
+                </label>
+                
+                {/* Current Images */}
+                <div className="mb-4">
+                  <p className="text-sm text-gray-500 mb-2">Imágenes actuales:</p>
+                  {currentImages.length > 0 ? (
+                    <div className="grid grid-cols-2 gap-2">
+                      {currentImages.map((image, index) => {
+                        console.log('Rendering image:', image)
+                        return (
+                          <div key={index} className="relative group">
+                            <img
+                              src={image.url}
+                              alt={`Imagen ${index + 1}`}
+                              className="w-full h-24 object-cover rounded-lg"
+                              onError={(e) => {
+                                console.error('Error loading image:', image)
+                                e.target.onerror = null // Prevent infinite loop
+                                e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjIwMCIgaGVpZ2h0PSIyMDAiIGZpbGw9IiNFNUU3RUIiLz48cGF0aCBkPSJNODAgOTBIMTIwVjExMEg4MFY5MFoiIGZpbGw9IiM5Q0EzQUYiLz48L3N2Zz4=' // Inline SVG placeholder
+                              }}
+                            />
+                            <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all duration-200 rounded-lg">
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteImage(image.id)}
+                                className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm hover:bg-red-600 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                              >
+                                ×
+                              </button>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  ) : (
+                    <div className="text-sm text-gray-500 italic text-center p-4 border-2 border-dashed border-gray-200 rounded-lg">
+                      No hay imágenes cargadas
+                    </div>
+                  )}
+                </div>
+
+                {/* New Images */}
+                {newImagePreviews.length > 0 && (
+                  <div className="mb-4">
+                    <p className="text-sm text-gray-500 mb-2">Imágenes nuevas:</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      {newImagePreviews.map((preview, index) => (
+                        <div key={index} className="relative">
+                          <img
+                            src={preview}
+                            alt={`Nueva imagen ${index + 1}`}
+                            className="w-full h-24 object-cover rounded-lg"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveNewImage(index)}
+                            className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs hover:bg-red-600"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Add Images Button */}
+                {currentImages.length + newImages.length < 10 && (
+                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={handleNewImageSelect}
+                      className="hidden"
+                      id="edit-image-upload"
+                    />
+                    <label
+                      htmlFor="edit-image-upload"
+                      className="cursor-pointer text-sm text-gray-600 hover:text-gray-800"
+                    >
+                      <div className="flex flex-col items-center">
+                        <svg className="w-8 h-8 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                        </svg>
+                        <span>Haz clic para agregar imágenes</span>
+                        <span className="text-xs text-gray-500 mt-1">PNG, JPG, GIF hasta 5MB cada una</span>
+                      </div>
+                    </label>
+                  </div>
+                )}
+              </div>
             </div>
+
             <div className="flex gap-2 mt-6">
               <Button 
                 onClick={handleCloseEditModal}

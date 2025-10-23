@@ -93,12 +93,64 @@ export class ProductApiService {
 
   // Get product images
   static async getProductImages(productId) {
-    return this.fetchData(`${API_BASE_URL}/images/${productId}`)
+    try {
+      const base64Images = await this.fetchData(`${API_BASE_URL}/images/${productId}`)
+      if (!base64Images) return []
+      
+      // Handle both array and single image responses
+      const imagesArray = Array.isArray(base64Images) ? base64Images : [base64Images]
+      
+      return imagesArray.map((base64Data, index) => {
+        try {
+          let finalData = null
+          
+          // If it's already a string, use it directly
+          if (typeof base64Data === 'string') {
+            finalData = base64Data
+          }
+          // If it's an object with data property
+          else if (base64Data && typeof base64Data === 'object') {
+            if (base64Data.data) {
+              finalData = base64Data.data
+            } else if (base64Data.imagen) {
+              finalData = base64Data.imagen
+            } else if (base64Data.base64) {
+              finalData = base64Data.base64
+            }
+          }
+          
+          if (!finalData) {
+            console.warn('Invalid image data received:', base64Data)
+            return null
+          }
+          
+          // Clean the base64 string
+          const cleanBase64 = finalData.toString()
+            .replace(/\s/g, '')
+            .replace(/^data:image\/[a-z]+;base64,/, '')
+          
+          return {
+            id: index + 1,
+            url: `data:image/png;base64,${cleanBase64}`
+          }
+        } catch (e) {
+          console.error('Error processing base64 image:', e)
+          return null
+        }
+      }).filter(Boolean)
+    } catch (error) {
+      console.error('Error in getProductImages:', error)
+      return []
+    }
   }
 
   // Get image by ID
   static async getImageById(imageId) {
-    return this.fetchData(`${API_BASE_URL}/images/${imageId}`)
+    const image = await this.fetchData(`${API_BASE_URL}/images/${imageId}`)
+    return {
+      ...image,
+      url: `${API_BASE_URL}/images/${imageId}`
+    }
   }
 
   // Create product (ADMIN only)
@@ -185,6 +237,28 @@ export class ProductApiService {
       return text
     } catch (error) {
       console.error('Multiple images upload error:', error)
+      throw error
+    }
+  }
+
+  // Delete image (ADMIN only)
+  static async deleteImage(imageId, authHeaders) {
+    try {
+      // From the screenshot, the URL format should be /images/{imageId}
+      const response = await fetch(`${API_BASE_URL}/images/${imageId}`, {
+        method: 'DELETE',
+        headers: authHeaders
+      })
+      
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error('Image delete error response:', errorText)
+        throw new Error(`HTTP error! status: ${response.status} - ${errorText}`)
+      }
+      
+      return true
+    } catch (error) {
+      console.error('Image delete error:', error)
       throw error
     }
   }
