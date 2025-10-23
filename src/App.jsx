@@ -57,7 +57,7 @@ function App() {
             <main className="flex-1">
               {renderPage()}
             </main>
-            <Footer />
+            <Footer onNavigate={handleNavigate} />
           </div>
         </ToastProvider>
       </CartProvider>

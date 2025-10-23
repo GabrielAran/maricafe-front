@@ -1,7 +1,7 @@
 import React from 'react'
 import { Heart, Mail, Phone, MapPin } from 'lucide-react'
 
-export default function Footer() {
+export default function Footer({ onNavigate }) {
   return (
     <footer className="bg-muted/30 border-t">
       <div className="container mx-auto px-4 py-12">
@@ -32,19 +32,39 @@ export default function Footer() {
           <div className="space-y-4">
             <h4 className="font-semibold text-foreground">Enlaces Rápidos</h4>
             <nav className="flex flex-col space-y-2">
-              <a href="#productos" className="text-sm text-muted-foreground hover:text-primary transition-colors">
+              <a
+                href="#"
+                onClick={(e) => { e.preventDefault(); onNavigate && onNavigate('productos'); }}
+                className="text-sm text-muted-foreground hover:text-primary transition-colors"
+              >
                 Nuestros Productos
               </a>
-              <a href="#tortas" className="text-sm text-muted-foreground hover:text-primary transition-colors">
+              <a
+                href="#"
+                onClick={(e) => { e.preventDefault(); onNavigate && onNavigate('productos'); }}
+                className="text-sm text-muted-foreground hover:text-primary transition-colors"
+              >
                 Tortas Artesanales
               </a>
-              <a href="#catering" className="text-sm text-muted-foreground hover:text-primary transition-colors">
+              <a
+                href="#"
+                onClick={(e) => { e.preventDefault(); onNavigate && onNavigate('productos'); }}
+                className="text-sm text-muted-foreground hover:text-primary transition-colors"
+              >
                 Servicio de Catering
               </a>
-              <a href="#tazas" className="text-sm text-muted-foreground hover:text-primary transition-colors">
+              <a
+                href="#"
+                onClick={(e) => { e.preventDefault(); onNavigate && onNavigate('productos'); }}
+                className="text-sm text-muted-foreground hover:text-primary transition-colors"
+              >
                 Tazas Personalizadas
               </a>
-              <a href="#contacto" className="text-sm text-muted-foreground hover:text-primary transition-colors">
+              <a
+                href="#"
+                onClick={(e) => { e.preventDefault(); onNavigate && onNavigate('contacto'); }}
+                className="text-sm text-muted-foreground hover:text-primary transition-colors"
+              >
                 Contacto
               </a>
             </nav>
@@ -78,9 +98,9 @@ export default function Footer() {
             <div className="pt-4 border-t">
               <h5 className="font-medium text-foreground mb-2">Horarios</h5>
               <div className="text-sm text-muted-foreground space-y-1">
-                <div>Lunes - Viernes: 8:00 - 20:00</div>
-                <div>Sábados: 9:00 - 22:00</div>
-                <div>Domingos: 10:00 - 18:00</div>
+                <div>Lun - Vie: 9:00 - 18:00</div>
+                <div>Sáb: 10:00 - 22:00</div>
+                <div>Dom: Cerrado</div>
               </div>
             </div>
           </div>
