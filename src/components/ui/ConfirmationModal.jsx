@@ -9,7 +9,8 @@ export default function ConfirmationModal({
   cancelText = 'Cancelar',
   onConfirm, 
   onCancel,
-  type = 'danger' // 'danger', 'warning', 'info'
+  type = 'danger', // 'danger', 'warning', 'info'
+  isLoading = false
 }) {
   if (!isVisible) return null
 
@@ -73,14 +74,23 @@ export default function ConfirmationModal({
             onClick={onCancel}
             variant="outline"
             className="flex-1"
+            disabled={isLoading}
           >
             {cancelText}
           </Button>
           <Button
             onClick={onConfirm}
             className={`flex-1 ${typeStyles.confirmButton}`}
+            disabled={isLoading}
           >
-            {confirmText}
+            {isLoading ? (
+              <div className="flex items-center justify-center">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                {confirmText}
+              </div>
+            ) : (
+              confirmText
+            )}
           </Button>
         </div>
       </div>

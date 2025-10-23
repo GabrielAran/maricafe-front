@@ -111,6 +111,8 @@ export function AuthProvider({ children }) {
   const logout = () => {
     localStorage.removeItem('maricafe-token')
     localStorage.removeItem('maricafe-user')
+    // Reset product filters
+    window.location.reload() // This will force a reload and reset all services
     dispatch({ type: 'LOGOUT' })
   }
 
