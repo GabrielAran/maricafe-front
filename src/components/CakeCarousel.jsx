@@ -59,12 +59,11 @@ export default function CakeCarousel({ cakes = [] }) {
             return (
             <div 
               key={index}
-              className="flex-shrink-0 px-3 flex items-end"
-              style={{ width: '33.333%' }}
+              className="flex-shrink-0 px-3 flex items-end w-1/3"
             >
-              <div className={`bg-background rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300 flex flex-col ${
+              <div className={`bg-background rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300 flex flex-col h-96 ${
                 isCenter ? 'scale-110 z-10' : 'scale-95 opacity-80'
-              }`} style={{ height: '400px' }}>
+              }`}>
                 <img
                   src={cake.image}
                   alt={cake.name}
