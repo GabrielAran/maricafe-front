@@ -87,18 +87,9 @@ export default function HomePage({ onNavigate }) {
         <div className="absolute inset-0 bg-black/20"></div>
         <div className="container mx-auto px-4 relative z-10">
           <div className="text-center space-y-8 max-w-4xl mx-auto">
-            <div className="flex items-center justify-center space-x-3">
-              <img
-                src="/LOGO_Maricafe_Circular.png"
-                alt="Maricafe"
-                width={60}
-                height={60}
-                className="rounded-full"
-              />
-              <h1 className="text-4xl lg:text-6xl font-bold">
-                <span className="rainbow-text">Maricafe</span>
-              </h1>
-            </div>
+            {/* Logo and main title removed as requested; keep the vertical spacing
+                so the tagline stays at the same height. */}
+            <div className="h-16 lg:h-24" />
             
             <h2 className="text-2xl lg:text-3xl font-semibold text-white drop-shadow-lg">
               Cafetería LGBT+ Especializada
@@ -124,7 +115,7 @@ export default function HomePage({ onNavigate }) {
               </button>
               <button 
                 onClick={() => onNavigate && onNavigate('contacto')}
-                className="border-2 border-black text-black px-8 py-3 rounded-lg font-semibold hover:bg-black/10 transition-colors"
+                className="bg-white text-foreground px-8 py-3 rounded-lg font-semibold hover:bg-white/90 transition-colors flex items-center justify-center"
               >
                 Hacer Pedido
               </button>

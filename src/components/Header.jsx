@@ -20,7 +20,8 @@ export default function Header({ onNavigate, currentPage }) {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container mx-auto px-4 h-16 flex items-center justify-between">
+      {/* make container relative so we can absolutely center the desktop nav */}
+      <div className="container mx-auto px-4 h-16 flex items-center justify-between relative">
         {/* Logo */}
         <div 
           className="flex items-center cursor-pointer"
@@ -33,8 +34,10 @@ export default function Header({ onNavigate, currentPage }) {
           />
         </div>
 
-        {/* Desktop Navigation */}
-        <nav className="hidden md:flex items-center space-x-8">
+    {/* Desktop Navigation */}
+    {/* Absolutely center the desktop nav so links remain centered regardless
+        of logo/actions presence (works for admin/non-auth states). */}
+    <nav className="hidden md:flex items-center absolute left-1/2 transform -translate-x-1/2 space-x-8">
           <button 
             className={`transition-colors ${currentPage === 'home' ? 'text-primary' : 'text-foreground hover:text-primary'}`}
             onClick={() => handleNavigation('home')}
@@ -127,7 +130,7 @@ export default function Header({ onNavigate, currentPage }) {
         <div className="md:hidden border-t bg-background">
           <nav className="container mx-auto px-4 py-4 flex flex-col space-y-4">
             <button 
-              className={`text-left transition-colors ${currentPage === 'home' ? 'text-primary' : 'text-foreground hover:text-primary'}`}
+              className={`w-full text-center transition-colors ${currentPage === 'home' ? 'text-primary' : 'text-foreground hover:text-primary'}`}
               onClick={() => handleNavigation('home')}
             >
               Inicio
@@ -135,13 +138,13 @@ export default function Header({ onNavigate, currentPage }) {
             {!isAdmin() && (
               <>
                 <button 
-                  className={`text-left transition-colors ${currentPage === 'productos' ? 'text-primary' : 'text-foreground hover:text-primary'}`}
+                  className={`w-full text-center transition-colors ${currentPage === 'productos' ? 'text-primary' : 'text-foreground hover:text-primary'}`}
                   onClick={() => handleNavigation('productos')}
                 >
                   Productos
                 </button>
                 <button 
-                  className={`text-left transition-colors ${currentPage === 'contacto' ? 'text-primary' : 'text-foreground hover:text-primary'}`}
+                  className={`w-full text-center transition-colors ${currentPage === 'contacto' ? 'text-primary' : 'text-foreground hover:text-primary'}`}
                   onClick={() => handleNavigation('contacto')}
                 >
                   Contacto
@@ -150,7 +153,7 @@ export default function Header({ onNavigate, currentPage }) {
             )}
             {isAuthenticated && isAdmin() && (
               <button 
-                className={`text-left transition-colors ${currentPage === 'admin' ? 'text-primary' : 'text-foreground hover:text-primary'}`}
+                className={`w-full text-center transition-colors ${currentPage === 'admin' ? 'text-primary' : 'text-foreground hover:text-primary'}`}
                 onClick={() => handleNavigation('admin')}
               >
                 Panel de Administración
