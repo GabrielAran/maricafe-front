@@ -181,6 +181,67 @@ export default function ProductViewNew({
     clearError()
   }
 
+  // Get active filter tags for display
+  const getActiveFilterTags = () => {
+    const tags = []
+    const currentFilters = getCurrentAttributeFilters()
+    
+    // Add category filter tag
+    const currentCategory = getCurrentCategoryFilter()
+    if (currentCategory && currentCategory !== 'all') {
+      const category = categories.find(cat => cat.id == currentCategory)
+      if (category) {
+        tags.push({
+          label: category.nombre,
+          onRemove: () => handleCategoryChange('all')
+        })
+      }
+    }
+
+    // Add attribute filter tags
+    Object.entries(currentFilters).forEach(([attributeId, filterValue]) => {
+      if (!filterValue) return
+      
+      const attribute = attributes.find(attr => attr.attribute_id == attributeId)
+      if (!attribute) return
+
+      if (Array.isArray(filterValue)) {
+        // Multi-select filters
+        filterValue.forEach(value => {
+          tags.push({
+            label: `${attribute.name}: ${value}`,
+            onRemove: () => {
+              const newValues = filterValue.filter(v => v !== value)
+              handleAttributeChange(attributeId, newValues.length > 0 ? newValues : null, attribute.data_type)
+            }
+          })
+        })
+      } else {
+        // Single value filters
+        let displayValue = filterValue
+        if (attribute.data_type === 'boolean') {
+          // For boolean filters, show user-friendly labels
+          if (filterValue === 'true') {
+            displayValue = attribute.name === 'Vegano' ? 'Vegano' : 
+                          attribute.name === 'Sin TACC' ? 'Sin TACC' : 
+                          attribute.name
+          } else if (filterValue === 'false') {
+            displayValue = attribute.name === 'Vegano' ? 'No Vegano' : 
+                          attribute.name === 'Sin TACC' ? 'No Sin TACC' : 
+                          `No ${attribute.name}`
+          }
+        }
+        
+        tags.push({
+          label: displayValue,
+          onRemove: () => handleAttributeChange(attributeId, null, attribute.data_type)
+        })
+      }
+    })
+
+    return tags
+  }
+
   // Show loading state
   if (loading) {
     return (
@@ -248,6 +309,29 @@ export default function ProductViewNew({
         </div>
       )}
 
+      {/* Active Filter Tags */}
+      {showFilters && (
+        <div className="flex flex-wrap items-center gap-2 p-4 bg-white rounded-lg border">
+          <span className="text-sm font-medium text-gray-700 mr-2">Filtros activos:</span>
+          {getActiveFilterTags().map((tag, index) => (
+            <div
+              key={index}
+              className="flex items-center gap-1 px-3 py-1 bg-gradient-to-r from-pink-200 via-purple-200 to-blue-200 rounded-full border border-gray-200 text-sm text-gray-700 hover:shadow-sm transition-shadow"
+            >
+              <span>{tag.label}</span>
+              <button
+                onClick={tag.onRemove}
+                className="ml-1 text-gray-500 hover:text-gray-700 transition-colors"
+              >
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Main Content with Sidebar */}
       <div className="flex flex-col lg:flex-row gap-6">
         {/* Attribute Filters Sidebar */}
@@ -270,10 +354,10 @@ export default function ProductViewNew({
         {filteredProducts.map((product) => (
           <Card 
             key={product.id} 
-            className="group hover:shadow-lg transition-shadow cursor-pointer"
+            className="group hover:shadow-lg transition-shadow cursor-pointer flex flex-col h-full"
             onClick={() => onNavigate && onNavigate('product', { productId: product.id })}
           >
-            <CardContent className="p-4">
+            <CardContent className="p-4 flex-1 flex flex-col">
               <div className="aspect-square bg-muted rounded-lg mb-4 flex items-center justify-center">
                 {productImages[product.id] ? (
                   <img
@@ -294,9 +378,9 @@ export default function ProductViewNew({
                 )}
               </div>
               
-              <div className="space-y-2">
+              <div className="space-y-2 flex-1 flex flex-col">
                 <h3 className="font-semibold text-lg line-clamp-2">{product.nombre}</h3>
-                <p className="text-sm text-muted-foreground line-clamp-2">{product.descripcion}</p>
+                <p className="text-sm text-muted-foreground line-clamp-2 flex-1">{product.descripcion}</p>
                 
                 <div className="flex items-center gap-2">
                   <span className="text-2xl font-bold">{formatPrice(product.precio)}</span>
@@ -315,7 +399,7 @@ export default function ProductViewNew({
               </div>
             </CardContent>
             
-            <CardFooter className="p-4 pt-0">
+            <CardFooter className="p-4 pt-0 mt-auto">
               {!isAdmin() && (
                 <div className="w-full space-y-3">
                   {/* Quantity Selector */}

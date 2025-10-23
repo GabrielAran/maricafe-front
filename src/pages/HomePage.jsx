@@ -1,5 +1,6 @@
 import React from 'react'
 import { Cake, Gift, Users, Heart, ArrowRight } from 'lucide-react'
+import CakeCarousel from '../components/CakeCarousel.jsx'
 
 export default function HomePage({ onNavigate }) {
   return (
@@ -128,52 +129,35 @@ export default function HomePage({ onNavigate }) {
             </p>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {/* Rainbow Cake */}
-            <div className="bg-background rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-shadow">
-              <img
-                src="/rainbow-cake-colorful-layers.jpg"
-                alt="Rainbow Cake"
-                className="w-full h-64 object-cover"
-              />
-              <div className="p-6 space-y-3">
-                <h3 className="text-xl font-semibold">Rainbow Cake</h3>
-                <p className="text-sm text-muted-foreground">
-                  Nuestra torta insignia con 6 capas de colores del arcoíris y crema de vainilla suave.
-                </p>
-              </div>
-            </div>
-            
-            {/* Red Velvet */}
-            <div className="bg-background rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-shadow">
-              <img
-                src="/red-velvet-cake-with-rainbow-decoration.jpg"
-                alt="Red Velvet Cake"
-                className="w-full h-64 object-cover"
-              />
-              <div className="p-6 space-y-3">
-                <h3 className="text-xl font-semibold">Red Velvet con Decoración Arcoíris</h3>
-                <p className="text-sm text-muted-foreground">
-                  Clásica torta red velvet con un toque especial de decoración arcoíris que celebra la diversidad.
-                </p>
-              </div>
-            </div>
-            
-            {/* Carrot Cake */}
-            <div className="bg-background rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-shadow">
-              <img
-                src="/carrot-cake-cream-cheese.png"
-                alt="Carrot Cake"
-                className="w-full h-64 object-cover"
-              />
-              <div className="p-6 space-y-3">
-                <h3 className="text-xl font-semibold">Carrot Cake</h3>
-                <p className="text-sm text-muted-foreground">
-                  Deliciosa torta de zanahoria con frosting de queso crema, perfecta para cualquier ocasión.
-                </p>
-              </div>
-            </div>
-          </div>
+          <CakeCarousel
+            cakes={[
+              {
+                name: "Rainbow Cake",
+                image: "/rainbow-cake-colorful-layers.jpg",
+                description: "Nuestra torta insignia con 6 capas de colores del arcoíris y crema de vainilla suave."
+              },
+              {
+                name: "Red Velvet con Decoración Arcoíris",
+                image: "/red-velvet-cake-with-rainbow-decoration.jpg",
+                description: "Clásica torta red velvet con un toque especial de decoración arcoíris que celebra la diversidad."
+              },
+              {
+                name: "Carrot Cake",
+                image: "/carrot-cake-cream-cheese.png",
+                description: "Deliciosa torta de zanahoria con frosting de queso crema, perfecta para cualquier ocasión."
+              },
+              {
+                name: "Chocolate Cake Arcoíris",
+                image: "/chocolate-cake-with-rainbow-frosting.jpg",
+                description: "Deliciosa torta de chocolate con frosting arcoíris, perfecta para celebrar la diversidad."
+              },
+              {
+                name: "Vanilla Cake con Sprinkles",
+                image: "/vanilla-cake-with-rainbow-sprinkles.jpg",
+                description: "Suave torta de vainilla decorada con sprinkles arcoíris, ideal para cualquier celebración."
+              }
+            ]}
+          />
         </div>
       </section>
 
