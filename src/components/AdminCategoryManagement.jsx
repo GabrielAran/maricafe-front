@@ -86,10 +86,12 @@ export default function AdminCategoryManagement() {
       console.error('Error deleting category:', error)
       const msg = error?.message || ''
       if (msg.includes('No se puede eliminar una categoria con Producto')) {
-        showNotification('No se puede eliminar una categoria con Producto', 'error')
+        showNotification('No se puede eliminar esta categoría porque contiene productos. Primero elimina o mueve todos los productos de esta categoría.', 'error')
       } else {
         showNotification('Error al eliminar la categoría', 'error')
       }
+      // Close the confirmation modal when deletion fails
+      setConfirmationModal({ isVisible: false, title: '', message: '', categoryId: null })
     } finally {
       setSaving(false)
     }
@@ -144,7 +146,7 @@ export default function AdminCategoryManagement() {
     const { name, value } = e.target
     setFormData(prev => ({
       ...prev,
-      [name]: value.slice(0, 30)
+      [name]: value.slice(0, 28)
     }))
   }
 

@@ -62,16 +62,6 @@ export function isGlutenFree(text) {
   return glutenFreeKeywords.some(keyword => lowerText.includes(keyword))
 }
 
-/**
- * Check if a string contains keywords for featured products
- * @param {string} text - Text to check
- * @returns {boolean} True if text contains featured keywords
- */
-export function isFeatured(text) {
-  const featuredKeywords = ['pride', 'rainbow', 'arcoíris', 'destacado', 'especial']
-  const lowerText = text.toLowerCase()
-  return featuredKeywords.some(keyword => lowerText.includes(keyword))
-}
 
 /**
  * Generate a unique ID

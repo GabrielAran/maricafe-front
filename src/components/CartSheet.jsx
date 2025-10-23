@@ -203,6 +203,11 @@ export default function CartSheet({ onNavigate }) {
                           src={item.imagen || "/placeholder.svg"}
                           alt={item.nombre}
                           className="w-16 h-16 object-cover rounded-md"
+                          onError={(e) => {
+                            if (e.target.src !== "/placeholder.svg") {
+                              e.target.src = "/placeholder.svg"
+                            }
+                          }}
                         />
 
                         <div className="flex-1 space-y-2">

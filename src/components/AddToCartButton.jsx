@@ -12,7 +12,8 @@ export default function AddToCartButton({
   children,
   disabled = false,
   onNavigate,
-  quantity = 1
+  quantity = 1,
+  image = null
 }) {
   const { dispatch } = useCart()
   const { isAuthenticated, user, token } = useAuth()
@@ -53,7 +54,11 @@ export default function AddToCartButton({
     }
     
     // Add to cart for authenticated USER with selected quantity
-    const productWithQuantity = { ...product, cantidad: quantity }
+    const productWithQuantity = { 
+      ...product, 
+      cantidad: quantity,
+      imagen: image || product.imagen || null // Include image data if provided
+    }
     dispatch({ type: "ADD_ITEM", payload: productWithQuantity })
     setAdded(true)
     

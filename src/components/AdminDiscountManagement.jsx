@@ -21,7 +21,7 @@ export default function AdminDiscountManagement() {
   const [selectedProducts, setSelectedProducts] = useState([])
   const [showAddModal, setShowAddModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
-  const [discountPercentage, setDiscountPercentage] = useState(0)
+  const [discountPercentage, setDiscountPercentage] = useState('')
   const [editingDiscount, setEditingDiscount] = useState(null)
   const [saving, setSaving] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
@@ -96,31 +96,32 @@ export default function AdminDiscountManagement() {
       showNotification('Selecciona al menos un producto', 'error')
       return
     }
-    setDiscountPercentage(0)
+    setDiscountPercentage('')
     setShowAddModal(true)
   }
 
   const handleCloseAddModal = () => {
     setShowAddModal(false)
-    setDiscountPercentage(0)
+    setDiscountPercentage('')
   }
 
   const handleOpenEditModal = (product) => {
     console.log('handleOpenEditModal called with product:', product)
     console.log('product.descuentoId:', product.descuentoId)
     setEditingDiscount(product)
-    setDiscountPercentage(product.descuento || 0)
+    setDiscountPercentage(product.descuento ? product.descuento.toString() : '')
     setShowEditModal(true)
   }
 
   const handleCloseEditModal = () => {
     setShowEditModal(false)
     setEditingDiscount(null)
-    setDiscountPercentage(0)
+    setDiscountPercentage('')
   }
 
   const handleCreateDiscounts = async () => {
-    if (discountPercentage < 0 || discountPercentage > 100) {
+    const percentage = parseFloat(discountPercentage)
+    if (isNaN(percentage) || percentage < 0 || percentage > 100) {
       showNotification('El porcentaje debe estar entre 0 y 100', 'error')
       return
     }
@@ -131,12 +132,12 @@ export default function AdminDiscountManagement() {
 
       await DiscountApiService.createBulkDiscounts(
         selectedProducts,
-        discountPercentage,
+        percentage,
         authHeaders
       )
 
       showNotification(
-        `Descuento del ${discountPercentage}% aplicado a ${selectedProducts.length} producto(s)`,
+        `Descuento del ${percentage}% aplicado a ${selectedProducts.length} producto(s)`,
         'success'
       )
       handleCloseAddModal()
@@ -159,7 +160,8 @@ export default function AdminDiscountManagement() {
       console.log('No editingDiscount, returning')
       return
     }
-    if (discountPercentage < 0 || discountPercentage > 100) {
+    const percentage = parseFloat(discountPercentage)
+    if (isNaN(percentage) || percentage < 0 || percentage > 100) {
       showNotification('El porcentaje debe estar entre 0 y 100', 'error')
       return
     }
@@ -184,12 +186,12 @@ export default function AdminDiscountManagement() {
 
       await DiscountApiService.updateDiscount(
         editingDiscount.descuentoId,
-        discountPercentage,
+        percentage,
         authHeaders
       )
 
       showNotification(
-        `Descuento actualizado a ${discountPercentage}% para "${editingDiscount.nombre}"`,
+        `Descuento actualizado a ${percentage}% para "${editingDiscount.nombre}"`,
         'success'
       )
       handleCloseEditModal()
@@ -360,33 +362,6 @@ export default function AdminDiscountManagement() {
         </p>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-center">
-              <p className="text-3xl font-bold text-primary">{productsWithDiscounts.length}</p>
-              <p className="text-sm text-muted-foreground">Productos con descuento</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-center">
-              <p className="text-3xl font-bold">{productsWithoutDiscounts.length}</p>
-              <p className="text-sm text-muted-foreground">Productos sin descuento</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-center">
-              <p className="text-3xl font-bold">{selectedProducts.length}</p>
-              <p className="text-sm text-muted-foreground">Productos seleccionados</p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
 
       {/* Products with Discounts */}
       <div className="mb-8">
@@ -576,7 +551,7 @@ export default function AdminDiscountManagement() {
                   step="0.01"
                   className="w-full border rounded px-3 py-2"
                   value={discountPercentage}
-                  onChange={(e) => setDiscountPercentage(parseFloat(e.target.value) || 0)}
+                  onChange={(e) => setDiscountPercentage(e.target.value)}
                   placeholder="Ej: 15"
                 />
                 <p className="text-xs text-muted-foreground mt-1">
@@ -594,7 +569,7 @@ export default function AdminDiscountManagement() {
               </Button>
               <Button
                 onClick={handleCreateDiscounts}
-                disabled={saving || discountPercentage <= 0}
+                disabled={saving || !discountPercentage || parseFloat(discountPercentage) <= 0}
                 className="flex-1"
               >
                 {saving ? 'Aplicando...' : 'Aplicar Descuento'}
@@ -640,7 +615,7 @@ export default function AdminDiscountManagement() {
                   step="0.01"
                   className="w-full border rounded px-3 py-2"
                   value={discountPercentage}
-                  onChange={(e) => setDiscountPercentage(parseFloat(e.target.value) || 0)}
+                  onChange={(e) => setDiscountPercentage(e.target.value)}
                 />
                 <p className="text-xs text-muted-foreground mt-1">
                   Ingresa un valor entre 0 y 100
@@ -648,13 +623,13 @@ export default function AdminDiscountManagement() {
               </div>
 
               {/* Preview */}
-              {discountPercentage > 0 && discountPercentage !== editingDiscount.descuento && (
+              {parseFloat(discountPercentage) > 0 && parseFloat(discountPercentage) !== editingDiscount.descuento && (
                 <div className="bg-primary/10 p-3 rounded border border-primary/20">
                   <p className="text-xs font-medium mb-1">Vista previa:</p>
                   <div className="flex justify-between items-center">
                     <span className="text-sm">Nuevo precio:</span>
                     <span className="text-sm font-semibold text-primary">
-                      {formatPrice(editingDiscount.precioOriginal * (1 - discountPercentage / 100))}
+                      {formatPrice(editingDiscount.precioOriginal * (1 - parseFloat(discountPercentage) / 100))}
                     </span>
                   </div>
                 </div>
@@ -670,7 +645,7 @@ export default function AdminDiscountManagement() {
               </Button>
               <Button
                 onClick={handleUpdateDiscount}
-                disabled={saving || discountPercentage <= 0 || discountPercentage === editingDiscount.descuento}
+                disabled={saving || !discountPercentage || parseFloat(discountPercentage) <= 0 || parseFloat(discountPercentage) === editingDiscount.descuento}
                 className="flex-1"
               >
                 {saving ? 'Actualizando...' : 'Actualizar'}

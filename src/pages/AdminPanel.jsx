@@ -4,6 +4,7 @@ import AdminProductManagement from '../components/AdminProductManagement.jsx'
 import AdminCategoryManagement from '../components/AdminCategoryManagement.jsx'
 import AdminDiscountManagement from '../components/AdminDiscountManagement.jsx'
 import AdminOrdersManagement from '../components/AdminOrdersManagement.jsx'
+import AdminDashboard from '../components/AdminDashboard.jsx'
 
 export default function AdminPanel() {
   const { isAuthenticated, isAdmin, user } = useAuth()
@@ -29,50 +30,7 @@ export default function AdminPanel() {
       case 'orders':
         return <AdminOrdersManagement />
       default:
-        return (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <div className="border rounded-lg p-4">
-              <h2 className="font-semibold mb-2">Productos</h2>
-              <p className="text-sm text-muted-foreground mb-4">Crear, editar o eliminar productos.</p>
-              <button 
-                onClick={() => setActiveTab('products')}
-                className="text-primary hover:text-primary/80 transition-colors"
-              >
-                Gestionar Productos →
-              </button>
-            </div>
-            <div className="border rounded-lg p-4">
-              <h2 className="font-semibold mb-2">Categorías</h2>
-              <p className="text-sm text-muted-foreground mb-4">Gestiona las categorías.</p>
-              <button 
-                onClick={() => setActiveTab('categories')}
-                className="text-primary hover:text-primary/80 transition-colors"
-              >
-                Gestionar Categorías →
-              </button>
-            </div>
-            <div className="border rounded-lg p-4">
-              <h2 className="font-semibold mb-2">Descuentos</h2>
-              <p className="text-sm text-muted-foreground mb-4">Configura descuentos.</p>
-              <button 
-                onClick={() => setActiveTab('discounts')}
-                className="text-primary hover:text-primary/80 transition-colors"
-              >
-                Gestionar Descuentos →
-              </button>
-            </div>
-            <div className="border rounded-lg p-4">
-              <h2 className="font-semibold mb-2">Órdenes</h2>
-              <p className="text-sm text-muted-foreground mb-4">Gestiona todas las órdenes.</p>
-              <button 
-                onClick={() => setActiveTab('orders')}
-                className="text-primary hover:text-primary/80 transition-colors"
-              >
-                Gestionar Órdenes →
-              </button>
-            </div>
-          </div>
-        )
+        return <AdminDashboard />
     }
   }
 

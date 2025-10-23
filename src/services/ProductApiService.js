@@ -144,6 +144,42 @@ export class ProductApiService {
     }
   }
 
+  // Get product images with actual database IDs
+  static async getProductImagesWithIds(productId) {
+    try {
+      const imageResponses = await this.fetchData(`${API_BASE_URL}/images/${productId}/with-ids`)
+      if (!imageResponses) return []
+      
+      // Handle both array and single image responses
+      const imagesArray = Array.isArray(imageResponses) ? imageResponses : [imageResponses]
+      
+      return imagesArray.map((imageResponse) => {
+        try {
+          if (!imageResponse || !imageResponse.id || !imageResponse.file) {
+            console.warn('Invalid image response received:', imageResponse)
+            return null
+          }
+          
+          // Clean the base64 string
+          const cleanBase64 = imageResponse.file.toString()
+            .replace(/\s/g, '')
+            .replace(/^data:image\/[a-z]+;base64,/, '')
+          
+          return {
+            id: imageResponse.id, // Use the actual database ID
+            url: `data:image/png;base64,${cleanBase64}`
+          }
+        } catch (e) {
+          console.error('Error processing image response:', e)
+          return null
+        }
+      }).filter(Boolean)
+    } catch (error) {
+      console.error('Error in getProductImagesWithIds:', error)
+      return []
+    }
+  }
+
   // Get image by ID
   static async getImageById(imageId) {
     const image = await this.fetchData(`${API_BASE_URL}/images/${imageId}`)
