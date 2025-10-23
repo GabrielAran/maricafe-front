@@ -662,14 +662,20 @@ export default function AdminProductManagement() {
                   </div>
                 )}
               </div>
-              <CardTitle className="flex items-center justify-between">
-                <span className="truncate">{product.nombre}</span>
-                {product.stock === 0 && (
-                  <Badge variant="destructive">Sin Stock</Badge>
-                )}
-                {product.stock > 0 && product.stock <= 5 && (
-                  <Badge variant="secondary">Stock Bajo</Badge>
-                )}
+              <CardTitle className="flex items-start justify-between gap-3">
+                {/* Allow product names to wrap to multiple lines and prevent
+                    clipping by giving a max width and enabling word breaks. */}
+                <span className="max-w-[65%] break-words text-lg">
+                  {product.nombre}
+                </span>
+                <div className="flex-shrink-0 flex flex-col items-end gap-1">
+                  {product.stock === 0 && (
+                    <Badge variant="destructive">Sin Stock</Badge>
+                  )}
+                  {product.stock > 0 && product.stock <= 5 && (
+                    <Badge variant="secondary">Stock Bajo</Badge>
+                  )}
+                </div>
               </CardTitle>
             </CardHeader>
             <CardContent>

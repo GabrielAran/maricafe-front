@@ -33,7 +33,10 @@ export function CardHeader({ children, className = '', ...props }) {
 export function CardTitle({ children, className = '', ...props }) {
   return (
     <h3 
-      className={cn('text-2xl font-semibold leading-none tracking-tight', className)}
+      // Use a slightly more generous line-height so glyph descenders (eg 'g', 'y')
+      // are not clipped. This prevents letters from being cut off in tight
+      // containers while keeping the heading compact.
+      className={cn('text-2xl font-semibold leading-tight tracking-tight', className)}
       {...props}
     >
       {children}

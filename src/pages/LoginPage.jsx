@@ -7,6 +7,7 @@ export default function LoginPage({ onNavigate }) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
+  const [capsLock, setCapsLock] = useState(false)
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -39,9 +40,19 @@ export default function LoginPage({ onNavigate }) {
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.getModifierState) setCapsLock(e.getModifierState('CapsLock'))
+            }}
+            onKeyUp={(e) => {
+              if (e.getModifierState) setCapsLock(e.getModifierState('CapsLock'))
+            }}
+            onBlur={() => setCapsLock(false)}
             className="w-full border rounded-md px-3 py-2"
             required
           />
+          {capsLock && (
+            <p className="text-yellow-700 text-sm mt-1">Caps Lock está activado — asegúrate de escribir la contraseña correctamente.</p>
+          )}
         </div>
         {error && <p className="text-red-500 text-sm">{error}</p>}
         <Button type="submit" disabled={loading} className="w-full">

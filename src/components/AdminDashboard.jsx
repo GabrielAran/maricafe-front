@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef, useLayoutEffect } from 'react'
 import { useAuth } from '../context/AuthContext.jsx'
 
 const API_BASE_URL = 'http://127.0.0.1:4002'
@@ -67,6 +67,55 @@ export default function AdminDashboard() {
       style: 'currency',
       currency: 'ARS'
     }).format(amount)
+  }
+
+  // Small helper component that reduces font-size so the text fits on one line
+  // inside its container. It measures text width and decreases font-size until
+  // it fits or reaches a minimum. This prevents wrapping and keeps the value
+  // readable for arbitrarily large numbers.
+  function AutoShrinkText({ children, className = '', maxFontSize = 24, minFontSize = 12, step = 1 }) {
+    const containerRef = useRef(null)
+    const textRef = useRef(null)
+    const [fontSize, setFontSize] = useState(maxFontSize)
+
+    const fit = () => {
+      const container = containerRef.current
+      const text = textRef.current
+      if (!container || !text) return
+
+      // start from max and reduce until it fits
+      let current = maxFontSize
+      text.style.fontSize = current + 'px'
+      // Use a loop with a safety limit
+      const limit = Math.max(50, Math.ceil((maxFontSize - minFontSize) / Math.max(1, step)))
+      let i = 0
+      while (text.scrollWidth > container.clientWidth && current > minFontSize && i < limit) {
+        current = Math.max(minFontSize, current - step)
+        text.style.fontSize = current + 'px'
+        i++
+      }
+      setFontSize(current)
+    }
+
+    useLayoutEffect(() => {
+      fit()
+      const onResize = () => fit()
+      window.addEventListener('resize', onResize)
+      return () => window.removeEventListener('resize', onResize)
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [children, maxFontSize, minFontSize, step])
+
+    return (
+      <div ref={containerRef} className="w-full" style={{minWidth: 0}}>
+        <span
+          ref={textRef}
+          className={className}
+          style={{ fontSize: fontSize + 'px', whiteSpace: 'nowrap', display: 'inline-block', lineHeight: 1 }}
+        >
+          {children}
+        </span>
+      </div>
+    )
   }
 
   if (loading) {
@@ -145,9 +194,15 @@ export default function AdminDashboard() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
               </svg>
             </div>
-            <div className="ml-4">
+            <div className="ml-4 min-w-0">
               <p className="text-sm font-medium text-gray-600">Ingresos Totales</p>
-              <p className="text-2xl font-semibold text-gray-900">{formatCurrency(stats.overview.totalRevenue || 0)}</p>
+              {/* Use AutoShrinkText so the revenue value scales down to fit on one
+                  line instead of wrapping or overflowing. */}
+              <div className="w-full">
+                <AutoShrinkText maxFontSize={28} minFontSize={12} className="font-semibold text-gray-900">
+                  {formatCurrency(stats.overview.totalRevenue || 0)}
+                </AutoShrinkText>
+              </div>
             </div>
           </div>
         </div>
