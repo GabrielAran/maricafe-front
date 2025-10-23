@@ -112,13 +112,13 @@ export default function CartSheet({ onNavigate }) {
     
     // Check if user is admin (admins can't access cart)
     if (user?.role === 'ADMIN') {
-      alert('Los administradores no pueden acceder al carrito de compras.')
+      showError('Los administradores no pueden acceder al carrito de compras.')
       return
     }
     
     // Check if user has USER role
     if (user?.role !== 'USER') {
-      alert('Solo los usuarios registrados pueden acceder al carrito de compras.')
+      showError('Solo los usuarios registrados pueden acceder al carrito de compras.')
       return
     }
     

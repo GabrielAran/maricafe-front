@@ -3,7 +3,7 @@ import Button from '../components/ui/Button.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 
 export default function RegisterPage({ onNavigate }) {
-  const { register, loading } = useAuth()
+  const { register, loading, user } = useAuth()
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
   const [email, setEmail] = useState('')
@@ -18,7 +18,13 @@ export default function RegisterPage({ onNavigate }) {
       setError(result.error || 'Error al registrar')
       return
     }
-    onNavigate && onNavigate('home')
+    
+    // Redirect based on user role (though new registrations are typically USER role)
+    if (user?.role === 'ADMIN') {
+      onNavigate && onNavigate('admin')
+    } else {
+      onNavigate && onNavigate('home')
+    }
   }
 
   return (
