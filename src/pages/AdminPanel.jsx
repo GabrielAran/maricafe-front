@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { useAuth } from '../context/AuthContext.jsx'
 import AdminProductManagement from '../components/AdminProductManagement.jsx'
+import AdminCategoryManagement from '../components/AdminCategoryManagement.jsx'
 import AdminDiscountManagement from '../components/AdminDiscountManagement.jsx'
 import AdminOrdersManagement from '../components/AdminOrdersManagement.jsx'
 
@@ -22,12 +23,7 @@ export default function AdminPanel() {
       case 'products':
         return <AdminProductManagement />
       case 'categories':
-        return (
-          <div className="text-center py-12">
-            <h2 className="text-xl font-semibold mb-2">Gestión de Categorías</h2>
-            <p className="text-muted-foreground">Funcionalidad en desarrollo...</p>
-          </div>
-        )
+        return <AdminCategoryManagement />
       case 'discounts':
         return <AdminDiscountManagement />
       case 'orders':

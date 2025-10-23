@@ -98,6 +98,76 @@ export class CategoryService {
     return this.categories
   }
 
+  // Create new category
+  async createCategory(categoryData) {
+    try {
+      this.loading = true
+      this.error = null
+      this.notify()
+
+      const response = await CategoryApiService.createCategory(categoryData)
+      
+      // Reload categories to get updated list
+      await this.loadCategories()
+      
+      return response
+      
+    } catch (error) {
+      console.error('Error creating category:', error)
+      this.error = error.message || 'Error al crear la categoría'
+      throw error
+    } finally {
+      this.loading = false
+      this.notify()
+    }
+  }
+
+  // Update category
+  async updateCategory(id, categoryData) {
+    try {
+      this.loading = true
+      this.error = null
+      this.notify()
+
+      const response = await CategoryApiService.updateCategory(id, categoryData)
+      
+      // Reload categories to get updated list
+      await this.loadCategories()
+      
+      return response
+      
+    } catch (error) {
+      console.error('Error updating category:', error)
+      this.error = error.message || 'Error al actualizar la categoría'
+      throw error
+    } finally {
+      this.loading = false
+      this.notify()
+    }
+  }
+
+  // Delete category
+  async deleteCategory(id) {
+    try {
+      this.loading = true
+      this.error = null
+      this.notify()
+
+      await CategoryApiService.deleteCategory(id)
+      
+      // Reload categories to get updated list
+      await this.loadCategories()
+      
+    } catch (error) {
+      console.error('Error deleting category:', error)
+      this.error = error.message || 'Error al eliminar la categoría'
+      throw error
+    } finally {
+      this.loading = false
+      this.notify()
+    }
+  }
+
   // Clear error
   clearError() {
     this.error = null
