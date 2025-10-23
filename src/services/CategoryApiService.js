@@ -23,7 +23,20 @@ export class CategoryApiService {
         if (response.status === 401) {
           throw new Error('No autorizado. Por favor, inicia sesión nuevamente.')
         }
-        throw new Error(`HTTP error! status: ${response.status}`)
+        // Try to parse error body to surface backend message
+        let errorMessage = `HTTP error! status: ${response.status}`
+        try {
+          const text = await response.text()
+          if (text && text.trim() !== '') {
+            const data = JSON.parse(text)
+            if (data && (data.message || data.error)) {
+              errorMessage = data.message || data.error
+            }
+          }
+        } catch (_) {
+          // ignore parse errors
+        }
+        throw new Error(errorMessage)
       }
       
       const text = await response.text()

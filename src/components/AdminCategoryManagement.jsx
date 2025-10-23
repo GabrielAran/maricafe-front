@@ -32,9 +32,12 @@ export default function AdminCategoryManagement() {
   })
 
   useEffect(() => {
-    if (isAdmin()) {
-      loadCategories()
-    }
+    if (!isAdmin()) return
+    loadCategories()
+    const unsubscribe = categoryService.subscribe(({ categories }) => {
+      setCategories(categories)
+    })
+    return () => unsubscribe()
   }, [isAdmin])
 
   const loadCategories = async () => {
@@ -81,7 +84,12 @@ export default function AdminCategoryManagement() {
       setConfirmationModal({ isVisible: false, title: '', message: '', categoryId: null })
     } catch (error) {
       console.error('Error deleting category:', error)
-      showNotification('Error al eliminar la categoría', 'error')
+      const msg = error?.message || ''
+      if (msg.includes('No se puede eliminar una categoria con Producto')) {
+        showNotification('No se puede eliminar una categoria con Producto', 'error')
+      } else {
+        showNotification('Error al eliminar la categoría', 'error')
+      }
     } finally {
       setSaving(false)
     }
@@ -91,6 +99,10 @@ export default function AdminCategoryManagement() {
     e.preventDefault()
     if (!formData.name.trim()) {
       showNotification('El nombre de la categoría es requerido', 'error')
+      return
+    }
+    if (formData.name.trim().length > 30) {
+      showNotification('El nombre de la categoría no puede superar los 30 caracteres', 'error')
       return
     }
 
@@ -132,7 +144,7 @@ export default function AdminCategoryManagement() {
     const { name, value } = e.target
     setFormData(prev => ({
       ...prev,
-      [name]: value
+      [name]: value.slice(0, 30)
     }))
   }
 
@@ -227,6 +239,7 @@ export default function AdminCategoryManagement() {
                   onChange={handleInputChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                   placeholder="Ej: Tortas, Tazas, Catering"
+                  maxLength={30}
                   required
                 />
               </div>
@@ -270,6 +283,7 @@ export default function AdminCategoryManagement() {
                   onChange={handleInputChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                   placeholder="Ej: Tortas, Tazas, Catering"
+                  maxLength={30}
                   required
                 />
               </div>
