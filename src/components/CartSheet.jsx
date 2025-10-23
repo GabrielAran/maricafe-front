@@ -89,8 +89,14 @@ export default function CartSheet({ onNavigate }) {
       // Close cart modal
       setIsOpen(false)
       
-      // Navigate to profile to see orders
-      onNavigate && onNavigate('profile')
+      // Navigate to order details of the newly created order
+      // Backend wraps payload in ApiResponseDTO { message, data: OrderDTO, success }
+      const newOrderId = data?.data?.order_id || data?.order_id || data?.id
+      if (newOrderId) {
+        onNavigate && onNavigate('order-details', { orderId: newOrderId })
+      } else {
+        onNavigate && onNavigate('profile')
+      }
       
     } catch (error) {
       console.error('Error creating order:', error)

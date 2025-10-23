@@ -65,7 +65,13 @@ export default function ProfilePage({ onNavigate }) {
       }
 
       const ordersData = await response.json()
-      setOrders(ordersData)
+      // Sort orders by date descending (newest first)
+      const sortedOrders = [...ordersData].sort((a, b) => {
+        const da = new Date(a.order_date || a.orderDate || 0)
+        const db = new Date(b.order_date || b.orderDate || 0)
+        return db - da
+      })
+      setOrders(sortedOrders)
     } catch (error) {
       console.error('Error fetching orders:', error)
       setOrdersError('Error al cargar las órdenes')
@@ -568,7 +574,8 @@ export default function ProfilePage({ onNavigate }) {
                   </p>
                 </div>
               ) : (
-                <div className="space-y-4">
+                <div className="max-h-96 overflow-y-auto pr-1">
+                  <div className="space-y-4">
                   {orders.map((order) => (
                     <div 
                       key={order.order_id} 
@@ -612,6 +619,7 @@ export default function ProfilePage({ onNavigate }) {
                       )}
                     </div>
                   ))}
+                  </div>
                 </div>
               )}
             </div>
