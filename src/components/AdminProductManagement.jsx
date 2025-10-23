@@ -42,6 +42,7 @@ export default function AdminProductManagement() {
     message: '',
     type: 'success'
   })
+  const [descriptionError, setDescriptionError] = useState('')
   const [confirmationModal, setConfirmationModal] = useState({
     isVisible: false,
     title: '',
@@ -238,6 +239,12 @@ export default function AdminProductManagement() {
       showNotification('El título es obligatorio', 'error')
       return
     }
+    // Truncar descripción a 120 chars si es necesario
+    if ((formData.description || '').length > 120) {
+      const trimmed = (formData.description || '').slice(0, 120)
+      setFormData(prev => ({ ...prev, description: trimmed }))
+      // mostrar validación inline en el campo (no notificación)
+    }
     if (formData.price < 0) {
       showNotification('El precio no puede ser negativo', 'error')
       return
@@ -257,7 +264,7 @@ export default function AdminProductManagement() {
       
       const productData = {
         title: formData.title,
-        description: formData.description,
+        description: (formData.description || '').slice(0, 120),
         price: parseFloat(formData.price),
         stock: parseInt(formData.stock),
         category_id: formData.category_id || editingProduct.categoriaId || editingProduct.category?.category_id,
@@ -422,6 +429,12 @@ export default function AdminProductManagement() {
       showNotification('El título es obligatorio', 'error')
       return
     }
+    // Truncar descripción a 120 chars si es necesario
+    if ((formData.description || '').length > 120) {
+      const trimmed = (formData.description || '').slice(0, 120)
+      setFormData(prev => ({ ...prev, description: trimmed }))
+      // mostrar validación inline en el campo (no notificación)
+    }
     if (!formData.category_id) {
       showNotification('Debe seleccionar una categoría', 'error')
       return
@@ -442,7 +455,7 @@ export default function AdminProductManagement() {
       // Create product first
       const productData = {
         title: formData.title,
-        description: formData.description,
+        description: (formData.description || '').slice(0, 120),
         price: parseFloat(formData.price),
         stock: parseInt(formData.stock),
         category_id: parseInt(formData.category_id)
@@ -501,6 +514,18 @@ export default function AdminProductManagement() {
   }
 
   const handleInputChange = (field, value) => {
+    // If updating description, enforce 120 char limit and set inline error when limit reached
+    if (field === 'description') {
+      const trimmed = value.slice(0, 120)
+      setFormData(prev => ({ ...prev, [field]: trimmed }))
+      if (value.length >= 120) {
+        setDescriptionError('La descripción no puede exceder 120 caracteres')
+      } else {
+        setDescriptionError('')
+      }
+      return
+    }
+
     setFormData(prev => ({
       ...prev,
       [field]: value
@@ -746,9 +771,16 @@ export default function AdminProductManagement() {
                 <textarea 
                   className="w-full border rounded px-3 py-2"
                   value={formData.description}
-                  onChange={(e) => handleInputChange('description', e.target.value)}
+                  onChange={(e) => handleInputChange('description', e.target.value.slice(0,120))}
                   rows="3"
+                  maxLength={120}
                 />
+                <div className="flex items-center justify-between mt-1">
+                  <div className="text-xs text-muted-foreground">{formData.description.length}/120</div>
+                  {descriptionError && (
+                    <div className="text-xs text-red-600 ml-2">{descriptionError}</div>
+                  )}
+                </div>
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Categoría</label>
@@ -926,10 +958,17 @@ export default function AdminProductManagement() {
                 <textarea 
                   className="w-full border rounded px-3 py-2"
                   value={formData.description}
-                  onChange={(e) => handleInputChange('description', e.target.value)}
+                  onChange={(e) => handleInputChange('description', e.target.value.slice(0,120))}
                   rows="3"
+                  maxLength={120}
                   placeholder="Ingrese la descripción del producto"
                 />
+                <div className="flex items-center justify-between mt-1">
+                  <div className="text-xs text-muted-foreground">{formData.description.length}/120</div>
+                  {descriptionError && (
+                    <div className="text-xs text-red-600 ml-2">{descriptionError}</div>
+                  )}
+                </div>
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Categoría *</label>

@@ -1,7 +1,7 @@
 import React from 'react'
 import { Heart, Mail, Phone, MapPin } from 'lucide-react'
 
-export default function Footer({ onNavigate }) {
+export default function Footer() {
   return (
     <footer className="bg-muted/30 border-t">
       <div className="container mx-auto px-4 py-12">
@@ -28,80 +28,34 @@ export default function Footer({ onNavigate }) {
             </div>
           </div>
 
-          {/* Enlaces rápidos */}
-          <div className="space-y-4">
-            <h4 className="font-semibold text-foreground">Enlaces Rápidos</h4>
-            <nav className="flex flex-col space-y-2">
-              <a
-                href="#"
-                onClick={(e) => { e.preventDefault(); onNavigate && onNavigate('productos'); }}
-                className="text-sm text-muted-foreground hover:text-primary transition-colors"
-              >
-                Nuestros Productos
-              </a>
-              <a
-                href="#"
-                onClick={(e) => { e.preventDefault(); onNavigate && onNavigate('productos'); }}
-                className="text-sm text-muted-foreground hover:text-primary transition-colors"
-              >
-                Tortas Artesanales
-              </a>
-              <a
-                href="#"
-                onClick={(e) => { e.preventDefault(); onNavigate && onNavigate('productos'); }}
-                className="text-sm text-muted-foreground hover:text-primary transition-colors"
-              >
-                Servicio de Catering
-              </a>
-              <a
-                href="#"
-                onClick={(e) => { e.preventDefault(); onNavigate && onNavigate('productos'); }}
-                className="text-sm text-muted-foreground hover:text-primary transition-colors"
-              >
-                Tazas Personalizadas
-              </a>
-              <a
-                href="#"
-                onClick={(e) => { e.preventDefault(); onNavigate && onNavigate('contacto'); }}
-                className="text-sm text-muted-foreground hover:text-primary transition-colors"
-              >
-                Contacto
-              </a>
-            </nav>
-          </div>
-
-          {/* Información de contacto */}
+          {/* Centro: Contacto */}
           <div className="space-y-4">
             <h4 className="font-semibold text-foreground">Contacto</h4>
             <div className="space-y-3">
               <div className="flex items-center space-x-3">
                 <MapPin className="h-4 w-4 text-primary" />
                 <span className="text-sm text-muted-foreground">
-                Honduras 4096, Palermo, Buenos Aires
+                  Honduras 4096, Palermo, Buenos Aires
                 </span>
               </div>
               <div className="flex items-center space-x-3">
                 <Phone className="h-4 w-4 text-primary" />
-                <span className="text-sm text-muted-foreground">
-                +54 11 2277-7434
-                </span>
+                <span className="text-sm text-muted-foreground">+54 11 2277-7434</span>
               </div>
               <div className="flex items-center space-x-3">
                 <Mail className="h-4 w-4 text-primary" />
-                <span className="text-sm text-muted-foreground">
-                contacto@maricafe.com
-                </span>
+                <span className="text-sm text-muted-foreground">contacto@maricafe.com</span>
               </div>
             </div>
-            
-            {/* Horarios */}
-            <div className="pt-4 border-t">
-              <h5 className="font-medium text-foreground mb-2">Horarios</h5>
-              <div className="text-sm text-muted-foreground space-y-1">
-                <div>Lun - Vie: 9:00 - 18:00</div>
-                <div>Sáb: 10:00 - 22:00</div>
-                <div>Dom: Cerrado</div>
-              </div>
+          </div>
+
+          {/* Horarios a la derecha */}
+          <div className="space-y-4">
+            <h4 className="font-semibold text-foreground">Horarios</h4>
+            <div className="text-sm text-muted-foreground space-y-1">
+              <div>Lun - Vie: 9:00 - 18:00</div>
+              <div>Sáb: 10:00 - 22:00</div>
+              <div>Dom: Cerrado</div>
             </div>
           </div>
         </div>
