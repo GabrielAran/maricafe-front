@@ -358,7 +358,7 @@ export default function ProductViewNew({
             onClick={() => onNavigate && onNavigate('product', { productId: product.id })}
           >
             <CardContent className="p-4 flex-1 flex flex-col">
-              <div className="aspect-square bg-muted rounded-lg mb-4 flex items-center justify-center">
+              <div className="aspect-square bg-white rounded-lg mb-4 flex items-center justify-center p-4">
                 {productImages[product.id] ? (
                   <img
                     src={productImages[product.id]}
