@@ -443,7 +443,14 @@ export class ProductService {
               attributeMatches = productAttribute.value === filterValue
               break
             case 'select':
-              attributeMatches = productAttribute.value.toLowerCase() === filterValue.toLowerCase()
+              // Handle both single values and arrays for multi-select
+              if (Array.isArray(filterValue)) {
+                attributeMatches = filterValue.some(value => 
+                  productAttribute.value.toLowerCase() === value.toLowerCase()
+                )
+              } else {
+                attributeMatches = productAttribute.value.toLowerCase() === filterValue.toLowerCase()
+              }
               break
             case 'text':
               attributeMatches = productAttribute.value.toLowerCase().includes(filterValue.toLowerCase())

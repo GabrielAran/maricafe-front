@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { ChevronDown, ChevronUp } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from './ui/Card.jsx'
 import { Checkbox } from './ui/Checkbox.jsx'
+import { Radio } from './ui/Radio.jsx'
 import { Label } from './ui/Label.jsx'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/Select.jsx'
 import { Input } from './ui/Input.jsx'
@@ -55,8 +56,10 @@ export default function AttributeFilter({
           return (
             <div className="space-y-2">
               <div className="flex items-center space-x-2">
-                <Checkbox
+                <Radio
                   id={`${attribute_id}-true`}
+                  name={`${attribute_id}-group`}
+                  value="true"
                   checked={currentValue === 'true'}
                   onCheckedChange={(checked) => 
                     handleFilterChange(attribute_id, checked ? 'true' : null, data_type)
@@ -67,8 +70,10 @@ export default function AttributeFilter({
                 </Label>
               </div>
               <div className="flex items-center space-x-2">
-                <Checkbox
+                <Radio
                   id={`${attribute_id}-false`}
+                  name={`${attribute_id}-group`}
+                  value="false"
                   checked={currentValue === 'false'}
                   onCheckedChange={(checked) => 
                     handleFilterChange(attribute_id, checked ? 'false' : null, data_type)
@@ -96,28 +101,45 @@ export default function AttributeFilter({
           } else {
             console.log(`AttributeFilter: ${name} has no select_options`)
           }
+          
+          // Parse current value as array for multi-select
+          const currentValues = currentValue ? (Array.isArray(currentValue) ? currentValue : [currentValue]) : []
+          
           return (
-            <Select
-              value={currentValue || ''}
-              onValueChange={(value) => 
-                handleFilterChange(attribute_id, value || null, data_type)
-              }
-              placeholder={`Seleccionar ${name.toLowerCase()}`}
-            >
-              <SelectItem value="">Todos</SelectItem>
+            <div className="space-y-2">
               {options.length > 0 ? options.map((option, index) => {
                 const trimmedOption = option.trim()
+                const isChecked = currentValues.includes(trimmedOption)
+                
                 return (
-                  <SelectItem key={index} value={trimmedOption}>
-                    {trimmedOption}
-                  </SelectItem>
+                  <div key={index} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`${attribute_id}-${index}`}
+                      checked={isChecked}
+                      onCheckedChange={(checked) => {
+                        let newValues
+                        if (checked) {
+                          // Add to selection
+                          newValues = [...currentValues, trimmedOption]
+                        } else {
+                          // Remove from selection
+                          newValues = currentValues.filter(val => val !== trimmedOption)
+                        }
+                        // Pass array or null if empty
+                        handleFilterChange(attribute_id, newValues.length > 0 ? newValues : null, data_type)
+                      }}
+                    />
+                    <Label htmlFor={`${attribute_id}-${index}`} className="text-sm">
+                      {trimmedOption}
+                    </Label>
+                  </div>
                 )
               }) : (
-                <SelectItem value="no-options" disabled>
+                <div className="text-sm text-gray-500">
                   No hay opciones disponibles
-                </SelectItem>
+                </div>
               )}
-            </Select>
+            </div>
           )
 
         case 'number':
