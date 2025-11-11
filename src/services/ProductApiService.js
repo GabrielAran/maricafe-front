@@ -15,15 +15,24 @@ export class ProductApiService {
       }
       
       const response = await fetch(url, options)
-      
+      const text = await response.text()
+
       if (!response.ok) {
         if (response.status === 404) {
           return []
         }
-        throw new Error(`HTTP error! status: ${response.status}`)
+
+        let errorMessage = `HTTP error! status: ${response.status}`
+        if (text && text.trim() !== '') {
+          try {
+            const errorBody = JSON.parse(text)
+            errorMessage = errorBody.message || errorBody.error || errorMessage
+          } catch (parseError) {
+            errorMessage = text
+          }
+        }
+        throw new Error(errorMessage)
       }
-      
-      const text = await response.text()
       
       if (!text || text.trim() === '') {
         return []
