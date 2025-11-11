@@ -47,7 +47,9 @@ export default function AdminProductManagement() {
     isVisible: false,
     title: '',
     message: '',
-    productId: null
+    productId: null,
+    action: 'delete',
+    product: null
   })
 
   const [productImages, setProductImages] = useState({})
@@ -140,15 +142,26 @@ export default function AdminProductManagement() {
     }
   }
 
-  const handleDeleteProduct = (productId) => {
-    console.log('handleDeleteProduct called with productId:', productId)
-    const product = products.find(p => p.id === productId)
-    console.log('Found product:', product)
+  const handleDeleteProduct = (product) => {
+    console.log('handleDeleteProduct called with product:', product)
+    if (!product) {
+      return
+    }
+
+    const isDeactivate = product.stock >= 1
+    const action = isDeactivate ? 'deactivate' : 'delete'
+    const actionTitle = isDeactivate ? 'Desactivar Producto' : 'Eliminar Producto'
+    const actionMessage = isDeactivate
+      ? `El producto "${product?.nombre || 'sin nombre'}" tiene stock disponible. Se desactivará estableciendo su stock en 0.`
+      : `¿Estás seguro de que quieres eliminar "${product?.nombre || 'este producto'}"? Esta acción no se puede deshacer.`
+
     setConfirmationModal({
       isVisible: true,
-      title: 'Eliminar Producto',
-      message: `¿Estás seguro de que quieres eliminar "${product?.nombre || 'este producto'}"? Esta acción no se puede deshacer.`,
-      productId: productId
+      title: actionTitle,
+      message: actionMessage,
+      productId: product.id,
+      action,
+      product
     })
   }
 
@@ -168,21 +181,58 @@ export default function AdminProductManagement() {
         'Content-Type': 'application/json'
       }
       
-      console.log('Sending delete request for product ID:', confirmationModal.productId)
-      
-      await ProductApiService.deleteProduct(confirmationModal.productId, authHeaders)
-      showNotification('Producto eliminado exitosamente', 'success')
-      // Reload products after successful deletion
-      await loadProducts()
+      if (confirmationModal.action === 'deactivate') {
+        const product = confirmationModal.product
+        if (!product) {
+          throw new Error('No se pudo obtener la información del producto para desactivarlo.')
+        }
+
+        const basePrice = (product.precioOriginal && product.precioOriginal > 0)
+          ? product.precioOriginal
+          : product.precio
+
+        const numericPrice = Number(basePrice ?? 0)
+        if (Number.isNaN(numericPrice)) {
+          throw new Error('El precio del producto es inválido.')
+        }
+
+        const updatePayload = {
+          title: product.nombre,
+          description: (product.descripcion || '').slice(0, 120),
+          price: numericPrice,
+          stock: 0
+        }
+
+        if (product.categoriaId !== null && product.categoriaId !== undefined) {
+          updatePayload.category_id = product.categoriaId
+        }
+
+        console.log('Sending deactivate request for product ID:', product.id, updatePayload)
+
+        await ProductApiService.updateProduct(product.id, updatePayload, authHeaders)
+        showNotification('Producto desactivado (stock 0)', 'success')
+        await loadProducts()
+      } else {
+        console.log('Sending delete request for product ID:', confirmationModal.productId)
+        
+        await ProductApiService.deleteProduct(confirmationModal.productId, authHeaders)
+        showNotification('Producto eliminado exitosamente', 'success')
+        // Reload products after successful deletion
+        await loadProducts()
+      }
     } catch (error) {
-      console.error('Error deleting product:', error)
-      showNotification('Error al eliminar el producto: ' + error.message, 'error')
+      const actionLabel = confirmationModal.action === 'deactivate' ? 'desactivar' : 'eliminar'
+      console.error(`Error trying to ${actionLabel} product:`, error)
+      showNotification(`Error al ${actionLabel} el producto: ${error.message}`, 'error')
+      await loadProducts()
     } finally {
       setConfirmationModal({
         isVisible: false,
         title: '',
         message: '',
-        productId: null
+        productId: null,
+        action: 'delete',
+        product: null
       })
     }
   }
@@ -192,7 +242,9 @@ export default function AdminProductManagement() {
       isVisible: false,
       title: '',
       message: '',
-      productId: null
+      productId: null,
+      action: 'delete',
+      product: null
     })
   }
 
@@ -713,10 +765,10 @@ export default function AdminProductManagement() {
                       onClick={(e) => {
                         e.stopPropagation()
                         console.log('Delete button clicked for product ID:', product.id)
-                        handleDeleteProduct(product.id)
+                        handleDeleteProduct(product)
                       }}
                     >
-                      Eliminar
+                      {product.stock >= 1 ? 'Desactivar' : 'Eliminar'}
                     </Button>
                   </div>
                 </div>
@@ -1102,7 +1154,7 @@ export default function AdminProductManagement() {
         isVisible={confirmationModal.isVisible}
         title={confirmationModal.title}
         message={confirmationModal.message}
-        confirmText="Eliminar"
+        confirmText={confirmationModal.action === 'deactivate' ? 'Desactivar' : 'Eliminar'}
         cancelText="Cancelar"
         onConfirm={handleConfirmDelete}
         onCancel={handleCancelDelete}
