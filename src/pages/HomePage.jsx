@@ -93,22 +93,21 @@ export default function HomePage({ onNavigate }) {
   return (
     <div className="min-h-screen">
       {/* Hero Section */}
-      <section className="relative py-20 bg-cover bg-center bg-no-repeat bg-fixed" style={{
+      <section className="relative py-32 md:py-40 min-h-[60vh] bg-cover bg-center bg-no-repeat bg-fixed" style={{
         backgroundImage: 'url(/maricafe_local.png)'
       }}>
         {/* Overlay for better text readability */}
         <div className="absolute inset-0 bg-black/20"></div>
         <div className="container mx-auto px-4 relative z-10">
-          <div className="text-center space-y-8 max-w-4xl mx-auto">
-            {/* Logo and main title removed as requested; keep the vertical spacing
-                so the tagline stays at the same height. */}
-            <div className="h-16 lg:h-24" />
+          <div className="flex justify-center">
+            <div className="text-center space-y-4 inline-block bg-black/30 backdrop-blur-sm rounded-xl px-4 py-3">
+              {/* Logo and main title removed as requested; box will shrink to fit content */}
             
             <h2 className="text-2xl lg:text-3xl font-semibold text-white drop-shadow-lg">
               Cafetería LGBT+ Especializada
             </h2>
             
-            <p className="text-lg lg:text-xl text-white max-w-3xl mx-auto leading-relaxed drop-shadow-md">
+            <p className="text-lg lg:text-xl text-white leading-relaxed drop-shadow-md">
               Tortas artesanales, catering inclusivo y tazas únicas. Un espacio seguro donde 
               la diversidad se celebra con cada bocado y cada sorbo. Opciones veganas y sin TACC disponibles.
             </p>
@@ -118,7 +117,7 @@ export default function HomePage({ onNavigate }) {
               <span className="text-lg font-medium">Hecho con amor y orgullo</span>
             </div>
             
-            <div className="flex flex-col sm:flex-row items-center justify-center space-y-4 sm:space-y-0 sm:space-x-6 pt-8">
+            <div className="flex flex-col sm:flex-row items-center justify-center space-y-4 sm:space-y-0 sm:space-x-6 pt-6">
               <button 
                 onClick={handleProductsNavigation}
                 className="bg-white text-foreground px-8 py-3 rounded-lg font-semibold hover:bg-white/90 transition-colors flex items-center space-x-2"
@@ -132,6 +131,7 @@ export default function HomePage({ onNavigate }) {
               >
                 Hacer Pedido
               </button>
+            </div>
             </div>
           </div>
         </div>

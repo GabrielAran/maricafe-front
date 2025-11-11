@@ -1,6 +1,6 @@
 // Product View - React component using new entity services
 import React from 'react'
-import { Loader2 } from 'lucide-react'
+import { Loader2, Search, X } from 'lucide-react'
 import { Card, CardContent, CardFooter } from './ui/Card.jsx'
 import Badge from './ui/Badge.jsx'
 import AddToCartButton from './AddToCartButton.jsx'
@@ -46,6 +46,15 @@ export default function ProductViewNew({
 
   const { attributes, loading: attributesLoading, loadAttributes, getAttributesByCategory } = useAttributeService()
   const { isAdmin, isAuthenticated, user } = useAuth()
+  // Search term state (for client-side filtering)
+  const [searchTerm, setSearchTerm] = React.useState('')
+  const [debouncedSearch, setDebouncedSearch] = React.useState('')
+
+  // Debounce search input to avoid filtering on every keystroke
+  React.useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(searchTerm.trim()), 250)
+    return () => clearTimeout(t)
+  }, [searchTerm])
   
   // State for managing product quantities and images
   const [productQuantities, setProductQuantities] = React.useState({})
@@ -122,8 +131,19 @@ export default function ProductViewNew({
 
   // Get filtered products (memoized to prevent unnecessary recalculations)
   const filteredProducts = React.useMemo(() => {
-    return getFilteredProducts()
-  }, [products, filters.category, filters.vegan, filters.sinTacc, filters.sort, filters.attributes]) // Use specific filter properties
+    const base = getFilteredProducts()
+
+    if (!debouncedSearch) return base
+
+    const q = debouncedSearch.toLowerCase()
+    return base.filter(product => {
+      return (
+        (product.nombre || '').toLowerCase().includes(q) ||
+        (product.descripcion || '').toLowerCase().includes(q) ||
+        (product.categoria || '').toLowerCase().includes(q)
+      )
+    })
+  }, [getFilteredProducts, products, filters.category, filters.vegan, filters.sinTacc, filters.sort, filters.attributes, debouncedSearch]) // Use specific filter properties
 
   // Handle category filter change
   const handleCategoryChange = async (categoryId) => {
@@ -295,7 +315,6 @@ export default function ProductViewNew({
               />
             </div>
           )}
-
           {/* Price Sort */}
           {showSorting && (
             <div className="flex-1">
@@ -306,6 +325,33 @@ export default function ProductViewNew({
               />
             </div>
           )}
+
+          {/* Search Input placed to the right of the filters on wider screens */}
+          <div className="ml-auto w-full sm:w-72">
+            <label className="sr-only">Buscar productos</label>
+            <div className="relative">
+              <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
+                <Search className="w-4 h-4" />
+              </div>
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Buscar productos..."
+                aria-label="Buscar productos"
+                className="w-full border border-gray-300 rounded-md pl-10 pr-9 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+              />
+              {debouncedSearch && (
+                <button
+                  onClick={() => setSearchTerm('')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                  aria-label="Limpiar búsqueda"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+          </div>
         </div>
       )}
 
