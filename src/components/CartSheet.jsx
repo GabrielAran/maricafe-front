@@ -9,7 +9,7 @@ import Button from './ui/Button.jsx'
 export default function CartSheet({ onNavigate }) {
   const { state, dispatch } = useCart()
   const { isAuthenticated, user, token } = useAuth()
-  const { showSuccess, showError } = useToast()
+  const { showError } = useToast()
   const [isOpen, setIsOpen] = useState(false)
 
 
@@ -43,7 +43,7 @@ export default function CartSheet({ onNavigate }) {
     dispatch({ type: "CLEAR_CART" })
   }
 
-  const handleCheckout = async () => {
+  const handleCheckoutClick = () => {
     if (!isAuthenticated || !token) {
       showError('Debes estar autenticado para proceder al checkout')
       return
@@ -54,54 +54,8 @@ export default function CartSheet({ onNavigate }) {
       return
     }
 
-    try {
-      // Convert cart items to order format
-      const orderItems = state.items.map(item => ({
-        product_id: item.id,
-        quantity: item.cantidad,
-        unit_price: item.precio // Use the discounted price from cart
-      }))
-
-      const response = await fetch('http://localhost:4002/orders', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          items: orderItems
-        })
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.message || 'Error al crear la orden')
-      }
-
-      const data = await response.json()
-      
-      // Show success toast
-      showSuccess('¡Orden creada exitosamente!')
-      
-      // Clear cart after successful order
-      dispatch({ type: "CLEAR_CART" })
-      
-      // Close cart modal
-      setIsOpen(false)
-      
-      // Navigate to order details of the newly created order
-      // Backend wraps payload in ApiResponseDTO { message, data: OrderDTO, success }
-      const newOrderId = data?.data?.order_id || data?.order_id || data?.id
-      if (newOrderId) {
-        onNavigate && onNavigate('order-details', { orderId: newOrderId })
-      } else {
-        onNavigate && onNavigate('profile')
-      }
-      
-    } catch (error) {
-      console.error('Error creating order:', error)
-      showError(`Error al crear la orden: ${error.message}`)
-    }
+    setIsOpen(false)
+    onNavigate && onNavigate('checkout')
   }
 
   const handleContinueShopping = () => {
@@ -274,7 +228,7 @@ export default function CartSheet({ onNavigate }) {
                       <Button 
                         className="w-full" 
                         size="lg"
-                        onClick={handleCheckout}
+                        onClick={handleCheckoutClick}
                       >
                         Proceder al Checkout
                       </Button>
