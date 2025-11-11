@@ -13,6 +13,7 @@ import RegisterPage from './pages/RegisterPage.jsx'
 import AdminPanel from './pages/AdminPanel.jsx'
 import ProfilePage from './pages/ProfilePage.jsx'
 import OrderDetailsPage from './pages/OrderDetailsPage.jsx'
+import CheckoutPage from './pages/CheckoutPage.jsx'
 import './App.css'
 import BackToTopButton from './components/ui/BackToTopButton'
 
@@ -49,6 +50,8 @@ function App() {
         return <ProfilePage onNavigate={handleNavigate} />
       case 'order-details':
         return <OrderDetailsPage onNavigate={handleNavigate} orderId={pageData?.orderId} />
+      case 'checkout':
+        return <CheckoutPage onNavigate={handleNavigate} />
       default:
         return <HomePage onNavigate={handleNavigate} />
     }
