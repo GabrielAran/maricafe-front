@@ -1,7 +1,14 @@
 import React, { useState, useEffect } from 'react'
+import { useDispatch, useSelector } from 'react-redux'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useProductService } from '../hooks/useProductService.js'
-import { DiscountApiService } from '../services/DiscountApiService.js'
+import {
+  createBulkDiscounts,
+  updateDiscount,
+  deleteDiscount,
+  deleteBulkDiscounts,
+  clearError,
+} from '../store/slices/discountSlice.js'
 import { Card, CardContent, CardHeader, CardTitle } from './ui/Card.jsx'
 import Button from './ui/Button.jsx'
 import Badge from './ui/Badge.jsx'
@@ -9,6 +16,7 @@ import Notification from './ui/Notification.jsx'
 import ConfirmationModal from './ui/ConfirmationModal.jsx'
 
 export default function AdminDiscountManagement() {
+  const dispatch = useDispatch()
   const { isAdmin } = useAuth()
   const {
     products,
@@ -18,12 +26,16 @@ export default function AdminDiscountManagement() {
     formatPrice
   } = useProductService()
 
+  // Redux state for discounts
+  const { loading: discountLoading, error: discountError } = useSelector(
+    (state) => state.discount
+  )
+
   const [selectedProducts, setSelectedProducts] = useState([])
   const [showAddModal, setShowAddModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
   const [discountPercentage, setDiscountPercentage] = useState('')
   const [editingDiscount, setEditingDiscount] = useState(null)
-  const [saving, setSaving] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [notification, setNotification] = useState({
     isVisible: false,
@@ -36,6 +48,9 @@ export default function AdminDiscountManagement() {
     message: '',
     action: null
   })
+
+  // Combined loading state
+  const saving = discountLoading
 
   useEffect(() => {
     if (isAdmin()) {
@@ -56,14 +71,6 @@ export default function AdminDiscountManagement() {
       ...prev,
       isVisible: false
     }))
-  }
-
-  const getAuthHeaders = () => {
-    const token = localStorage.getItem('maricafe-token')
-    return {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json'
-    }
   }
 
   // Filter products with discounts
@@ -127,14 +134,10 @@ export default function AdminDiscountManagement() {
     }
 
     try {
-      setSaving(true)
-      const authHeaders = getAuthHeaders()
-
-      await DiscountApiService.createBulkDiscounts(
-        selectedProducts,
-        percentage,
-        authHeaders
-      )
+      await dispatch(createBulkDiscounts({
+        productIds: selectedProducts,
+        discountPercentage: percentage,
+      })).unwrap()
 
       showNotification(
         `Descuento del ${percentage}% aplicado a ${selectedProducts.length} producto(s)`,
@@ -145,19 +148,14 @@ export default function AdminDiscountManagement() {
       await loadProducts()
     } catch (error) {
       console.error('Error creating discounts:', error)
-      showNotification('Error al crear descuentos: ' + error.message, 'error')
-    } finally {
-      setSaving(false)
+      const errorMessage = error || 'Error desconocido'
+      showNotification('Error al crear descuentos: ' + errorMessage, 'error')
+      dispatch(clearError())
     }
   }
 
   const handleUpdateDiscount = async () => {
-    console.log('handleUpdateDiscount called')
-    console.log('editingDiscount:', editingDiscount)
-    console.log('discountPercentage:', discountPercentage)
-    
     if (!editingDiscount) {
-      console.log('No editingDiscount, returning')
       return
     }
     const percentage = parseFloat(discountPercentage)
@@ -165,30 +163,17 @@ export default function AdminDiscountManagement() {
       showNotification('El porcentaje debe estar entre 0 y 100', 'error')
       return
     }
-
-    console.log('editingDiscount.descuentoId:', editingDiscount.descuentoId)
     
     if (!editingDiscount.descuentoId) {
-      console.log('No descuentoId found!')
       showNotification('No se encontró el ID del descuento', 'error')
       return
     }
 
     try {
-      setSaving(true)
-      const authHeaders = getAuthHeaders()
-      
-      console.log('Calling updateDiscount with:', {
+      await dispatch(updateDiscount({
         discountId: editingDiscount.descuentoId,
-        percentage: discountPercentage,
-        headers: authHeaders
-      })
-
-      await DiscountApiService.updateDiscount(
-        editingDiscount.descuentoId,
-        percentage,
-        authHeaders
-      )
+        discountPercentage: percentage,
+      })).unwrap()
 
       showNotification(
         `Descuento actualizado a ${percentage}% para "${editingDiscount.nombre}"`,
@@ -198,9 +183,9 @@ export default function AdminDiscountManagement() {
       await loadProducts()
     } catch (error) {
       console.error('Error updating discount:', error)
-      showNotification('Error al actualizar descuento: ' + error.message, 'error')
-    } finally {
-      setSaving(false)
+      const errorMessage = error || 'Error desconocido'
+      showNotification('Error al actualizar descuento: ' + errorMessage, 'error')
+      dispatch(clearError())
     }
   }
 
@@ -244,10 +229,7 @@ export default function AdminDiscountManagement() {
     }
 
     try {
-      setSaving(true)
-      const authHeaders = getAuthHeaders()
-
-      await DiscountApiService.deleteDiscount(product.descuentoId, authHeaders)
+      await dispatch(deleteDiscount(product.descuentoId)).unwrap()
       
       showNotification(
         `Descuento eliminado de "${product.nombre}"`,
@@ -256,9 +238,10 @@ export default function AdminDiscountManagement() {
       await loadProducts()
     } catch (error) {
       console.error('Error deleting discount:', error)
-      showNotification('Error al eliminar descuento: ' + error.message, 'error')
+      const errorMessage = error || 'Error desconocido'
+      showNotification('Error al eliminar descuento: ' + errorMessage, 'error')
+      dispatch(clearError())
     } finally {
-      setSaving(false)
       setConfirmationModal({
         isVisible: false,
         title: '',
@@ -285,10 +268,7 @@ export default function AdminDiscountManagement() {
     }
 
     try {
-      setSaving(true)
-      const authHeaders = getAuthHeaders()
-
-      await DiscountApiService.deleteBulkDiscounts(discountIds, authHeaders)
+      await dispatch(deleteBulkDiscounts(discountIds)).unwrap()
       
       showNotification(
         `${discountIds.length} descuento(s) eliminado(s) exitosamente`,
@@ -298,9 +278,10 @@ export default function AdminDiscountManagement() {
       await loadProducts()
     } catch (error) {
       console.error('Error deleting discounts:', error)
-      showNotification('Error al eliminar descuentos: ' + error.message, 'error')
+      const errorMessage = error || 'Error desconocido'
+      showNotification('Error al eliminar descuentos: ' + errorMessage, 'error')
+      dispatch(clearError())
     } finally {
-      setSaving(false)
       setConfirmationModal({
         isVisible: false,
         title: '',
