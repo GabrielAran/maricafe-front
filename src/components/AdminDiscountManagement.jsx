@@ -8,6 +8,7 @@ import {
   deleteDiscount,
   deleteBulkDiscounts,
   clearError,
+  clearLastOperation,
 } from '../store/slices/discountSlice.js'
 import { Card, CardContent, CardHeader, CardTitle } from './ui/Card.jsx'
 import Button from './ui/Button.jsx'
@@ -27,7 +28,7 @@ export default function AdminDiscountManagement() {
   } = useProductService()
 
   // Redux state for discounts
-  const { loading: discountLoading, error: discountError } = useSelector(
+  const { loading: discountLoading, error: discountError, lastOperation } = useSelector(
     (state) => state.discount
   )
 
@@ -57,6 +58,56 @@ export default function AdminDiscountManagement() {
       loadProducts()
     }
   }, [isAdmin, loadProducts])
+
+  // Handle successful discount operations
+  useEffect(() => {
+    if (!lastOperation) return
+
+    switch (lastOperation.type) {
+      case 'bulkCreate':
+        showNotification(
+          `Descuento aplicado a ${lastOperation.data.productIds.length} producto(s)`,
+          'success'
+        )
+        setShowAddModal(false)
+        setDiscountPercentage('')
+        setSelectedProducts([])
+        loadProducts()
+        break
+      case 'update':
+        showNotification(
+          `Descuento actualizado exitosamente`,
+          'success'
+        )
+        setShowEditModal(false)
+        setEditingDiscount(null)
+        setDiscountPercentage('')
+        loadProducts()
+        break
+      case 'delete':
+        showNotification('Descuento eliminado exitosamente', 'success')
+        loadProducts()
+        break
+      case 'bulkDelete':
+        showNotification(
+          `${lastOperation.discountIds.length} descuento(s) eliminado(s) exitosamente`,
+          'success'
+        )
+        setSelectedProducts([])
+        loadProducts()
+        break
+    }
+    dispatch(clearLastOperation())
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lastOperation, dispatch])
+
+  // Handle discount errors
+  useEffect(() => {
+    if (discountError) {
+      showNotification(`Error: ${discountError}`, 'error')
+      dispatch(clearError())
+    }
+  }, [discountError, dispatch])
 
   const showNotification = (message, type = 'success') => {
     setNotification({
@@ -113,8 +164,6 @@ export default function AdminDiscountManagement() {
   }
 
   const handleOpenEditModal = (product) => {
-    console.log('handleOpenEditModal called with product:', product)
-    console.log('product.descuentoId:', product.descuentoId)
     setEditingDiscount(product)
     setDiscountPercentage(product.descuento ? product.descuento.toString() : '')
     setShowEditModal(true)
@@ -126,35 +175,20 @@ export default function AdminDiscountManagement() {
     setDiscountPercentage('')
   }
 
-  const handleCreateDiscounts = async () => {
+  const handleCreateDiscounts = () => {
     const percentage = parseFloat(discountPercentage)
     if (isNaN(percentage) || percentage < 0 || percentage > 100) {
       showNotification('El porcentaje debe estar entre 0 y 100', 'error')
       return
     }
 
-    try {
-      await dispatch(createBulkDiscounts({
-        productIds: selectedProducts,
-        discountPercentage: percentage,
-      })).unwrap()
-
-      showNotification(
-        `Descuento del ${percentage}% aplicado a ${selectedProducts.length} producto(s)`,
-        'success'
-      )
-      handleCloseAddModal()
-      setSelectedProducts([])
-      await loadProducts()
-    } catch (error) {
-      console.error('Error creating discounts:', error)
-      const errorMessage = error || 'Error desconocido'
-      showNotification('Error al crear descuentos: ' + errorMessage, 'error')
-      dispatch(clearError())
-    }
+    dispatch(createBulkDiscounts({
+      productIds: selectedProducts,
+      discountPercentage: percentage,
+    }))
   }
 
-  const handleUpdateDiscount = async () => {
+  const handleUpdateDiscount = () => {
     if (!editingDiscount) {
       return
     }
@@ -169,24 +203,10 @@ export default function AdminDiscountManagement() {
       return
     }
 
-    try {
-      await dispatch(updateDiscount({
-        discountId: editingDiscount.descuentoId,
-        discountPercentage: percentage,
-      })).unwrap()
-
-      showNotification(
-        `Descuento actualizado a ${percentage}% para "${editingDiscount.nombre}"`,
-        'success'
-      )
-      handleCloseEditModal()
-      await loadProducts()
-    } catch (error) {
-      console.error('Error updating discount:', error)
-      const errorMessage = error || 'Error desconocido'
-      showNotification('Error al actualizar descuento: ' + errorMessage, 'error')
-      dispatch(clearError())
-    }
+    dispatch(updateDiscount({
+      discountId: editingDiscount.descuentoId,
+      discountPercentage: percentage,
+    }))
   }
 
   const handleDeleteDiscount = (product) => {
@@ -216,7 +236,7 @@ export default function AdminDiscountManagement() {
     })
   }
 
-  const confirmDeleteDiscount = async (product) => {
+  const confirmDeleteDiscount = (product) => {
     if (!product.descuentoId) {
       showNotification('No se encontró el ID del descuento', 'error')
       setConfirmationModal({
@@ -228,30 +248,16 @@ export default function AdminDiscountManagement() {
       return
     }
 
-    try {
-      await dispatch(deleteDiscount(product.descuentoId)).unwrap()
-      
-      showNotification(
-        `Descuento eliminado de "${product.nombre}"`,
-        'success'
-      )
-      await loadProducts()
-    } catch (error) {
-      console.error('Error deleting discount:', error)
-      const errorMessage = error || 'Error desconocido'
-      showNotification('Error al eliminar descuento: ' + errorMessage, 'error')
-      dispatch(clearError())
-    } finally {
-      setConfirmationModal({
-        isVisible: false,
-        title: '',
-        message: '',
-        action: null
-      })
-    }
+    dispatch(deleteDiscount(product.descuentoId))
+    setConfirmationModal({
+      isVisible: false,
+      title: '',
+      message: '',
+      action: null
+    })
   }
 
-  const confirmBulkDeleteDiscounts = async (discountProducts) => {
+  const confirmBulkDeleteDiscounts = (discountProducts) => {
     const discountIds = discountProducts
       .filter(p => p.descuentoId)
       .map(p => p.descuentoId)
@@ -267,28 +273,13 @@ export default function AdminDiscountManagement() {
       return
     }
 
-    try {
-      await dispatch(deleteBulkDiscounts(discountIds)).unwrap()
-      
-      showNotification(
-        `${discountIds.length} descuento(s) eliminado(s) exitosamente`,
-        'success'
-      )
-      setSelectedProducts([])
-      await loadProducts()
-    } catch (error) {
-      console.error('Error deleting discounts:', error)
-      const errorMessage = error || 'Error desconocido'
-      showNotification('Error al eliminar descuentos: ' + errorMessage, 'error')
-      dispatch(clearError())
-    } finally {
-      setConfirmationModal({
-        isVisible: false,
-        title: '',
-        message: '',
-        action: null
-      })
-    }
+    dispatch(deleteBulkDiscounts(discountIds))
+    setConfirmationModal({
+      isVisible: false,
+      title: '',
+      message: '',
+      action: null
+    })
   }
 
   const handleCancelConfirmation = () => {
