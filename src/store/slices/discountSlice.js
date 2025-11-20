@@ -1,4 +1,5 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit'
+import axios from 'axios'
 
 const API_BASE_URL = 'http://127.0.0.1:4002'
 
@@ -11,124 +12,83 @@ const getAuthHeaders = () => {
   }
 }
 
-// Helper to handle API responses
-const fetchData = async (url, options = {}) => {
-  try {
-    const response = await fetch(url, options)
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}))
-      throw new Error(errorData.message || `HTTP error! status: ${response.status}`)
-    }
-    const text = await response.text()
-    if (!text) return null
-    return JSON.parse(text)
-  } catch (error) {
-    console.error('API Error:', error)
-    throw error
-  }
-}
-
 // Async thunks for API operations
 export const createDiscount = createAsyncThunk(
   'discount/createDiscount',
-  async ({ productId, discountPercentage }, { rejectWithValue }) => {
-    try {
-      const data = await fetchData(`${API_BASE_URL}/discounts/${productId}`, {
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({ discount_percentage: discountPercentage })
-      })
-      return data
-    } catch (error) {
-      return rejectWithValue(error.message)
-    }
+  async ({ productId, discountPercentage }) => {
+    const response = await axios.post(
+      `${API_BASE_URL}/discounts/${productId}`,
+      { discount_percentage: discountPercentage },
+      { headers: getAuthHeaders() }
+    )
+    return response.data
   }
 )
 
 export const updateDiscount = createAsyncThunk(
   'discount/updateDiscount',
-  async ({ discountId, discountPercentage }, { rejectWithValue }) => {
-    try {
-      const data = await fetchData(`${API_BASE_URL}/discounts/${discountId}`, {
-        method: 'PATCH',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({ discount_percentage: discountPercentage })
-      })
-      return { discountId, data }
-    } catch (error) {
-      return rejectWithValue(error.message)
-    }
+  async ({ discountId, discountPercentage }) => {
+    const response = await axios.patch(
+      `${API_BASE_URL}/discounts/${discountId}`,
+      { discount_percentage: discountPercentage },
+      { headers: getAuthHeaders() }
+    )
+    return { discountId, data: response.data }
   }
 )
 
 export const deleteDiscount = createAsyncThunk(
   'discount/deleteDiscount',
-  async (discountId, { rejectWithValue }) => {
-    try {
-      await fetchData(`${API_BASE_URL}/discounts/${discountId}`, {
-        method: 'DELETE',
-        headers: getAuthHeaders()
-      })
-      return discountId
-    } catch (error) {
-      return rejectWithValue(error.message)
-    }
+  async (discountId) => {
+    await axios.delete(
+      `${API_BASE_URL}/discounts/${discountId}`,
+      { headers: getAuthHeaders() }
+    )
+    return discountId
   }
 )
 
 export const createBulkDiscounts = createAsyncThunk(
   'discount/createBulkDiscounts',
-  async ({ productIds, discountPercentage }, { rejectWithValue }) => {
-    try {
-      const promises = productIds.map(productId =>
-        fetchData(`${API_BASE_URL}/discounts/${productId}`, {
-          method: 'POST',
-          headers: getAuthHeaders(),
-          body: JSON.stringify({ discount_percentage: discountPercentage })
-        })
+  async ({ productIds, discountPercentage }) => {
+    const requests = productIds.map(productId =>
+      axios.post(
+        `${API_BASE_URL}/discounts/${productId}`,
+        { discount_percentage: discountPercentage },
+        { headers: getAuthHeaders() }
       )
-      const results = await Promise.all(promises)
-      return { productIds, results }
-    } catch (error) {
-      return rejectWithValue(error.message)
-    }
+    )
+    const results = await Promise.all(requests)
+    return { productIds, results: results.map(r => r.data) }
   }
 )
 
 export const updateBulkDiscounts = createAsyncThunk(
   'discount/updateBulkDiscounts',
-  async ({ discountIds, discountPercentage }, { rejectWithValue }) => {
-    try {
-      const promises = discountIds.map(discountId =>
-        fetchData(`${API_BASE_URL}/discounts/${discountId}`, {
-          method: 'PATCH',
-          headers: getAuthHeaders(),
-          body: JSON.stringify({ discount_percentage: discountPercentage })
-        })
+  async ({ discountIds, discountPercentage }) => {
+    const requests = discountIds.map(discountId =>
+      axios.patch(
+        `${API_BASE_URL}/discounts/${discountId}`,
+        { discount_percentage: discountPercentage },
+        { headers: getAuthHeaders() }
       )
-      const results = await Promise.all(promises)
-      return { discountIds, results }
-    } catch (error) {
-      return rejectWithValue(error.message)
-    }
+    )
+    const results = await Promise.all(requests)
+    return { discountIds, results: results.map(r => r.data) }
   }
 )
 
 export const deleteBulkDiscounts = createAsyncThunk(
   'discount/deleteBulkDiscounts',
-  async (discountIds, { rejectWithValue }) => {
-    try {
-      const promises = discountIds.map(discountId =>
-        fetchData(`${API_BASE_URL}/discounts/${discountId}`, {
-          method: 'DELETE',
-          headers: getAuthHeaders()
-        })
+  async (discountIds) => {
+    const requests = discountIds.map(discountId =>
+      axios.delete(
+        `${API_BASE_URL}/discounts/${discountId}`,
+        { headers: getAuthHeaders() }
       )
-      await Promise.all(promises)
-      return discountIds
-    } catch (error) {
-      return rejectWithValue(error.message)
-    }
+    )
+    await Promise.all(requests)
+    return discountIds
   }
 )
 
