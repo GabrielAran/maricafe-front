@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useProductService } from '../hooks/useProductService.js'
 import { ProductApiService } from '../services/ProductApiService.js'
-import { categoryService } from '../services/CategoryService.js'
+import { useDispatch, useSelector } from 'react-redux'
+import { fetchCategories, selectCategoryItems } from '../redux/slices/category.slice.js'
 import { Card, CardContent, CardHeader, CardTitle } from './ui/Card.jsx'
 import Button from './ui/Button.jsx'
 import Badge from './ui/Badge.jsx'
@@ -19,6 +20,8 @@ export default function AdminProductManagement() {
     formatPrice,
     isProductAvailable
   } = useProductService()
+  const dispatch = useDispatch()
+  const categoryItems = useSelector(selectCategoryItems)
     
   const [editingProduct, setEditingProduct] = useState(null)
   const [showEditModal, setShowEditModal] = useState(false)
@@ -57,9 +60,18 @@ export default function AdminProductManagement() {
   useEffect(() => {
     if (isAdmin()) {
       loadProducts()
-      loadCategories()
+      dispatch(fetchCategories())
     }
-  }, [isAdmin, loadProducts])
+  }, [isAdmin, loadProducts, dispatch])
+
+  useEffect(() => {
+    setCategories(
+      categoryItems.map((c) => ({
+        id: c.category_id,
+        name: c.name,
+      })),
+    )
+  }, [categoryItems])
 
   // Load images for all products
   useEffect(() => {
@@ -83,15 +95,7 @@ export default function AdminProductManagement() {
     }
   }, [products])
 
-  const loadCategories = async () => {
-    try {
-      await categoryService.loadCategories()
-      setCategories(categoryService.getCategories())
-    } catch (error) {
-      console.error('Error loading categories:', error)
-      showNotification('Error al cargar las categorías', 'error')
-    }
-  }
+  const loadCategories = async () => {}
 
   const handleAddProduct = () => {
     setEditingProduct(null)
