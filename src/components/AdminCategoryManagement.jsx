@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext.jsx'
-import { categoryService } from '../services/CategoryService.js'
+import { useDispatch, useSelector } from 'react-redux'
+import { fetchCategories, createCategory, updateCategory, deleteCategory, selectCategoryItems, selectCategoryPending } from '../redux/slices/category.slice.js'
 import { Card, CardContent, CardHeader, CardTitle } from './ui/Card.jsx'
 import Button from './ui/Button.jsx'
 import Badge from './ui/Badge.jsx'
@@ -9,9 +10,9 @@ import ConfirmationModal from './ui/ConfirmationModal.jsx'
 
 export default function AdminCategoryManagement() {
   const { isAdmin } = useAuth()
-  const [categories, setCategories] = useState([])
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState(null)
+  const dispatch = useDispatch()
+  const categories = useSelector(selectCategoryItems)
+  const loading = useSelector(selectCategoryPending)
   const [editingCategory, setEditingCategory] = useState(null)
   const [showEditModal, setShowEditModal] = useState(false)
   const [showAddModal, setShowAddModal] = useState(false)
@@ -33,27 +34,8 @@ export default function AdminCategoryManagement() {
 
   useEffect(() => {
     if (!isAdmin()) return
-    loadCategories()
-    const unsubscribe = categoryService.subscribe(({ categories }) => {
-      setCategories(categories)
-    })
-    return () => unsubscribe()
+    dispatch(fetchCategories())
   }, [isAdmin])
-
-  const loadCategories = async () => {
-    try {
-      setLoading(true)
-      setError(null)
-      await categoryService.loadCategories()
-      setCategories(categoryService.getCategories())
-    } catch (error) {
-      console.error('Error loading categories:', error)
-      setError('Error al cargar las categorías')
-      showNotification('Error al cargar las categorías', 'error')
-    } finally {
-      setLoading(false)
-    }
-  }
 
   const handleAddCategory = () => {
     setEditingCategory(null)
@@ -68,18 +50,20 @@ export default function AdminCategoryManagement() {
   }
 
   const handleDeleteCategory = (category) => {
+    console.log(category)
     setConfirmationModal({
       isVisible: true,
       title: 'Eliminar Categoría',
       message: `¿Estás seguro de que quieres eliminar la categoría "${category.name}"? Esta acción no se puede deshacer.`,
-      categoryId: category.id
+      categoryId: category.category_id
     })
   }
 
   const confirmDelete = async () => {
     try {
+      console.log("id:", confirmationModal);
       setSaving(true)
-      await categoryService.deleteCategory(confirmationModal.categoryId)
+      await dispatch(deleteCategory(confirmationModal.categoryId)).unwrap()
       showNotification('Categoría eliminada con éxito', 'success')
       setConfirmationModal({ isVisible: false, title: '', message: '', categoryId: null })
     } catch (error) {
@@ -112,11 +96,11 @@ export default function AdminCategoryManagement() {
       setSaving(true)
       
       if (editingCategory) {
-        await categoryService.updateCategory(editingCategory.id, formData)
+        await dispatch(updateCategory({ categoryId: editingCategory.category_id ?? editingCategory.id, data: formData })).unwrap()
         showNotification('Categoría actualizada con éxito', 'success')
         setShowEditModal(false)
       } else {
-        await categoryService.createCategory(formData)
+        await dispatch(createCategory(formData)).unwrap()
         showNotification('Categoría creada con éxito', 'success')
         setShowAddModal(false)
       }
