@@ -19,6 +19,7 @@
     "react-redux": "^9.2.0",
     "react-router-dom": "^7.9.4",
     "redux": "^5.0.1",
+    "redux-persist": "^6.0.0",
     "tailwind-merge": "^2.5.5"
   },
   "devDependencies": {
