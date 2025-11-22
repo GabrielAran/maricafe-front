@@ -4,6 +4,7 @@ import storage from 'redux-persist/lib/storage'
 
 import categoryReducer from './slices/category.slice.js'
 import userReducer from './slices/user.slice.js'
+import productsReducer from './slices/product.slice.js'
 
 // Persist only the fields needed inside the user slice
 const userPersistConfig = {
@@ -18,6 +19,7 @@ export const store = configureStore({
   reducer: {
     category: categoryReducer,
     user: persistedUserReducer,
+    products: productsReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
