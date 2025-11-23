@@ -6,6 +6,9 @@ import categoryReducer from './slices/category.slice.js'
 import userReducer from './slices/user.slice.js'
 import productsReducer from './slices/product.slice.js'
 import discountReducer from './slices/discount.slice.js'
+import imagesReducer from './slices/images.slice.js'
+import orderReducer from './slices/order.slice.js'
+import adminStatsReducer from './slices/adminStats.slice.js'
 
 // Persist only the fields needed inside the user slice
 const userPersistConfig = {
@@ -22,6 +25,9 @@ export const store = configureStore({
     user: persistedUserReducer,
     products: productsReducer,
     discount: discountReducer,
+    images: imagesReducer,
+    order: orderReducer,
+    adminStats: adminStatsReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
