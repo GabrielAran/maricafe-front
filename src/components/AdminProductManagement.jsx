@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext.jsx'
 import { useProductService } from '../hooks/useProductService.js'
 import { ProductApiService } from '../services/ProductApiService.js'
 import { useDispatch, useSelector } from 'react-redux'
-import { fetchCategories, selectCategoryItems } from '../redux/slices/category.slice.js'
+import { fetchCategories, selectCategoryCategories } from '../redux/slices/category.slice.js'
 import { Card, CardContent, CardHeader, CardTitle } from './ui/Card.jsx'
 import Button from './ui/Button.jsx'
 import Badge from './ui/Badge.jsx'
@@ -21,8 +21,8 @@ export default function AdminProductManagement() {
     isProductAvailable
   } = useProductService()
   const dispatch = useDispatch()
-  const categoryItems = useSelector(selectCategoryItems)
-    
+  const categoryItems = useSelector(selectCategoryCategories)
+
   const [editingProduct, setEditingProduct] = useState(null)
   const [showEditModal, setShowEditModal] = useState(false)
   const [showAddModal, setShowAddModal] = useState(false)
@@ -95,7 +95,7 @@ export default function AdminProductManagement() {
     }
   }, [products])
 
-  const loadCategories = async () => {}
+  const loadCategories = async () => { }
 
   const handleAddProduct = () => {
     setEditingProduct(null)
@@ -135,7 +135,7 @@ export default function AdminProductManagement() {
       // Load the product's current images with actual database IDs
       const images = await ProductApiService.getProductImagesWithIds(product.id)
       console.log('Loaded images with IDs:', images)
-      
+
       if (images && images.length > 0) {
         setCurrentImages(images) // Images now have actual database IDs
       }
@@ -172,19 +172,19 @@ export default function AdminProductManagement() {
   const handleConfirmDelete = async () => {
     console.log('handleConfirmDelete called')
     console.log('confirmationModal:', confirmationModal)
-    
+
     if (!confirmationModal.productId) {
       console.log('No productId in confirmationModal, returning')
       return
     }
-    
+
     try {
       const token = localStorage.getItem('maricafe-token')
       const authHeaders = {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
       }
-      
+
       if (confirmationModal.action === 'deactivate') {
         const product = confirmationModal.product
         if (!product) {
@@ -218,7 +218,7 @@ export default function AdminProductManagement() {
         await loadProducts()
       } else {
         console.log('Sending delete request for product ID:', confirmationModal.productId)
-        
+
         await ProductApiService.deleteProduct(confirmationModal.productId, authHeaders)
         showNotification('Producto eliminado exitosamente', 'success')
         // Reload products after successful deletion
@@ -284,12 +284,12 @@ export default function AdminProductManagement() {
     console.log('handleSaveProduct called')
     console.log('editingProduct:', editingProduct)
     console.log('formData:', formData)
-    
+
     if (!editingProduct) {
       console.log('No editing product, returning')
       return
     }
-    
+
     // Validaciones
     if (!formData.title.trim()) {
       showNotification('El título es obligatorio', 'error')
@@ -309,7 +309,7 @@ export default function AdminProductManagement() {
       showNotification('El stock no puede ser negativo', 'error')
       return
     }
-    
+
     try {
       setSaving(true)
       const token = localStorage.getItem('maricafe-token')
@@ -317,7 +317,7 @@ export default function AdminProductManagement() {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
       }
-      
+
       const productData = {
         title: formData.title,
         description: (formData.description || '').slice(0, 120),
@@ -326,10 +326,10 @@ export default function AdminProductManagement() {
         category_id: formData.category_id || editingProduct.categoriaId || editingProduct.category?.category_id,
         images: currentImages.map(img => img.url)
       }
-      
+
       console.log('Sending update request with data:', productData)
       console.log('Product ID:', editingProduct.id)
-      
+
       await ProductApiService.updateProduct(editingProduct.id, productData, authHeaders)
 
       // Upload new images if any
@@ -339,15 +339,15 @@ export default function AdminProductManagement() {
           formData.append('files', file)
         })
         formData.append('productId', editingProduct.id)
-        
+
         const imageAuthHeaders = {
           'Authorization': `Bearer ${token}`
         }
-        
+
         try {
           const uploadResponse = await ProductApiService.uploadMultipleImages(formData, imageAuthHeaders)
           console.log('Upload response:', uploadResponse)
-          
+
           // Get updated images and set them in state
           const updatedImages = await ProductApiService.getProductImagesWithIds(editingProduct.id)
           if (updatedImages && updatedImages.length > 0) {
@@ -360,10 +360,10 @@ export default function AdminProductManagement() {
       }
 
       showNotification('Producto actualizado exitosamente', 'success')
-      
+
       // Reload products and their images after successful update
       await loadProducts()
-      
+
       // Update the product's images in the state
       if (editingProduct.id) {
         const updatedImages = await ProductApiService.getProductImagesWithIds(editingProduct.id)
@@ -374,7 +374,7 @@ export default function AdminProductManagement() {
           }))
         }
       }
-      
+
       // If no new images were uploaded, we're done
       if (newImages.length === 0) {
         handleCloseEditModal()
@@ -405,10 +405,10 @@ export default function AdminProductManagement() {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
       }
-      
+
       // Delete image with just the image ID
       await ProductApiService.deleteImage(imageId, authHeaders)
-      
+
       // Get updated images after deletion
       const updatedImages = await ProductApiService.getProductImagesWithIds(editingProduct.id)
       if (updatedImages) {
@@ -416,7 +416,7 @@ export default function AdminProductManagement() {
       } else {
         setCurrentImages([])
       }
-      
+
       showNotification('Imagen eliminada exitosamente', 'success')
     } catch (error) {
       console.error('Error deleting image:', error)
@@ -433,34 +433,34 @@ export default function AdminProductManagement() {
   // Handler for selecting new images
   const handleNewImageSelect = (event) => {
     const files = Array.from(event.target.files)
-    
+
     if (files.length === 0) return
-    
+
     // Validate total number of images (max 10)
     const totalImages = currentImages.length + newImages.length + files.length
     if (totalImages > 10) {
       showNotification('Máximo 10 imágenes permitidas', 'error')
       return
     }
-    
+
     const validFiles = []
     const validPreviews = []
-    
+
     files.forEach((file, index) => {
       // Validate file type
       if (!file.type.startsWith('image/')) {
         showNotification(`Archivo ${index + 1} no es una imagen válida`, 'error')
         return
       }
-      
+
       // Validate file size (max 5MB)
       if (file.size > 5 * 1024 * 1024) {
         showNotification(`Imagen ${index + 1} debe ser menor a 5MB`, 'error')
         return
       }
-      
+
       validFiles.push(file)
-      
+
       // Create preview
       const reader = new FileReader()
       reader.onload = (e) => {
@@ -497,11 +497,11 @@ export default function AdminProductManagement() {
       showNotification('El stock no puede ser negativo', 'error')
       return
     }
-    
+
     try {
       setSaving(true)
       const token = localStorage.getItem('maricafe-token')
-      
+
       // Create product first
       const productData = {
         title: formData.title,
@@ -510,34 +510,34 @@ export default function AdminProductManagement() {
         stock: parseInt(formData.stock),
         category_id: parseInt(formData.category_id)
       }
-      
+
       const authHeaders = {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
       }
-      
+
       const response = await ProductApiService.createProduct(productData, authHeaders)
       console.log('Product creation response:', response)
       const createdProduct = response.data || response
       console.log('Extracted product data:', createdProduct)
-      
+
       // Upload images if selected
       if (selectedImages.length > 0 && createdProduct) {
         const productId = createdProduct.product_id || createdProduct.idProduct || createdProduct.id
         console.log('Product created:', createdProduct)
-        
+
         if (productId) {
           const formData = new FormData()
           selectedImages.forEach((file, index) => {
             formData.append('files', file)
           })
           formData.append('productId', productId)
-          
+
           const imageAuthHeaders = {
             'Authorization': `Bearer ${token}`
             // Don't set Content-Type for FormData, let browser set it with boundary
           }
-          
+
           try {
             const uploadResult = await ProductApiService.uploadMultipleImages(formData, imageAuthHeaders)
             console.log('Images uploaded successfully:', uploadResult)
@@ -550,7 +550,7 @@ export default function AdminProductManagement() {
           showNotification('Producto creado pero no se pudo obtener ID para subir imágenes', 'error')
         }
       }
-      
+
       showNotification('Producto creado exitosamente', 'success')
       handleCloseAddModal()
       // Reload products after successful creation
@@ -584,33 +584,33 @@ export default function AdminProductManagement() {
 
   const handleImageSelect = (event) => {
     const files = Array.from(event.target.files)
-    
+
     if (files.length === 0) return
-    
+
     // Validate total number of images (max 10)
     if (selectedImages.length + files.length > 10) {
       showNotification('Máximo 10 imágenes permitidas', 'error')
       return
     }
-    
+
     const validFiles = []
     const validPreviews = []
-    
+
     files.forEach((file, index) => {
       // Validate file type
       if (!file.type.startsWith('image/')) {
         showNotification(`Archivo ${index + 1} no es una imagen válida`, 'error')
         return
       }
-      
+
       // Validate file size (max 5MB)
       if (file.size > 5 * 1024 * 1024) {
         showNotification(`Imagen ${index + 1} debe ser menor a 5MB`, 'error')
         return
       }
-      
+
       validFiles.push(file)
-      
+
       // Create preview
       const reader = new FileReader()
       reader.onload = (e) => {
@@ -752,8 +752,8 @@ export default function AdminProductManagement() {
                     Categoría: {product.categoria}
                   </span>
                   <div className="flex gap-1">
-                    <Button 
-                      size="sm" 
+                    <Button
+                      size="sm"
                       variant="outline"
                       onClick={(e) => {
                         e.stopPropagation()
@@ -763,8 +763,8 @@ export default function AdminProductManagement() {
                     >
                       Editar
                     </Button>
-                    <Button 
-                      size="sm" 
+                    <Button
+                      size="sm"
                       variant="destructive"
                       onClick={(e) => {
                         e.stopPropagation()
@@ -800,8 +800,8 @@ export default function AdminProductManagement() {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium mb-1">Nombre *</label>
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   className="w-full border rounded px-3 py-2"
                   value={formData.title}
                   onChange={(e) => handleInputChange('title', e.target.value)}
@@ -809,10 +809,10 @@ export default function AdminProductManagement() {
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Descripción</label>
-                <textarea 
+                <textarea
                   className="w-full border rounded px-3 py-2"
                   value={formData.description}
-                  onChange={(e) => handleInputChange('description', e.target.value.slice(0,120))}
+                  onChange={(e) => handleInputChange('description', e.target.value.slice(0, 120))}
                   rows="3"
                   maxLength={120}
                 />
@@ -825,7 +825,7 @@ export default function AdminProductManagement() {
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Categoría</label>
-                <select 
+                <select
                   className="w-full border rounded px-3 py-2"
                   value={formData.category_id}
                   onChange={(e) => handleInputChange('category_id', e.target.value)}
@@ -840,8 +840,8 @@ export default function AdminProductManagement() {
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Precio *</label>
-                <input 
-                  type="number" 
+                <input
+                  type="number"
                   step="0.01"
                   min="0"
                   className="w-full border rounded px-3 py-2"
@@ -851,8 +851,8 @@ export default function AdminProductManagement() {
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Stock *</label>
-                <input 
-                  type="number" 
+                <input
+                  type="number"
                   min="0"
                   className="w-full border rounded px-3 py-2"
                   value={formData.stock}
@@ -865,7 +865,7 @@ export default function AdminProductManagement() {
                 <label className="block text-sm font-medium mb-2">
                   Imágenes del Producto ({currentImages.length + newImages.length}/10)
                 </label>
-                
+
                 {/* Current Images */}
                 <div className="mb-4">
                   <p className="text-sm text-gray-500 mb-2">Imágenes actuales:</p>
@@ -959,14 +959,14 @@ export default function AdminProductManagement() {
             </div>
 
             <div className="flex gap-2 mt-6">
-              <Button 
+              <Button
                 onClick={handleCloseEditModal}
                 variant="outline"
                 className="flex-1"
               >
                 Cancelar
               </Button>
-              <Button 
+              <Button
                 onClick={handleSaveProduct}
                 disabled={saving}
                 className="flex-1"
@@ -986,8 +986,8 @@ export default function AdminProductManagement() {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium mb-1">Nombre *</label>
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   className="w-full border rounded px-3 py-2"
                   value={formData.title}
                   onChange={(e) => handleInputChange('title', e.target.value)}
@@ -996,10 +996,10 @@ export default function AdminProductManagement() {
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Descripción</label>
-                <textarea 
+                <textarea
                   className="w-full border rounded px-3 py-2"
                   value={formData.description}
-                  onChange={(e) => handleInputChange('description', e.target.value.slice(0,120))}
+                  onChange={(e) => handleInputChange('description', e.target.value.slice(0, 120))}
                   rows="3"
                   maxLength={120}
                   placeholder="Ingrese la descripción del producto"
@@ -1013,7 +1013,7 @@ export default function AdminProductManagement() {
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Categoría *</label>
-                <select 
+                <select
                   className="w-full border rounded px-3 py-2"
                   value={formData.category_id}
                   onChange={(e) => handleInputChange('category_id', e.target.value)}
@@ -1028,8 +1028,8 @@ export default function AdminProductManagement() {
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Precio *</label>
-                <input 
-                  type="number" 
+                <input
+                  type="number"
                   step="0.01"
                   min="0"
                   className="w-full border rounded px-3 py-2"
@@ -1040,8 +1040,8 @@ export default function AdminProductManagement() {
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Stock *</label>
-                <input 
-                  type="number" 
+                <input
+                  type="number"
                   min="0"
                   className="w-full border rounded px-3 py-2"
                   value={formData.stock}
@@ -1125,14 +1125,14 @@ export default function AdminProductManagement() {
               </div>
             </div>
             <div className="flex gap-2 mt-6">
-              <Button 
+              <Button
                 onClick={handleCloseAddModal}
                 variant="outline"
                 className="flex-1"
               >
                 Cancelar
               </Button>
-              <Button 
+              <Button
                 onClick={handleCreateProduct}
                 disabled={saving}
                 className="flex-1"

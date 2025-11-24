@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useDispatch, useSelector } from 'react-redux'
-import { fetchCategories, createCategory, updateCategory, deleteCategory, selectCategoryItems, selectCategoryPending } from '../redux/slices/category.slice.js'
+import { fetchCategories, createCategory, updateCategory, deleteCategory, selectCategoryCategories, selectCategoryPending } from '../redux/slices/category.slice.js'
 import { Card, CardContent, CardHeader, CardTitle } from './ui/Card.jsx'
 import Button from './ui/Button.jsx'
 import Badge from './ui/Badge.jsx'
@@ -11,7 +11,7 @@ import ConfirmationModal from './ui/ConfirmationModal.jsx'
 export default function AdminCategoryManagement() {
   const { isAdmin } = useAuth()
   const dispatch = useDispatch()
-  const categories = useSelector(selectCategoryItems)
+  const categories = useSelector(selectCategoryCategories)
   const loading = useSelector(selectCategoryPending)
   const [editingCategory, setEditingCategory] = useState(null)
   const [showEditModal, setShowEditModal] = useState(false)
@@ -94,7 +94,7 @@ export default function AdminCategoryManagement() {
 
     try {
       setSaving(true)
-      
+
       if (editingCategory) {
         await dispatch(updateCategory({ categoryId: editingCategory.category_id ?? editingCategory.id, data: formData })).unwrap()
         showNotification('Categoría actualizada con éxito', 'success')
@@ -104,7 +104,7 @@ export default function AdminCategoryManagement() {
         showNotification('Categoría creada con éxito', 'success')
         setShowAddModal(false)
       }
-      
+
       setEditingCategory(null)
       setFormData({ name: '' })
     } catch (error) {
