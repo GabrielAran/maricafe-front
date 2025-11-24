@@ -42,7 +42,7 @@ export const deleteDiscount = createAsyncThunk(
 )
 
 const initialState = {
-  items: [],
+  discounts: [],
   pending: false,
   error: null,
 }
@@ -62,7 +62,7 @@ const discountSlice = createSlice({
         state.pending = false
         const apiResponse = action.payload
         if (apiResponse && apiResponse.data) {
-          state.items.push(apiResponse.data)
+          state.discounts.push(apiResponse.data)
         }
       })
       .addCase(createDiscount.rejected, (state, action) => {
@@ -81,9 +81,9 @@ const discountSlice = createSlice({
         const apiResponse = action.payload
         if (apiResponse && apiResponse.data && apiResponse.data.discount_id != null) {
           const updated = apiResponse.data
-          const index = state.items.findIndex((d) => d.discount_id === updated.discount_id)
+          const index = state.discounts.findIndex((d) => d.discount_id === updated.discount_id)
           if (index !== -1) {
-            state.items[index] = updated
+            state.discounts[index] = updated
           }
         }
       })
@@ -101,7 +101,7 @@ const discountSlice = createSlice({
       .addCase(deleteDiscount.fulfilled, (state, action) => {
         state.pending = false
         const discountId = action.meta.arg
-        state.items = state.items.filter((d) => d.discount_id !== discountId)
+        state.discounts = state.discounts.filter((d) => d.discount_id !== discountId)
       })
       .addCase(deleteDiscount.rejected, (state, action) => {
         state.pending = false

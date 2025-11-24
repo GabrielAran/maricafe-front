@@ -1,7 +1,7 @@
 import { createSlice } from '@reduxjs/toolkit'
 
 const initialState = {
-    items: [],
+    toasts: [],
     pending: false,
     error: null,
 }
@@ -11,14 +11,14 @@ const toastSlice = createSlice({
     initialState,
     reducers: {
         toastEnqueued: (state, action) => {
-            state.items.push(action.payload)
+            state.toasts.push(action.payload)
         },
         toastDismissed: (state, action) => {
             const id = action.payload
-            state.items = state.items.filter((toast) => toast.id !== id)
+            state.toasts = state.toasts.filter((toast) => toast.id !== id)
         },
         allToastsCleared: (state) => {
-            state.items = []
+            state.toasts = []
         },
     },
 })

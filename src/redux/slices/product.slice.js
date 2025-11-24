@@ -153,7 +153,7 @@ export const deleteProduct = createAsyncThunk(
 )
 
 const initialState = {
-  items: [],
+  products: [],
   pending: false,
   error: null,
   currentItem: null,
@@ -174,11 +174,11 @@ const productSlice = createSlice({
         state.pending = false
         const page = action.payload
         if (Array.isArray(page)) {
-          state.items = page
+          state.products = page
         } else if (page && Array.isArray(page.content)) {
-          state.items = page.content
+          state.products = page.content
         } else {
-          state.items = []
+          state.products = []
         }
       })
       .addCase(fetchProducts.rejected, (state, action) => {
@@ -197,11 +197,11 @@ const productSlice = createSlice({
         const product = action.payload
         state.currentItem = product
         if (product && product.product_id != null) {
-          const index = state.items.findIndex((p) => p.product_id === product.product_id)
+          const index = state.products.findIndex((p) => p.product_id === product.product_id)
           if (index !== -1) {
-            state.items[index] = product
+            state.products[index] = product
           } else {
-            state.items.push(product)
+            state.products.push(product)
           }
         }
       })
@@ -218,7 +218,7 @@ const productSlice = createSlice({
       })
       .addCase(fetchProductsByCategory.fulfilled, (state, action) => {
         state.pending = false
-        state.items = Array.isArray(action.payload) ? action.payload : []
+        state.products = Array.isArray(action.payload) ? action.payload : []
       })
       .addCase(fetchProductsByCategory.rejected, (state, action) => {
         state.pending = false
@@ -233,7 +233,7 @@ const productSlice = createSlice({
       })
       .addCase(fetchProductsFilteredByPrice.fulfilled, (state, action) => {
         state.pending = false
-        state.items = Array.isArray(action.payload) ? action.payload : []
+        state.products = Array.isArray(action.payload) ? action.payload : []
       })
       .addCase(fetchProductsFilteredByPrice.rejected, (state, action) => {
         state.pending = false
@@ -248,7 +248,7 @@ const productSlice = createSlice({
       })
       .addCase(fetchProductsByAttributes.fulfilled, (state, action) => {
         state.pending = false
-        state.items = Array.isArray(action.payload) ? action.payload : []
+        state.products = Array.isArray(action.payload) ? action.payload : []
       })
       .addCase(fetchProductsByAttributes.rejected, (state, action) => {
         state.pending = false
@@ -263,7 +263,7 @@ const productSlice = createSlice({
       })
       .addCase(fetchProductsWithAttributes.fulfilled, (state, action) => {
         state.pending = false
-        state.items = Array.isArray(action.payload) ? action.payload : []
+        state.products = Array.isArray(action.payload) ? action.payload : []
       })
       .addCase(fetchProductsWithAttributes.rejected, (state, action) => {
         state.pending = false
@@ -278,7 +278,7 @@ const productSlice = createSlice({
       })
       .addCase(fetchProductsFilteredByAttributes.fulfilled, (state, action) => {
         state.pending = false
-        state.items = Array.isArray(action.payload) ? action.payload : []
+        state.products = Array.isArray(action.payload) ? action.payload : []
       })
       .addCase(fetchProductsFilteredByAttributes.rejected, (state, action) => {
         state.pending = false
@@ -295,7 +295,7 @@ const productSlice = createSlice({
         state.pending = false
         const apiResponse = action.payload
         if (apiResponse && apiResponse.data) {
-          state.items.push(apiResponse.data)
+          state.products.push(apiResponse.data)
         }
       })
       .addCase(createProduct.rejected, (state, action) => {
@@ -314,9 +314,9 @@ const productSlice = createSlice({
         const apiResponse = action.payload
         if (apiResponse && apiResponse.data && apiResponse.data.product_id != null) {
           const updated = apiResponse.data
-          const index = state.items.findIndex((p) => p.product_id === updated.product_id)
+          const index = state.products.findIndex((p) => p.product_id === updated.product_id)
           if (index !== -1) {
-            state.items[index] = updated
+            state.products[index] = updated
           }
           if (state.currentItem && state.currentItem.product_id === updated.product_id) {
             state.currentItem = updated
@@ -337,7 +337,7 @@ const productSlice = createSlice({
       .addCase(deleteProduct.fulfilled, (state, action) => {
         state.pending = false
         const productId = action.meta.arg
-        state.items = state.items.filter((p) => p.product_id !== productId)
+        state.products = state.products.filter((p) => p.product_id !== productId)
         if (state.currentItem && state.currentItem.product_id === productId) {
           state.currentItem = null
         }

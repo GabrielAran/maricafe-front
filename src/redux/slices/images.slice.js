@@ -74,7 +74,7 @@ export const deleteImage = createAsyncThunk(
 )
 
 const initialState = {
-  items: [],
+  images: [],
   pending: false,
   error: null
 }
@@ -92,7 +92,7 @@ const imagesSlice = createSlice({
       })
       .addCase(fetchProductImages.fulfilled, (state, action) => {
         state.pending = false
-        state.items = Array.isArray(action.payload) ? action.payload : []
+        state.images = Array.isArray(action.payload) ? action.payload : []
       })
       .addCase(fetchProductImages.rejected, (state, action) => {
         state.pending = false
@@ -107,7 +107,7 @@ const imagesSlice = createSlice({
       })
       .addCase(fetchProductImagesWithIds.fulfilled, (state, action) => {
         state.pending = false
-        state.items = Array.isArray(action.payload) ? action.payload : []
+        state.images = Array.isArray(action.payload) ? action.payload : []
       })
       .addCase(fetchProductImagesWithIds.rejected, (state, action) => {
         state.pending = false
@@ -122,7 +122,7 @@ const imagesSlice = createSlice({
       })
       .addCase(createImage.fulfilled, (state, action) => {
         state.pending = false
-        // Backend returns "created:" + createdId, but we don't update items here
+        // Backend returns "created:" + createdId, but we don't update images here
         // Components should refetch images after creation if needed
       })
       .addCase(createImage.rejected, (state, action) => {
@@ -138,7 +138,7 @@ const imagesSlice = createSlice({
       })
       .addCase(createMultipleImages.fulfilled, (state, action) => {
         state.pending = false
-        // Backend returns "created:" + id1,id2,..., but we don't update items here
+        // Backend returns "created:" + id1,id2,..., but we don't update images here
         // Components should refetch images after creation if needed
       })
       .addCase(createMultipleImages.rejected, (state, action) => {
@@ -154,14 +154,14 @@ const imagesSlice = createSlice({
       })
       .addCase(deleteImage.fulfilled, (state, action) => {
         state.pending = false
-        // Remove the deleted image from items array
+        // Remove the deleted image from images array
         const imageId = action.payload.imageId
-        state.items = state.items.filter((item) => {
+        state.images = state.images.filter((item) => {
           // Handle both ImageResponse format {id, file} and simple string format
           if (typeof item === 'object' && item.id) {
             return item.id !== imageId
           }
-          return true // Keep non-object items (base64 strings) - they don't have IDs
+          return true // Keep non-object images (base64 strings) - they don't have IDs
         })
       })
       .addCase(deleteImage.rejected, (state, action) => {

@@ -44,7 +44,7 @@ export const deleteCategory = createAsyncThunk(
 )
 
 const initialState = {
-  items: [],
+  categories: [],
   pending: false,
   error: null,
 }
@@ -63,11 +63,11 @@ const categorySlice = createSlice({
         state.pending = false
         const page = action.payload
         if (Array.isArray(page)) {
-          state.items = page
+          state.categories = page
         } else if (page && Array.isArray(page.content)) {
-          state.items = page.content
+          state.categories = page.content
         } else {
-          state.items = []
+          state.categories = []
         }
       })
       .addCase(fetchCategories.rejected, (state, action) => {
@@ -84,7 +84,7 @@ const categorySlice = createSlice({
         state.pending = false
         const apiResponse = action.payload
         if (apiResponse && apiResponse.data) {
-          state.items.push(apiResponse.data)
+          state.categories.push(apiResponse.data)
         }
       })
       .addCase(createCategory.rejected, (state, action) => {
@@ -102,9 +102,9 @@ const categorySlice = createSlice({
         const apiResponse = action.payload
         if (apiResponse && apiResponse.data && apiResponse.data.category_id != null) {
           const updated = apiResponse.data
-          const index = state.items.findIndex((c) => c.category_id === updated.category_id)
+          const index = state.categories.findIndex((c) => c.category_id === updated.category_id)
           if (index !== -1) {
-            state.items[index] = updated
+            state.categories[index] = updated
           }
         }
       })
@@ -121,7 +121,7 @@ const categorySlice = createSlice({
       .addCase(deleteCategory.fulfilled, (state, action) => {
         state.pending = false
         const categoryId = action.meta.arg
-        state.items = state.items.filter((c) => c.category_id !== categoryId)
+        state.categories = state.categories.filter((c) => c.category_id !== categoryId)
       })
       .addCase(deleteCategory.rejected, (state, action) => {
         state.pending = false
@@ -130,7 +130,7 @@ const categorySlice = createSlice({
   },
 })
 
-export const selectCategoryItems = (state) => state.category.items
+export const selectCategorycategories = (state) => state.category.categories
 export const selectCategoryPending = (state) => state.category.pending
 export const selectCategoryError = (state) => state.category.error
 

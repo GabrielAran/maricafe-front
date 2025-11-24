@@ -81,7 +81,7 @@ export const fetchInactiveOrders = createAsyncThunk(
 )
 
 const initialState = {
-  items: [],
+  orders: [],
   pending: false,
   error: null,
   currentItem: null,
@@ -102,7 +102,7 @@ const orderSlice = createSlice({
         state.pending = false
         const apiResponse = action.payload
         if (apiResponse && apiResponse.data) {
-          state.items.push(apiResponse.data)
+          state.orders.push(apiResponse.data)
         }
       })
       .addCase(createOrder.rejected, (state, action) => {
@@ -118,7 +118,7 @@ const orderSlice = createSlice({
       })
       .addCase(fetchUserOrders.fulfilled, (state, action) => {
         state.pending = false
-        state.items = Array.isArray(action.payload) ? action.payload : []
+        state.orders = Array.isArray(action.payload) ? action.payload : []
       })
       .addCase(fetchUserOrders.rejected, (state, action) => {
         state.pending = false
@@ -136,11 +136,11 @@ const orderSlice = createSlice({
         const order = action.payload
         state.currentItem = order
         if (order && order.order_id != null) {
-          const index = state.items.findIndex((o) => o.order_id === order.order_id)
+          const index = state.orders.findIndex((o) => o.order_id === order.order_id)
           if (index !== -1) {
-            state.items[index] = order
+            state.orders[index] = order
           } else {
-            state.items.push(order)
+            state.orders.push(order)
           }
         }
       })
@@ -160,11 +160,11 @@ const orderSlice = createSlice({
         const order = action.payload
         state.currentItem = order
         if (order && order.order_id != null) {
-          const index = state.items.findIndex((o) => o.order_id === order.order_id)
+          const index = state.orders.findIndex((o) => o.order_id === order.order_id)
           if (index !== -1) {
-            state.items[index] = order
+            state.orders[index] = order
           } else {
-            state.items.push(order)
+            state.orders.push(order)
           }
         }
       })
@@ -182,7 +182,7 @@ const orderSlice = createSlice({
       .addCase(deleteOrder.fulfilled, (state, action) => {
         state.pending = false
         const orderId = action.meta.arg
-        state.items = state.items.filter((o) => o.order_id !== orderId)
+        state.orders = state.orders.filter((o) => o.order_id !== orderId)
         if (state.currentItem && state.currentItem.order_id === orderId) {
           state.currentItem = null
         }
@@ -200,7 +200,7 @@ const orderSlice = createSlice({
       })
       .addCase(fetchActiveOrders.fulfilled, (state, action) => {
         state.pending = false
-        state.items = Array.isArray(action.payload) ? action.payload : []
+        state.orders = Array.isArray(action.payload) ? action.payload : []
       })
       .addCase(fetchActiveOrders.rejected, (state, action) => {
         state.pending = false
@@ -215,7 +215,7 @@ const orderSlice = createSlice({
       })
       .addCase(fetchInactiveOrders.fulfilled, (state, action) => {
         state.pending = false
-        state.items = Array.isArray(action.payload) ? action.payload : []
+        state.orders = Array.isArray(action.payload) ? action.payload : []
       })
       .addCase(fetchInactiveOrders.rejected, (state, action) => {
         state.pending = false
