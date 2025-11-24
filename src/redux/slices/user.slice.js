@@ -53,9 +53,44 @@ export const changePassword = createAsyncThunk(
     }
 )
 
+// GET /users - Get all users (admin only)
+export const fetchAllUsers = createAsyncThunk(
+    'user/fetchAllUsers',
+    async (_, { getState }) => {
+        const response = await api.get('/users', {
+            headers: buildAuthHeaders(getState())
+        })
+        return response.data
+    }
+)
+
+// GET /users/{userId} - Get user by ID
+export const fetchUserById = createAsyncThunk(
+    'user/fetchUserById',
+    async (userId, { getState }) => {
+        const response = await api.get(`/users/${userId}`, {
+            headers: buildAuthHeaders(getState())
+        })
+        return response.data
+    }
+)
+
+// DELETE /users/{userId} - Delete user (admin only)
+export const deleteUser = createAsyncThunk(
+    'user/deleteUser',
+    async (userId, { getState }) => {
+        const response = await api.delete(`/users/${userId}`, {
+            headers: buildAuthHeaders(getState())
+        })
+        return { userId, data: response.data }
+    }
+)
+
 const initialState = {
     currentUser: null,
     token: null,
+    users: [],
+    selectedUser: null,
     pending: false,
     error: null
 }
@@ -138,6 +173,83 @@ const userSlice = createSlice({
                 state.pending = false
             })
             .addCase(changePassword.rejected, (state, action) => {
+                state.pending = false
+                state.error = action.error.message
+            })
+
+        // Fetch all users
+        builder
+            .addCase(fetchAllUsers.pending, (state) => {
+                state.pending = true
+                state.error = null
+            })
+            .addCase(fetchAllUsers.fulfilled, (state, action) => {
+                state.pending = false
+                const users = Array.isArray(action.payload) ? action.payload : []
+                // Map snake_case to camelCase
+                state.users = users.map(user => ({
+                    userId: user.user_id,
+                    firstName: user.first_name,
+                    lastName: user.last_name,
+                    email: user.email,
+                    role: user.role
+                }))
+            })
+            .addCase(fetchAllUsers.rejected, (state, action) => {
+                state.pending = false
+                state.error = action.error.message
+            })
+
+        // Fetch user by ID
+        builder
+            .addCase(fetchUserById.pending, (state) => {
+                state.pending = true
+                state.error = null
+            })
+            .addCase(fetchUserById.fulfilled, (state, action) => {
+                state.pending = false
+                const backendUser = action.payload
+                if (backendUser) {
+                    // Map snake_case to camelCase
+                    const mappedUser = {
+                        userId: backendUser.user_id,
+                        firstName: backendUser.first_name,
+                        lastName: backendUser.last_name,
+                        email: backendUser.email,
+                        role: backendUser.role
+                    }
+                    state.selectedUser = mappedUser
+                    // Also update in users array if it exists
+                    const index = state.users.findIndex(u => u.userId === mappedUser.userId)
+                    if (index !== -1) {
+                        state.users[index] = mappedUser
+                    }
+                }
+            })
+            .addCase(fetchUserById.rejected, (state, action) => {
+                state.pending = false
+                state.error = action.error.message
+            })
+
+        // Delete user
+        builder
+            .addCase(deleteUser.pending, (state) => {
+                state.pending = true
+                state.error = null
+            })
+            .addCase(deleteUser.fulfilled, (state, action) => {
+                state.pending = false
+                const userId = action.payload.userId
+                state.users = state.users.filter(u => u.userId !== userId)
+                if (state.selectedUser && state.selectedUser.userId === userId) {
+                    state.selectedUser = null
+                }
+                if (state.currentUser && state.currentUser.userId === userId) {
+                    state.currentUser = null
+                    state.token = null
+                }
+            })
+            .addCase(deleteUser.rejected, (state, action) => {
                 state.pending = false
                 state.error = action.error.message
             })

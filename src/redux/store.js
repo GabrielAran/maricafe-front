@@ -5,6 +5,7 @@ import storage from 'redux-persist/lib/storage'
 import categoryReducer from './slices/category.slice.js'
 import userReducer from './slices/user.slice.js'
 import productsReducer from './slices/product.slice.js'
+import attributeReducer from './slices/attribute.slice.js'
 import discountReducer from './slices/discount.slice.js'
 import imagesReducer from './slices/images.slice.js'
 import orderReducer from './slices/order.slice.js'
@@ -26,6 +27,7 @@ export const store = configureStore({
     category: categoryReducer,
     user: persistedUserReducer,
     products: productsReducer,
+    attributes: attributeReducer,
     discount: discountReducer,
     images: imagesReducer,
     order: orderReducer,
