@@ -9,6 +9,7 @@ import discountReducer from './slices/discount.slice.js'
 import imagesReducer from './slices/images.slice.js'
 import orderReducer from './slices/order.slice.js'
 import adminStatsReducer from './slices/adminStats.slice.js'
+import cartReducer from './slices/cartSlice.js'
 
 // Persist only the fields needed inside the user slice
 const userPersistConfig = {
@@ -28,6 +29,7 @@ export const store = configureStore({
     images: imagesReducer,
     order: orderReducer,
     adminStats: adminStatsReducer,
+    cart: cartReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
