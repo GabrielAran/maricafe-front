@@ -1,18 +1,5 @@
 import { createSlice } from '@reduxjs/toolkit';
 
-// Helper function to get auth headers with token from local storage
-const getAuthHeaders = () => {
-    const token = localStorage.getItem('maricafe-token');
-    if (!token) return {};
-    return {
-        Authorization: `Bearer ${token}`,
-    };
-};
-
-// NOTE: Unlike other slices, this slice does not have exported async thunks (createAsyncThunk)
-// because the cart is currently managed entirely on the client side (synchronously) 
-// and does not interact directly with the backend API for every action.
-
 // Initial state of the cart: empty cart list, 0 total price, and 0 total items.
 const initialState = {
     cart: [],

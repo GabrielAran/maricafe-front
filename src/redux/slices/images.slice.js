@@ -1,21 +1,15 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit'
 import { api } from '../api/axiosInstance'
 
-const getAuthHeaders = () => {
-  const token = localStorage.getItem('maricafe-token')
-  return {
-    'Authorization': `Bearer ${token}`,
-    'Content-Type': 'application/json'
-  }
-}
+import { buildAuthHeaders } from './user.slice'
 
 // GET /images/{productId}
 // Returns: List<String> (base64 strings)
 export const fetchProductImages = createAsyncThunk(
   'images/fetchProductImages',
-  async (productId) => {
+  async (productId, { getState }) => {
     const res = await api.get(`/images/${productId}`, {
-      headers: getAuthHeaders()
+      headers: buildAuthHeaders(getState())
     })
     return res.data
   }
@@ -25,9 +19,9 @@ export const fetchProductImages = createAsyncThunk(
 // Returns: List<ImageResponse> where ImageResponse = {id: Long, file: String}
 export const fetchProductImagesWithIds = createAsyncThunk(
   'images/fetchProductImagesWithIds',
-  async (productId) => {
+  async (productId, { getState }) => {
     const res = await api.get(`/images/${productId}/with-ids`, {
-      headers: getAuthHeaders()
+      headers: buildAuthHeaders(getState())
     })
     return res.data
   }
@@ -37,17 +31,13 @@ export const fetchProductImagesWithIds = createAsyncThunk(
 // Returns: "created:" + createdId (String)
 export const createImage = createAsyncThunk(
   'images/createImage',
-  async ({ file, productId }) => {
+  async ({ file, productId }, { getState }) => {
     const formData = new FormData()
     formData.append('file', file)
     formData.append('productId', productId)
 
-    const token = localStorage.getItem('maricafe-token')
     const res = await api.post('/images', formData, {
-      headers: {
-        'Authorization': `Bearer ${token}`
-        // Don't set Content-Type, let browser set it with boundary for multipart/form-data
-      }
+      headers: buildAuthHeaders(getState())
     })
     return res.data
   }
@@ -57,19 +47,15 @@ export const createImage = createAsyncThunk(
 // Returns: "created:" + id1,id2,... (String)
 export const createMultipleImages = createAsyncThunk(
   'images/createMultipleImages',
-  async ({ files, productId }) => {
+  async ({ files, productId }, { getState }) => {
     const formData = new FormData()
     files.forEach(file => {
       formData.append('files', file)
     })
     formData.append('productId', productId)
 
-    const token = localStorage.getItem('maricafe-token')
     const res = await api.post('/images/multiple', formData, {
-      headers: {
-        'Authorization': `Bearer ${token}`
-        // Don't set Content-Type, let browser set it with boundary for multipart/form-data
-      }
+      headers: buildAuthHeaders(getState())
     })
     return res.data
   }
@@ -79,9 +65,9 @@ export const createMultipleImages = createAsyncThunk(
 // Returns: "Imagen eliminada correctamente" (String)
 export const deleteImage = createAsyncThunk(
   'images/deleteImage',
-  async (imageId) => {
+  async (imageId, { getState }) => {
     const res = await api.delete(`/images/${imageId}`, {
-      headers: getAuthHeaders()
+      headers: buildAuthHeaders(getState())
     })
     return { imageId, response: res.data }
   }

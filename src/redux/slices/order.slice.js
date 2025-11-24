@@ -1,23 +1,14 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit'
 import { api } from '../api/axiosInstance'
 
-const getAuthHeaders = () => {
-  const token = localStorage.getItem('maricafe-token')
-  if (!token) return {}
-  return {
-    Authorization: `Bearer ${token}`,
-  }
-}
+import { buildAuthHeaders } from './user.slice'
 
 // 4.1 POST /orders -> Crear orden del usuario autenticado
 export const createOrder = createAsyncThunk(
   'order/createOrder',
-  async (orderData) => {
+  async (orderData, { getState }) => {
     const response = await api.post('/orders', orderData, {
-      headers: {
-        ...getAuthHeaders(),
-        'Content-Type': 'application/json',
-      },
+      headers: buildAuthHeaders(getState(), true),
     })
     return response.data
   }
@@ -26,11 +17,9 @@ export const createOrder = createAsyncThunk(
 // 4.2 GET /orders/user -> Listar órdenes del usuario autenticado
 export const fetchUserOrders = createAsyncThunk(
   'order/fetchUserOrders',
-  async () => {
+  async (_, { getState }) => {
     const response = await api.get('/orders/user', {
-      headers: {
-        ...getAuthHeaders(),
-      },
+      headers: buildAuthHeaders(getState()),
     })
     return response.data
   }
@@ -39,11 +28,9 @@ export const fetchUserOrders = createAsyncThunk(
 // 4.3 GET /orders/{id} -> Obtener una orden por id (solo ADMIN)
 export const fetchOrderById = createAsyncThunk(
   'order/fetchOrderById',
-  async (orderId) => {
+  async (orderId, { getState }) => {
     const response = await api.get(`/orders/${orderId}`, {
-      headers: {
-        ...getAuthHeaders(),
-      },
+      headers: buildAuthHeaders(getState()),
     })
     return response.data
   }
@@ -52,11 +39,9 @@ export const fetchOrderById = createAsyncThunk(
 // 4.4 GET /orders/user/{id} -> Obtener una orden del usuario autenticado
 export const fetchUserOrderById = createAsyncThunk(
   'order/fetchUserOrderById',
-  async (orderId) => {
+  async (orderId, { getState }) => {
     const response = await api.get(`/orders/user/${orderId}`, {
-      headers: {
-        ...getAuthHeaders(),
-      },
+      headers: buildAuthHeaders(getState()),
     })
     return response.data
   }
@@ -65,11 +50,9 @@ export const fetchUserOrderById = createAsyncThunk(
 // DELETE /orders/{id} -> Desactivar orden
 export const deleteOrder = createAsyncThunk(
   'order/deleteOrder',
-  async (orderId) => {
+  async (orderId, { getState }) => {
     const response = await api.delete(`/orders/${orderId}`, {
-      headers: {
-        ...getAuthHeaders(),
-      },
+      headers: buildAuthHeaders(getState()),
     })
     return response.data
   }
@@ -78,11 +61,9 @@ export const deleteOrder = createAsyncThunk(
 // GET /orders/admin/active -> Obtener todas las órdenes activas (solo ADMIN)
 export const fetchActiveOrders = createAsyncThunk(
   'order/fetchActiveOrders',
-  async () => {
+  async (_, { getState }) => {
     const response = await api.get('/orders/admin/active', {
-      headers: {
-        ...getAuthHeaders(),
-      },
+      headers: buildAuthHeaders(getState()),
     })
     return response.data
   }
@@ -91,11 +72,9 @@ export const fetchActiveOrders = createAsyncThunk(
 // GET /orders/admin/inactive -> Obtener todas las órdenes inactivas (solo ADMIN)
 export const fetchInactiveOrders = createAsyncThunk(
   'order/fetchInactiveOrders',
-  async () => {
+  async (_, { getState }) => {
     const response = await api.get('/orders/admin/inactive', {
-      headers: {
-        ...getAuthHeaders(),
-      },
+      headers: buildAuthHeaders(getState()),
     })
     return response.data
   }

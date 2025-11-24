@@ -1,22 +1,16 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit'
 import { api } from '../api/axiosInstance'
 
-const getAuthHeaders = () => {
-  const token = localStorage.getItem('maricafe-token')
-  return {
-    'Authorization': `Bearer ${token}`,
-    'Content-Type': 'application/json'
-  }
-}
+import { buildAuthHeaders } from './user.slice'
 
 // EP2: 3.6 POST /discounts/{productId}
 export const createDiscount = createAsyncThunk(
   'discount/createDiscount',
-  async ({ productId, discountPercentage }) => {
+  async ({ productId, discountPercentage }, { getState }) => {
     const res = await api.post(
       `/discounts/${productId}`,
       { discount_percentage: discountPercentage },
-      { headers: getAuthHeaders() }
+      { headers: buildAuthHeaders(getState(), true) }
     )
     return res.data
   }
@@ -25,11 +19,11 @@ export const createDiscount = createAsyncThunk(
 // EP3: 3.7 PATCH /discounts/{discountId}
 export const updateDiscount = createAsyncThunk(
   'discount/updateDiscount',
-  async ({ discountId, discountPercentage }) => {
+  async ({ discountId, discountPercentage }, { getState }) => {
     const res = await api.patch(
       `/discounts/${discountId}`,
       { discount_percentage: discountPercentage },
-      { headers: getAuthHeaders() }
+      { headers: buildAuthHeaders(getState(), true) }
     )
     return res.data
   }
@@ -38,10 +32,10 @@ export const updateDiscount = createAsyncThunk(
 // EP1: DELETE /discounts/{discountId}
 export const deleteDiscount = createAsyncThunk(
   'discount/deleteDiscount',
-  async (discountId) => {
+  async (discountId, { getState }) => {
     const res = await api.delete(
       `/discounts/${discountId}`,
-      { headers: getAuthHeaders() }
+      { headers: buildAuthHeaders(getState()) }
     )
     return res.data
   }

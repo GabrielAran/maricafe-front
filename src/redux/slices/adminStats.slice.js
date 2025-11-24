@@ -1,21 +1,14 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit'
 import { api } from '../api/axiosInstance'
 
-const getAuthHeaders = () => {
-  const token = localStorage.getItem('maricafe-token')
-  if (!token) return {}
-  return {
-    Authorization: `Bearer ${token}`,
-    'Content-Type': 'application/json',
-  }
-}
+import { buildAuthHeaders } from './user.slice'
 
 // GET /admin/stats/overview
 export const fetchOverviewStats = createAsyncThunk(
   'adminStats/fetchOverviewStats',
-  async () => {
+  async (_, { getState }) => {
     const res = await api.get('/admin/stats/overview', {
-      headers: getAuthHeaders(),
+      headers: buildAuthHeaders(getState()),
     })
     return res.data
   }
@@ -24,9 +17,9 @@ export const fetchOverviewStats = createAsyncThunk(
 // GET /admin/stats/products-by-category
 export const fetchProductsByCategory = createAsyncThunk(
   'adminStats/fetchProductsByCategory',
-  async () => {
+  async (_, { getState }) => {
     const res = await api.get('/admin/stats/products-by-category', {
-      headers: getAuthHeaders(),
+      headers: buildAuthHeaders(getState()),
     })
     return res.data
   }
@@ -35,9 +28,9 @@ export const fetchProductsByCategory = createAsyncThunk(
 // GET /admin/stats/low-stock-products
 export const fetchLowStockProducts = createAsyncThunk(
   'adminStats/fetchLowStockProducts',
-  async () => {
+  async (_, { getState }) => {
     const res = await api.get('/admin/stats/low-stock-products', {
-      headers: getAuthHeaders(),
+      headers: buildAuthHeaders(getState()),
     })
     return res.data
   }
@@ -46,9 +39,9 @@ export const fetchLowStockProducts = createAsyncThunk(
 // GET /admin/stats/top-selling-products
 export const fetchTopSellingProducts = createAsyncThunk(
   'adminStats/fetchTopSellingProducts',
-  async () => {
+  async (_, { getState }) => {
     const res = await api.get('/admin/stats/top-selling-products', {
-      headers: getAuthHeaders(),
+      headers: buildAuthHeaders(getState()),
     })
     return res.data
   }
@@ -57,9 +50,9 @@ export const fetchTopSellingProducts = createAsyncThunk(
 // GET /admin/stats/top-spending-users
 export const fetchTopSpendingUsers = createAsyncThunk(
   'adminStats/fetchTopSpendingUsers',
-  async () => {
+  async (_, { getState }) => {
     const res = await api.get('/admin/stats/top-spending-users', {
-      headers: getAuthHeaders(),
+      headers: buildAuthHeaders(getState()),
     })
     return res.data
   }
@@ -68,9 +61,9 @@ export const fetchTopSpendingUsers = createAsyncThunk(
 // GET /admin/stats/discounted-products
 export const fetchDiscountedProducts = createAsyncThunk(
   'adminStats/fetchDiscountedProducts',
-  async () => {
+  async (_, { getState }) => {
     const res = await api.get('/admin/stats/discounted-products', {
-      headers: getAuthHeaders(),
+      headers: buildAuthHeaders(getState()),
     })
     return res.data
   }

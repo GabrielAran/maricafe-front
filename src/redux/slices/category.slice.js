@@ -1,21 +1,13 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit'
 import { api } from '../api/axiosInstance'
 
-const getAuthHeaders = () => {
-  const token = localStorage.getItem('maricafe-token')
-  if (!token) return {}
-  return {
-    Authorization: `Bearer ${token}`,
-  }
-}
+import { buildAuthHeaders } from './user.slice'
 
 export const fetchCategories = createAsyncThunk(
   'category/fetchCategories',
-  async () => {
+  async (_, { getState }) => {
     const response = await api.get('/categories', {
-      headers: {
-        ...getAuthHeaders(),
-      },
+      headers: buildAuthHeaders(getState()),
     })
     return response.data
   }
@@ -23,12 +15,9 @@ export const fetchCategories = createAsyncThunk(
 
 export const createCategory = createAsyncThunk(
   'category/createCategory',
-  async (payload) => {
+  async (payload, { getState }) => {
     const response = await api.post('/categories', payload, {
-      headers: {
-        ...getAuthHeaders(),
-        'Content-Type': 'application/json',
-      },
+      headers: buildAuthHeaders(getState(), true),
     })
     return response.data
   }
@@ -36,12 +25,9 @@ export const createCategory = createAsyncThunk(
 
 export const updateCategory = createAsyncThunk(
   'category/updateCategory',
-  async ({ categoryId, data }) => {
+  async ({ categoryId, data }, { getState }) => {
     const response = await api.put(`/categories/${categoryId}`, data, {
-      headers: {
-        ...getAuthHeaders(),
-        'Content-Type': 'application/json',
-      },
+      headers: buildAuthHeaders(getState(), true),
     })
     return response.data
   }
@@ -49,11 +35,9 @@ export const updateCategory = createAsyncThunk(
 
 export const deleteCategory = createAsyncThunk(
   'category/deleteCategory',
-  async (categoryId) => {
+  async (categoryId, { getState }) => {
     const response = await api.delete(`/categories/${categoryId}`, {
-      headers: {
-        ...getAuthHeaders(),
-      },
+      headers: buildAuthHeaders(getState()),
     })
     return response.data
   }

@@ -1,12 +1,18 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit'
 import { api } from '../api/axiosInstance'
 
-const getAuthHeaders = (state) => {
+export const buildAuthHeaders = (state, includeJson = false) => {
     const token = state.user.token
-    return {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json'
+    const headers = {}
+
+    if (token) {
+        headers.Authorization = `Bearer ${token}`
     }
+    if (includeJson) {
+        headers['Content-Type'] = 'application/json'
+    }
+
+    return headers
 }
 
 export const loginUser = createAsyncThunk(
@@ -29,7 +35,7 @@ export const updateUser = createAsyncThunk(
     'user/updateUser',
     async ({ userId, data }, { getState }) => {
         const response = await api.put(`/users/${userId}`, data, {
-            headers: getAuthHeaders(getState())
+            headers: buildAuthHeaders(getState(), true)
         })
 
         return response.data
@@ -40,7 +46,7 @@ export const changePassword = createAsyncThunk(
     'user/changePassword',
     async ({ userId, data }, { getState }) => {
         const response = await api.put(`/users/${userId}/change-password`, data, {
-            headers: getAuthHeaders(getState())
+            headers: buildAuthHeaders(getState(), true)
         })
 
         return response.data

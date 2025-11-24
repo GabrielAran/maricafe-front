@@ -3,27 +3,19 @@ import { api } from '../api/axiosInstance'
 
 // Backend base URL (same server as categories)
 
-const getAuthHeaders = () => {
-  const token = localStorage.getItem('maricafe-token')
-  if (!token) return {}
-  return {
-    Authorization: `Bearer ${token}`,
-  }
-}
+import { buildAuthHeaders } from './user.slice'
 
 // 3.8 GET /products?sort=price,asc|desc
 export const fetchProducts = createAsyncThunk(
   'products/fetchProducts',
-  async (sort) => {
+  async (sort, { getState }) => {
     const params = new URLSearchParams()
     if (sort) params.append('sort', sort)
     const query = params.toString()
     const url = query ? `/products?${query}` : `/products`
 
     const response = await api.get(url, {
-      headers: {
-        ...getAuthHeaders(),
-      },
+      headers: buildAuthHeaders(getState()),
     })
     return response.data
   }
@@ -32,11 +24,9 @@ export const fetchProducts = createAsyncThunk(
 // 3.2 GET /products/{id}
 export const fetchProductById = createAsyncThunk(
   'products/fetchProductById',
-  async (productId) => {
+  async (productId, { getState }) => {
     const response = await api.get(`/products/${productId}`, {
-      headers: {
-        ...getAuthHeaders(),
-      },
+      headers: buildAuthHeaders(getState()),
     })
     return response.data
   }
@@ -45,7 +35,7 @@ export const fetchProductById = createAsyncThunk(
 // 3.5 GET /products/category/{categoryId}?sort=price,asc|desc
 export const fetchProductsByCategory = createAsyncThunk(
   'products/fetchProductsByCategory',
-  async ({ categoryId, sort }) => {
+  async ({ categoryId, sort }, { getState }) => {
     const params = new URLSearchParams()
     if (sort) params.append('sort', sort)
     const query = params.toString()
@@ -54,9 +44,7 @@ export const fetchProductsByCategory = createAsyncThunk(
       : `/products/category/${categoryId}`
 
     const response = await api.get(url, {
-      headers: {
-        ...getAuthHeaders(),
-      },
+      headers: buildAuthHeaders(getState()),
     })
     return response.data
   }
@@ -65,7 +53,7 @@ export const fetchProductsByCategory = createAsyncThunk(
 // 3.1 GET /products/filterPrices
 export const fetchProductsFilteredByPrice = createAsyncThunk(
   'products/fetchProductsFilteredByPrice',
-  async ({ title, priceMin, priceMax }) => {
+  async ({ title, priceMin, priceMax }, { getState }) => {
     const params = new URLSearchParams()
     if (title) params.append('title', title)
     if (priceMin !== undefined && priceMin !== null) params.append('priceMin', priceMin)
@@ -73,9 +61,7 @@ export const fetchProductsFilteredByPrice = createAsyncThunk(
 
     const url = `/products/filterPrices?${params.toString()}`
     const response = await api.get(url, {
-      headers: {
-        ...getAuthHeaders(),
-      },
+      headers: buildAuthHeaders(getState()),
     })
     return response.data
   }
@@ -84,7 +70,7 @@ export const fetchProductsFilteredByPrice = createAsyncThunk(
 // 3.4 GET /products/attributes
 export const fetchProductsByAttributes = createAsyncThunk(
   'products/fetchProductsByAttributes',
-  async ({ title, description, priceMax }) => {
+  async ({ title, description, priceMax }, { getState }) => {
     const params = new URLSearchParams()
     if (title) params.append('title', title)
     if (description) params.append('description', description)
@@ -92,9 +78,7 @@ export const fetchProductsByAttributes = createAsyncThunk(
 
     const url = `/products/attributes?${params.toString()}`
     const response = await api.get(url, {
-      headers: {
-        ...getAuthHeaders(),
-      },
+      headers: buildAuthHeaders(getState()),
     })
     return response.data
   }
@@ -103,7 +87,7 @@ export const fetchProductsByAttributes = createAsyncThunk(
 // 3.x GET /products/with-attributes
 export const fetchProductsWithAttributes = createAsyncThunk(
   'products/fetchProductsWithAttributes',
-  async (sort) => {
+  async (sort, { getState }) => {
     const params = new URLSearchParams()
     if (sort) params.append('sort', sort)
     const query = params.toString()
@@ -112,9 +96,7 @@ export const fetchProductsWithAttributes = createAsyncThunk(
       : `/products/with-attributes`
 
     const response = await api.get(url, {
-      headers: {
-        ...getAuthHeaders(),
-      },
+      headers: buildAuthHeaders(getState()),
     })
     return response.data
   }
@@ -123,7 +105,7 @@ export const fetchProductsWithAttributes = createAsyncThunk(
 // 3.x GET /products/filter-by-attributes
 export const fetchProductsFilteredByAttributes = createAsyncThunk(
   'products/fetchProductsFilteredByAttributes',
-  async ({ sort, categoryId, attributeFilters }) => {
+  async ({ sort, categoryId, attributeFilters }, { getState }) => {
     const params = new URLSearchParams()
     if (sort) params.append('sort', sort)
     if (categoryId) params.append('categoryId', categoryId)
@@ -131,9 +113,7 @@ export const fetchProductsFilteredByAttributes = createAsyncThunk(
 
     const url = `/products/filter-by-attributes?${params.toString()}`
     const response = await api.get(url, {
-      headers: {
-        ...getAuthHeaders(),
-      },
+      headers: buildAuthHeaders(getState()),
     })
     return response.data
   }
@@ -142,12 +122,9 @@ export const fetchProductsFilteredByAttributes = createAsyncThunk(
 // 4.1 POST /products
 export const createProduct = createAsyncThunk(
   'products/createProduct',
-  async (payload) => {
+  async (payload, { getState }) => {
     const response = await api.post('/products', payload, {
-      headers: {
-        ...getAuthHeaders(),
-        'Content-Type': 'application/json',
-      },
+      headers: buildAuthHeaders(getState(), true),
     })
     return response.data
   }
@@ -156,12 +133,9 @@ export const createProduct = createAsyncThunk(
 // 4.2 PUT /products/{id}
 export const updateProduct = createAsyncThunk(
   'products/updateProduct',
-  async ({ productId, data }) => {
+  async ({ productId, data }, { getState }) => {
     const response = await api.put(`/products/${productId}`, data, {
-      headers: {
-        ...getAuthHeaders(),
-        'Content-Type': 'application/json',
-      },
+      headers: buildAuthHeaders(getState(), true),
     })
     return response.data
   }
@@ -170,11 +144,9 @@ export const updateProduct = createAsyncThunk(
 // 4.3 DELETE /products/{id}
 export const deleteProduct = createAsyncThunk(
   'products/deleteProduct',
-  async (productId) => {
+  async (productId, { getState }) => {
     const response = await api.delete(`/products/${productId}`, {
-      headers: {
-        ...getAuthHeaders(),
-      },
+      headers: buildAuthHeaders(getState()),
     })
     return response.data
   }
