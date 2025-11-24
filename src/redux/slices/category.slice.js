@@ -130,7 +130,7 @@ const categorySlice = createSlice({
   },
 })
 
-export const selectCategorycategories = (state) => state.category.categories
+export const selectCategoryCategories = (state) => state.category.categories
 export const selectCategoryPending = (state) => state.category.pending
 export const selectCategoryError = (state) => state.category.error
 
