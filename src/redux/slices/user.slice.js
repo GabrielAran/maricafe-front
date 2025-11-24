@@ -1,7 +1,5 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit'
-import axios from 'axios'
-
-const API_BASE_URL = 'http://127.0.0.1:4002'
+import { api } from '../api/axiosInstance'
 
 const getAuthHeaders = (state) => {
     const token = state.user.token
@@ -14,7 +12,7 @@ const getAuthHeaders = (state) => {
 export const loginUser = createAsyncThunk(
     'user/loginUser',
     async (credentials) => {
-        const response = await axios.post(`${API_BASE_URL}/maricafe/auth/login`, credentials)
+        const response = await api.post('/maricafe/auth/login', credentials)
         return response.data
     }
 )
@@ -22,7 +20,7 @@ export const loginUser = createAsyncThunk(
 export const registerUser = createAsyncThunk(
     'user/registerUser',
     async (userData) => {
-        const response = await axios.post(`${API_BASE_URL}/maricafe/auth/register`, userData)
+        const response = await api.post('/maricafe/auth/register', userData)
         return response.data
     }
 )
@@ -30,7 +28,7 @@ export const registerUser = createAsyncThunk(
 export const updateUser = createAsyncThunk(
     'user/updateUser',
     async ({ userId, data }, { getState }) => {
-        const response = await axios.put(`${API_BASE_URL}/users/${userId}`, data, {
+        const response = await api.put(`/users/${userId}`, data, {
             headers: getAuthHeaders(getState())
         })
 
@@ -41,7 +39,7 @@ export const updateUser = createAsyncThunk(
 export const changePassword = createAsyncThunk(
     'user/changePassword',
     async ({ userId, data }, { getState }) => {
-        const response = await axios.put(`${API_BASE_URL}/users/${userId}/change-password`, data, {
+        const response = await api.put(`/users/${userId}/change-password`, data, {
             headers: getAuthHeaders(getState())
         })
 

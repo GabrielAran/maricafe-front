@@ -1,8 +1,7 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit'
-import axios from 'axios'
+import { api } from '../api/axiosInstance'
 
 // Backend base URL (same server as categories)
-const API_BASE_URL = 'http://127.0.0.1:4002'
 
 const getAuthHeaders = () => {
   const token = localStorage.getItem('maricafe-token')
@@ -19,9 +18,9 @@ export const fetchProducts = createAsyncThunk(
     const params = new URLSearchParams()
     if (sort) params.append('sort', sort)
     const query = params.toString()
-    const url = query ? `${API_BASE_URL}/products?${query}` : `${API_BASE_URL}/products`
+    const url = query ? `/products?${query}` : `/products`
 
-    const response = await axios.get(url, {
+    const response = await api.get(url, {
       headers: {
         ...getAuthHeaders(),
       },
@@ -34,7 +33,7 @@ export const fetchProducts = createAsyncThunk(
 export const fetchProductById = createAsyncThunk(
   'products/fetchProductById',
   async (productId) => {
-    const response = await axios.get(`${API_BASE_URL}/products/${productId}`, {
+    const response = await api.get(`/products/${productId}`, {
       headers: {
         ...getAuthHeaders(),
       },
@@ -51,10 +50,10 @@ export const fetchProductsByCategory = createAsyncThunk(
     if (sort) params.append('sort', sort)
     const query = params.toString()
     const url = query
-      ? `${API_BASE_URL}/products/category/${categoryId}?${query}`
-      : `${API_BASE_URL}/products/category/${categoryId}`
+      ? `/products/category/${categoryId}?${query}`
+      : `/products/category/${categoryId}`
 
-    const response = await axios.get(url, {
+    const response = await api.get(url, {
       headers: {
         ...getAuthHeaders(),
       },
@@ -72,8 +71,8 @@ export const fetchProductsFilteredByPrice = createAsyncThunk(
     if (priceMin !== undefined && priceMin !== null) params.append('priceMin', priceMin)
     if (priceMax !== undefined && priceMax !== null) params.append('priceMax', priceMax)
 
-    const url = `${API_BASE_URL}/products/filterPrices?${params.toString()}`
-    const response = await axios.get(url, {
+    const url = `/products/filterPrices?${params.toString()}`
+    const response = await api.get(url, {
       headers: {
         ...getAuthHeaders(),
       },
@@ -91,8 +90,8 @@ export const fetchProductsByAttributes = createAsyncThunk(
     if (description) params.append('description', description)
     if (priceMax !== undefined && priceMax !== null) params.append('priceMax', priceMax)
 
-    const url = `${API_BASE_URL}/products/attributes?${params.toString()}`
-    const response = await axios.get(url, {
+    const url = `/products/attributes?${params.toString()}`
+    const response = await api.get(url, {
       headers: {
         ...getAuthHeaders(),
       },
@@ -109,10 +108,10 @@ export const fetchProductsWithAttributes = createAsyncThunk(
     if (sort) params.append('sort', sort)
     const query = params.toString()
     const url = query
-      ? `${API_BASE_URL}/products/with-attributes?${query}`
-      : `${API_BASE_URL}/products/with-attributes`
+      ? `/products/with-attributes?${query}`
+      : `/products/with-attributes`
 
-    const response = await axios.get(url, {
+    const response = await api.get(url, {
       headers: {
         ...getAuthHeaders(),
       },
@@ -130,8 +129,8 @@ export const fetchProductsFilteredByAttributes = createAsyncThunk(
     if (categoryId) params.append('categoryId', categoryId)
     if (attributeFilters) params.append('attributeFilters', attributeFilters)
 
-    const url = `${API_BASE_URL}/products/filter-by-attributes?${params.toString()}`
-    const response = await axios.get(url, {
+    const url = `/products/filter-by-attributes?${params.toString()}`
+    const response = await api.get(url, {
       headers: {
         ...getAuthHeaders(),
       },
@@ -144,7 +143,7 @@ export const fetchProductsFilteredByAttributes = createAsyncThunk(
 export const createProduct = createAsyncThunk(
   'products/createProduct',
   async (payload) => {
-    const response = await axios.post(`${API_BASE_URL}/products`, payload, {
+    const response = await api.post('/products', payload, {
       headers: {
         ...getAuthHeaders(),
         'Content-Type': 'application/json',
@@ -158,7 +157,7 @@ export const createProduct = createAsyncThunk(
 export const updateProduct = createAsyncThunk(
   'products/updateProduct',
   async ({ productId, data }) => {
-    const response = await axios.put(`${API_BASE_URL}/products/${productId}`, data, {
+    const response = await api.put(`/products/${productId}`, data, {
       headers: {
         ...getAuthHeaders(),
         'Content-Type': 'application/json',
@@ -172,7 +171,7 @@ export const updateProduct = createAsyncThunk(
 export const deleteProduct = createAsyncThunk(
   'products/deleteProduct',
   async (productId) => {
-    const response = await axios.delete(`${API_BASE_URL}/products/${productId}`, {
+    const response = await api.delete(`/products/${productId}`, {
       headers: {
         ...getAuthHeaders(),
       },

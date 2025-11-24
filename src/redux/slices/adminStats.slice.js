@@ -1,7 +1,5 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit'
-import axios from 'axios'
-
-const API_BASE_URL = 'http://127.0.0.1:4002'
+import { api } from '../api/axiosInstance'
 
 const getAuthHeaders = () => {
   const token = localStorage.getItem('maricafe-token')
@@ -16,7 +14,7 @@ const getAuthHeaders = () => {
 export const fetchOverviewStats = createAsyncThunk(
   'adminStats/fetchOverviewStats',
   async () => {
-    const res = await axios.get(`${API_BASE_URL}/admin/stats/overview`, {
+    const res = await api.get('/admin/stats/overview', {
       headers: getAuthHeaders(),
     })
     return res.data
@@ -27,7 +25,7 @@ export const fetchOverviewStats = createAsyncThunk(
 export const fetchProductsByCategory = createAsyncThunk(
   'adminStats/fetchProductsByCategory',
   async () => {
-    const res = await axios.get(`${API_BASE_URL}/admin/stats/products-by-category`, {
+    const res = await api.get('/admin/stats/products-by-category', {
       headers: getAuthHeaders(),
     })
     return res.data
@@ -38,7 +36,7 @@ export const fetchProductsByCategory = createAsyncThunk(
 export const fetchLowStockProducts = createAsyncThunk(
   'adminStats/fetchLowStockProducts',
   async () => {
-    const res = await axios.get(`${API_BASE_URL}/admin/stats/low-stock-products`, {
+    const res = await api.get('/admin/stats/low-stock-products', {
       headers: getAuthHeaders(),
     })
     return res.data
@@ -49,7 +47,7 @@ export const fetchLowStockProducts = createAsyncThunk(
 export const fetchTopSellingProducts = createAsyncThunk(
   'adminStats/fetchTopSellingProducts',
   async () => {
-    const res = await axios.get(`${API_BASE_URL}/admin/stats/top-selling-products`, {
+    const res = await api.get('/admin/stats/top-selling-products', {
       headers: getAuthHeaders(),
     })
     return res.data
@@ -60,7 +58,7 @@ export const fetchTopSellingProducts = createAsyncThunk(
 export const fetchTopSpendingUsers = createAsyncThunk(
   'adminStats/fetchTopSpendingUsers',
   async () => {
-    const res = await axios.get(`${API_BASE_URL}/admin/stats/top-spending-users`, {
+    const res = await api.get('/admin/stats/top-spending-users', {
       headers: getAuthHeaders(),
     })
     return res.data
@@ -71,7 +69,7 @@ export const fetchTopSpendingUsers = createAsyncThunk(
 export const fetchDiscountedProducts = createAsyncThunk(
   'adminStats/fetchDiscountedProducts',
   async () => {
-    const res = await axios.get(`${API_BASE_URL}/admin/stats/discounted-products`, {
+    const res = await api.get('/admin/stats/discounted-products', {
       headers: getAuthHeaders(),
     })
     return res.data

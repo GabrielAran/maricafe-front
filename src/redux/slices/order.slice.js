@@ -1,7 +1,5 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit'
-import axios from 'axios'
-
-const API_BASE_URL = 'http://127.0.0.1:4002'
+import { api } from '../api/axiosInstance'
 
 const getAuthHeaders = () => {
   const token = localStorage.getItem('maricafe-token')
@@ -15,7 +13,7 @@ const getAuthHeaders = () => {
 export const createOrder = createAsyncThunk(
   'order/createOrder',
   async (orderData) => {
-    const response = await axios.post(`${API_BASE_URL}/orders`, orderData, {
+    const response = await api.post('/orders', orderData, {
       headers: {
         ...getAuthHeaders(),
         'Content-Type': 'application/json',
@@ -29,7 +27,7 @@ export const createOrder = createAsyncThunk(
 export const fetchUserOrders = createAsyncThunk(
   'order/fetchUserOrders',
   async () => {
-    const response = await axios.get(`${API_BASE_URL}/orders/user`, {
+    const response = await api.get('/orders/user', {
       headers: {
         ...getAuthHeaders(),
       },
@@ -42,7 +40,7 @@ export const fetchUserOrders = createAsyncThunk(
 export const fetchOrderById = createAsyncThunk(
   'order/fetchOrderById',
   async (orderId) => {
-    const response = await axios.get(`${API_BASE_URL}/orders/${orderId}`, {
+    const response = await api.get(`/orders/${orderId}`, {
       headers: {
         ...getAuthHeaders(),
       },
@@ -55,7 +53,7 @@ export const fetchOrderById = createAsyncThunk(
 export const fetchUserOrderById = createAsyncThunk(
   'order/fetchUserOrderById',
   async (orderId) => {
-    const response = await axios.get(`${API_BASE_URL}/orders/user/${orderId}`, {
+    const response = await api.get(`/orders/user/${orderId}`, {
       headers: {
         ...getAuthHeaders(),
       },
@@ -68,7 +66,7 @@ export const fetchUserOrderById = createAsyncThunk(
 export const deleteOrder = createAsyncThunk(
   'order/deleteOrder',
   async (orderId) => {
-    const response = await axios.delete(`${API_BASE_URL}/orders/${orderId}`, {
+    const response = await api.delete(`/orders/${orderId}`, {
       headers: {
         ...getAuthHeaders(),
       },
@@ -81,7 +79,7 @@ export const deleteOrder = createAsyncThunk(
 export const fetchActiveOrders = createAsyncThunk(
   'order/fetchActiveOrders',
   async () => {
-    const response = await axios.get(`${API_BASE_URL}/orders/admin/active`, {
+    const response = await api.get('/orders/admin/active', {
       headers: {
         ...getAuthHeaders(),
       },
@@ -94,7 +92,7 @@ export const fetchActiveOrders = createAsyncThunk(
 export const fetchInactiveOrders = createAsyncThunk(
   'order/fetchInactiveOrders',
   async () => {
-    const response = await axios.get(`${API_BASE_URL}/orders/admin/inactive`, {
+    const response = await api.get('/orders/admin/inactive', {
       headers: {
         ...getAuthHeaders(),
       },

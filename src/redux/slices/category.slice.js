@@ -1,7 +1,5 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit'
-import axios from 'axios'
-
-const API_BASE_URL = 'http://127.0.0.1:4002'
+import { api } from '../api/axiosInstance'
 
 const getAuthHeaders = () => {
   const token = localStorage.getItem('maricafe-token')
@@ -14,7 +12,7 @@ const getAuthHeaders = () => {
 export const fetchCategories = createAsyncThunk(
   'category/fetchCategories',
   async () => {
-    const response = await axios.get(`${API_BASE_URL}/categories`, {
+    const response = await api.get('/categories', {
       headers: {
         ...getAuthHeaders(),
       },
@@ -26,7 +24,7 @@ export const fetchCategories = createAsyncThunk(
 export const createCategory = createAsyncThunk(
   'category/createCategory',
   async (payload) => {
-    const response = await axios.post(`${API_BASE_URL}/categories`, payload, {
+    const response = await api.post('/categories', payload, {
       headers: {
         ...getAuthHeaders(),
         'Content-Type': 'application/json',
@@ -39,7 +37,7 @@ export const createCategory = createAsyncThunk(
 export const updateCategory = createAsyncThunk(
   'category/updateCategory',
   async ({ categoryId, data }) => {
-    const response = await axios.put(`${API_BASE_URL}/categories/${categoryId}`, data, {
+    const response = await api.put(`/categories/${categoryId}`, data, {
       headers: {
         ...getAuthHeaders(),
         'Content-Type': 'application/json',
@@ -52,7 +50,7 @@ export const updateCategory = createAsyncThunk(
 export const deleteCategory = createAsyncThunk(
   'category/deleteCategory',
   async (categoryId) => {
-    const response = await axios.delete(`${API_BASE_URL}/categories/${categoryId}`, {
+    const response = await api.delete(`/categories/${categoryId}`, {
       headers: {
         ...getAuthHeaders(),
       },

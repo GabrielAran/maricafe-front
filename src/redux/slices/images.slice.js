@@ -1,7 +1,5 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit'
-import axios from 'axios'
-
-const API_BASE_URL = 'http://127.0.0.1:4002'
+import { api } from '../api/axiosInstance'
 
 const getAuthHeaders = () => {
   const token = localStorage.getItem('maricafe-token')
@@ -16,7 +14,7 @@ const getAuthHeaders = () => {
 export const fetchProductImages = createAsyncThunk(
   'images/fetchProductImages',
   async (productId) => {
-    const res = await axios.get(`${API_BASE_URL}/images/${productId}`, {
+    const res = await api.get(`/images/${productId}`, {
       headers: getAuthHeaders()
     })
     return res.data
@@ -28,7 +26,7 @@ export const fetchProductImages = createAsyncThunk(
 export const fetchProductImagesWithIds = createAsyncThunk(
   'images/fetchProductImagesWithIds',
   async (productId) => {
-    const res = await axios.get(`${API_BASE_URL}/images/${productId}/with-ids`, {
+    const res = await api.get(`/images/${productId}/with-ids`, {
       headers: getAuthHeaders()
     })
     return res.data
@@ -43,9 +41,9 @@ export const createImage = createAsyncThunk(
     const formData = new FormData()
     formData.append('file', file)
     formData.append('productId', productId)
-    
+
     const token = localStorage.getItem('maricafe-token')
-    const res = await axios.post(`${API_BASE_URL}/images`, formData, {
+    const res = await api.post('/images', formData, {
       headers: {
         'Authorization': `Bearer ${token}`
         // Don't set Content-Type, let browser set it with boundary for multipart/form-data
@@ -65,9 +63,9 @@ export const createMultipleImages = createAsyncThunk(
       formData.append('files', file)
     })
     formData.append('productId', productId)
-    
+
     const token = localStorage.getItem('maricafe-token')
-    const res = await axios.post(`${API_BASE_URL}/images/multiple`, formData, {
+    const res = await api.post('/images/multiple', formData, {
       headers: {
         'Authorization': `Bearer ${token}`
         // Don't set Content-Type, let browser set it with boundary for multipart/form-data
@@ -82,7 +80,7 @@ export const createMultipleImages = createAsyncThunk(
 export const deleteImage = createAsyncThunk(
   'images/deleteImage',
   async (imageId) => {
-    const res = await axios.delete(`${API_BASE_URL}/images/${imageId}`, {
+    const res = await api.delete(`/images/${imageId}`, {
       headers: getAuthHeaders()
     })
     return { imageId, response: res.data }

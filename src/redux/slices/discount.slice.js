@@ -1,7 +1,5 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit'
-import axios from 'axios'
-
-const API_BASE_URL = 'http://127.0.0.1:4002'
+import { api } from '../api/axiosInstance'
 
 const getAuthHeaders = () => {
   const token = localStorage.getItem('maricafe-token')
@@ -15,8 +13,8 @@ const getAuthHeaders = () => {
 export const createDiscount = createAsyncThunk(
   'discount/createDiscount',
   async ({ productId, discountPercentage }) => {
-    const res = await axios.post(
-      `${API_BASE_URL}/discounts/${productId}`,
+    const res = await api.post(
+      `/discounts/${productId}`,
       { discount_percentage: discountPercentage },
       { headers: getAuthHeaders() }
     )
@@ -28,8 +26,8 @@ export const createDiscount = createAsyncThunk(
 export const updateDiscount = createAsyncThunk(
   'discount/updateDiscount',
   async ({ discountId, discountPercentage }) => {
-    const res = await axios.patch(
-      `${API_BASE_URL}/discounts/${discountId}`,
+    const res = await api.patch(
+      `/discounts/${discountId}`,
       { discount_percentage: discountPercentage },
       { headers: getAuthHeaders() }
     )
@@ -41,8 +39,8 @@ export const updateDiscount = createAsyncThunk(
 export const deleteDiscount = createAsyncThunk(
   'discount/deleteDiscount',
   async (discountId) => {
-    const res = await axios.delete(
-      `${API_BASE_URL}/discounts/${discountId}`,
+    const res = await api.delete(
+      `/discounts/${discountId}`,
       { headers: getAuthHeaders() }
     )
     return res.data
