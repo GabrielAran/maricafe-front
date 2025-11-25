@@ -1,16 +1,25 @@
 import React, { useState } from 'react'
 import { Menu, X, User, LogOut } from 'lucide-react'
-import { useAuth } from '../context/AuthContext.jsx'
+import { useDispatch, useSelector } from 'react-redux'
+import { selectCurrentUser, selectIsAuthenticated, selectIsAdmin, logout as logoutAction } from '../redux/slices/user.slice'
 import CartSheet from './CartSheet.jsx'
 
 export default function Header({ onNavigate, currentPage }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
-  const { isAuthenticated, user, logout, isAdmin } = useAuth()
+  const dispatch = useDispatch()
+  const user = useSelector(selectCurrentUser)
+  const isAuthenticated = useSelector(selectIsAuthenticated)
+  const isAdmin = useSelector(selectIsAdmin)
 
   const handleLogout = () => {
-    logout()
+    // Preserve previous behavior: remove stored auth and reload to reset services
+    localStorage.removeItem('maricafe-token')
+    localStorage.removeItem('maricafe-user')
+    dispatch(logoutAction())
     setIsMenuOpen(false)
     onNavigate('home')
+    // force full reload to match previous AuthContext behavior
+    window.location.reload()
   }
 
   const handleNavigation = (page) => {
@@ -44,7 +53,7 @@ export default function Header({ onNavigate, currentPage }) {
           >
             Inicio
           </button>
-          {!isAdmin() && (
+          {!isAdmin && (
             <>
               <button 
                 className={`transition-colors ${currentPage === 'productos' ? 'text-primary' : 'text-foreground hover:text-primary'}`}
@@ -60,7 +69,7 @@ export default function Header({ onNavigate, currentPage }) {
               </button>
             </>
           )}
-          {isAuthenticated && isAdmin() && (
+              {isAuthenticated && isAdmin && (
             <button 
               className={`transition-colors ${currentPage === 'admin' ? 'text-primary' : 'text-foreground hover:text-primary'}`}
               onClick={() => handleNavigation('admin')}
@@ -73,7 +82,7 @@ export default function Header({ onNavigate, currentPage }) {
         {/* Right side actions */}
         <div className="flex items-center space-x-4">
           {/* Cart - Visible to all except admins, but access controlled */}
-          {!isAdmin() && <CartSheet onNavigate={onNavigate} />}
+          {!isAdmin && <CartSheet onNavigate={onNavigate} />}
 
           {/* User menu */}
           {isAuthenticated ? (
@@ -164,7 +173,7 @@ export default function Header({ onNavigate, currentPage }) {
             <div className="border-t pt-4 mt-4">
               {isAuthenticated ? (
                 <div className="space-y-2">
-                  {!isAdmin() && (
+                  {!isAdmin && (
                     <>
                       <div className="text-sm text-muted-foreground">
                         Hola, {user?.firstName} {user?.lastName}
@@ -178,7 +187,7 @@ export default function Header({ onNavigate, currentPage }) {
                       </button>
                     </>
                   )}
-                  {isAdmin() && (
+                  {isAdmin && (
                     <div className="text-xs bg-primary text-primary-foreground px-2 py-1 rounded inline-block">
                       ADMINISTRADOR
                     </div>
