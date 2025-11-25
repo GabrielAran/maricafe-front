@@ -1,6 +1,5 @@
-// Product View - React component using Redux Toolkit
+// Product View - React component using new entity services
 import React from 'react'
-import { useDispatch, useSelector } from 'react-redux'
 import { Loader2, Search, X } from 'lucide-react'
 import { Card, CardContent, CardFooter } from './ui/Card.jsx'
 import Badge from './ui/Badge.jsx'
@@ -9,231 +8,208 @@ import Button from './ui/Button.jsx'
 import CategoryFilter from './CategoryFilter.jsx'
 import PriceSort from './PriceSort.jsx'
 import AttributeFilter from './AttributeFilter.jsx'
+import { useProductService } from '../hooks/useProductService.js'
+import { useAttributeService } from '../hooks/useAttributeService.js'
+import { useAuth } from '../context/AuthContext.jsx'
+import { ProductApiService } from '../services/ProductApiService.js'
 
-// Redux Thunks & Actions
-import {
-  fetchProductsByCategory,
-  fetchProductsFilteredByAttributes,
-  fetchProductsByAttributes,
-  fetchProductsWithAttributes
-} from '../redux/slices/product.slice'
-import { fetchCategories } from '../redux/slices/category.slice'
-import { fetchAllAttributes, fetchAttributesByCategory } from '../redux/slices/attribute.slice'
-import { fetchProductImages } from '../redux/slices/images.slice'
-
-export default function ProductViewNew({
+export default function ProductViewNew({ 
   showFilters = false,
   showSorting = false,
   showCategoryFilter = false,
   onNavigate
 }) {
-  const dispatch = useDispatch()
+  const {
+    products,
+    categories,
+    loading,
+    categoriesLoading,
+    error,
+    filters,
+    loadProducts,
+    loadCategories,
+    getFilteredProducts,
+    setCategoryFilter,
+    getCurrentCategoryFilter,
+    setPriceSort,
+    getCurrentSortOrder,
+    getAvailableSortOptions,
+    setAttributeFilter,
+    clearAttributeFilters,
+    getCurrentAttributeFilters,
+    clearError,
+    retry,
+    formatPrice,
+    isProductAvailable,
+    getProductAvailabilityStatus
+  } = useProductService()
 
-  // Redux State
-  const { products, pending: productsLoading, error: productsError } = useSelector(state => state.products)
-  const { categories, pending: categoriesLoading } = useSelector(state => state.category)
-  const { attributes, pending: attributesLoading } = useSelector(state => state.attributes)
-  const { currentUser } = useSelector(state => state.user)
-
-  const isAdmin = currentUser?.role === 'ADMIN'
-
-  // Local UI State
+  const { attributes, loading: attributesLoading, loadAttributes, getAttributesByCategory } = useAttributeService()
+  const { isAdmin, isAuthenticated, user } = useAuth()
+  // Search term state (for client-side filtering)
   const [searchTerm, setSearchTerm] = React.useState('')
   const [debouncedSearch, setDebouncedSearch] = React.useState('')
-  const [currentCategory, setCurrentCategory] = React.useState('all')
-  const [currentSort, setCurrentSort] = React.useState('')
-  const [currentAttributeFilters, setCurrentAttributeFilters] = React.useState({})
 
-  // State for managing product quantities and images
-  const [productQuantities, setProductQuantities] = React.useState({})
-  const [productImages, setProductImages] = React.useState({})
-
-  // Loading state aggregation
-  const loading = productsLoading || (showCategoryFilter && categoriesLoading) || (showFilters && attributesLoading)
-  const error = productsError
-
-  // Debounce search input
+  // Debounce search input to avoid filtering on every keystroke
   React.useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(searchTerm.trim()), 250)
     return () => clearTimeout(t)
   }, [searchTerm])
+  
+  // State for managing product quantities and images
+  const [productQuantities, setProductQuantities] = React.useState({})
+  const [productImages, setProductImages] = React.useState({})
 
-  // Initial Load
-  React.useEffect(() => {
-    // Load initial products (with attributes for badges)
-    dispatch(fetchProductsWithAttributes())
-
-    if (showCategoryFilter) {
-      dispatch(fetchCategories())
-    }
-
-    if (showFilters) {
-      dispatch(fetchAllAttributes())
-    }
-  }, [dispatch, showCategoryFilter, showFilters])
-
-  // Handle Search
-  React.useEffect(() => {
-    if (debouncedSearch) {
-      // Use thunk for search
-      dispatch(fetchProductsByAttributes({ title: debouncedSearch }))
-    } else if (searchTerm === '' && debouncedSearch === '') {
-      // Reset to current category view if search is cleared
-      if (currentCategory !== 'all') {
-        dispatch(fetchProductsByCategory({ categoryId: currentCategory, sort: currentSort }))
-      } else {
-        dispatch(fetchProductsWithAttributes(currentSort))
+  // Load images for products
+  const loadProductImages = React.useCallback(async (products) => {
+    const imagesMap = {}
+    for (const product of products) {
+      try {
+        const images = await ProductApiService.getProductImages(product.id)
+        if (images && images.length > 0) {
+          imagesMap[product.id] = images[0].url // Store first image URL as primary
+        }
+      } catch (error) {
+        console.error(`Error loading images for product ${product.id}:`, error)
       }
     }
-  }, [debouncedSearch, dispatch, currentCategory, currentSort])
+    setProductImages(imagesMap)
+  }, [])
 
   // Load images when products change
   React.useEffect(() => {
     if (products && products.length > 0) {
-      products.forEach(product => {
-        const pid = product.id || product.product_id
-        // Fire-and-forget dispatch as per rules, but handle promise to update local state
-        // because Redux slice does not support storing images for multiple products.
-        dispatch(fetchProductImages(pid))
-          .then((action) => {
-            if (fetchProductImages.fulfilled.match(action)) {
-              const base64Images = action.payload
-              if (base64Images && base64Images.length > 0) {
-                // Process the first image similar to the original service logic
-                const firstImage = base64Images[0]
-                let finalData = null
-
-                if (typeof firstImage === 'string') {
-                  finalData = firstImage
-                } else if (firstImage && typeof firstImage === 'object') {
-                  finalData = firstImage.data || firstImage.imagen || firstImage.base64
-                }
-
-                if (finalData) {
-                  const cleanBase64 = finalData.toString()
-                    .replace(/\s/g, '')
-                    .replace(/^data:image\/[a-z]+;base64,/, '')
-
-                  const url = `data:image/png;base64,${cleanBase64}`
-
-                  setProductImages(prev => ({
-                    ...prev,
-                    [pid]: url
-                  }))
-                }
-              }
-            }
-          })
-      })
+      loadProductImages(products)
     }
-  }, [products, dispatch])
+  }, [products, loadProductImages])
+  
+  // Debug: Log attributes when they change
+  React.useEffect(() => {
+    console.log('ProductViewNew: Attributes updated:', attributes)
+  }, [attributes])
 
-  // Helper: Format Price
-  const formatPrice = (price) => {
-    return new Intl.NumberFormat('es-AR', {
-      style: 'currency',
-      currency: 'ARS'
-    }).format(price)
-  }
+  // Debug: Log admin status and user info
+  React.useEffect(() => {
+    console.log('ProductViewNew: User info:', { 
+      isAuthenticated, 
+      isAdmin: isAdmin(), 
+      user: user,
+      userRole: user?.role 
+    })
+  }, [isAuthenticated, isAdmin, user])
 
-  // Helper: Check Availability
-  const isProductAvailable = (product, checkStock = true) => {
-    if (!product) return false
-    if (!product.disponible) return false
-    if (checkStock && product.stock <= 0) return false
-    return true
-  }
+  const hasLoadedProducts = React.useRef(false)
+  const hasLoadedCategories = React.useRef(false)
+  const hasLoadedAttributes = React.useRef(false)
+
+  // Load products when component mounts
+  React.useEffect(() => {
+    if (!hasLoadedProducts.current) {
+      console.log('ProductViewNew: Loading products...')
+      loadProducts()
+      hasLoadedProducts.current = true
+    }
+  }, []) // Remove loadProducts dependency to prevent infinite loop
+
+  // Load categories when component mounts
+  React.useEffect(() => {
+    if (!hasLoadedCategories.current) {
+      console.log('ProductViewNew: Loading categories...')
+      loadCategories()
+      hasLoadedCategories.current = true
+    }
+  }, []) // Remove loadCategories dependency to prevent infinite loop
+
+  // Load attributes when component mounts
+  React.useEffect(() => {
+    if (!hasLoadedAttributes.current) {
+      console.log('ProductViewNew: Loading attributes...')
+      loadAttributes()
+      hasLoadedAttributes.current = true
+    }
+  }, [loadAttributes])
+
+  // Get filtered products (memoized to prevent unnecessary recalculations)
+  const filteredProducts = React.useMemo(() => {
+    const base = getFilteredProducts()
+
+    if (!debouncedSearch) return base
+
+    const q = debouncedSearch.toLowerCase()
+    return base.filter(product => {
+      return (
+        (product.nombre || '').toLowerCase().includes(q) ||
+        (product.descripcion || '').toLowerCase().includes(q) ||
+        (product.categoria || '').toLowerCase().includes(q)
+      )
+    })
+  }, [getFilteredProducts, products, filters.category, filters.vegan, filters.sinTacc, filters.sort, filters.attributes, debouncedSearch]) // Use specific filter properties
 
   // Handle category filter change
-  const handleCategoryChange = (categoryId) => {
+  const handleCategoryChange = async (categoryId) => {
     console.log('ProductViewNew: Category filter changed to:', categoryId)
-    setCurrentCategory(categoryId)
-    setCurrentAttributeFilters({}) // Clear attribute filters
-
+    setCategoryFilter(categoryId)
+    // Clear attribute filters when category changes since different categories have different attributes
+    clearAttributeFilters()
+    
+    // Load category-specific attributes
     if (categoryId && categoryId !== 'all') {
-      dispatch(fetchProductsByCategory({ categoryId, sort: currentSort }))
-      dispatch(fetchAttributesByCategory(categoryId))
+      try {
+        console.log('ProductViewNew: Loading attributes for category:', categoryId)
+        await getAttributesByCategory(categoryId)
+      } catch (error) {
+        console.error('ProductViewNew: Error loading category attributes:', error)
+      }
     } else {
-      dispatch(fetchProductsWithAttributes(currentSort))
-      dispatch(fetchAllAttributes())
+      // Load all attributes when no specific category is selected
+      try {
+        console.log('ProductViewNew: Loading all attributes')
+        await loadAttributes()
+      } catch (error) {
+        console.error('ProductViewNew: Error loading all attributes:', error)
+      }
     }
   }
 
   // Handle price sort change
   const handleSortChange = (sortOrder) => {
     console.log('ProductViewNew: Sort order changed to:', sortOrder)
-    setCurrentSort(sortOrder)
-
-    // Re-fetch with new sort based on current context
-    if (Object.keys(currentAttributeFilters).length > 0) {
-      dispatch(fetchProductsFilteredByAttributes({
-        sort: sortOrder,
-        categoryId: currentCategory !== 'all' ? currentCategory : undefined,
-        attributeFilters: JSON.stringify(currentAttributeFilters)
-      }))
-    } else if (currentCategory !== 'all') {
-      dispatch(fetchProductsByCategory({ categoryId: currentCategory, sort: sortOrder }))
-    } else {
-      dispatch(fetchProductsWithAttributes(sortOrder))
-    }
+    setPriceSort(sortOrder)
   }
 
   // Handle attribute filter change
   const handleAttributeChange = (attributeId, value, attributeType) => {
     console.log('ProductViewNew: Attribute filter changed:', { attributeId, value, attributeType })
-
-    const newFilters = { ...currentAttributeFilters }
-
-    if (value === null || (Array.isArray(value) && value.length === 0)) {
-      delete newFilters[attributeId]
-    } else {
-      newFilters[attributeId] = value
-    }
-
-    setCurrentAttributeFilters(newFilters)
-
-    dispatch(fetchProductsFilteredByAttributes({
-      sort: currentSort,
-      categoryId: currentCategory !== 'all' ? currentCategory : undefined,
-      attributeFilters: JSON.stringify(newFilters)
-    }))
+    setAttributeFilter(attributeId, value, attributeType)
   }
 
   // Handle clear attribute filters
   const handleClearAttributeFilters = () => {
     console.log('ProductViewNew: Clearing attribute filters')
-    setCurrentAttributeFilters({})
-
-    if (currentCategory !== 'all') {
-      dispatch(fetchProductsByCategory({ categoryId: currentCategory, sort: currentSort }))
-    } else {
-      dispatch(fetchProductsWithAttributes(currentSort))
-    }
+    clearAttributeFilters()
   }
 
   // Handle retry
   const handleRetry = () => {
     console.log('ProductViewNew: Retrying...')
-    // Retry based on current state
-    if (currentCategory !== 'all') {
-      dispatch(fetchProductsByCategory({ categoryId: currentCategory, sort: currentSort }))
-    } else {
-      dispatch(fetchProductsWithAttributes(currentSort))
-    }
+    retry()
   }
 
   // Handle clear error
   const handleClearError = () => {
-    handleRetry()
+    console.log('ProductViewNew: Clearing error')
+    clearError()
   }
 
   // Get active filter tags for display
   const getActiveFilterTags = () => {
     const tags = []
-
+    const currentFilters = getCurrentAttributeFilters()
+    
     // Add category filter tag
+    const currentCategory = getCurrentCategoryFilter()
     if (currentCategory && currentCategory !== 'all') {
-      const category = categories.find(cat => cat.id == currentCategory || cat.category_id == currentCategory)
+      const category = categories.find(cat => cat.id == currentCategory)
       if (category) {
         tags.push({
           label: category.name,
@@ -243,10 +219,10 @@ export default function ProductViewNew({
     }
 
     // Add attribute filter tags
-    Object.entries(currentAttributeFilters).forEach(([attributeId, filterValue]) => {
+    Object.entries(currentFilters).forEach(([attributeId, filterValue]) => {
       if (!filterValue) return
-
-      const attribute = attributes.find(attr => attr.attribute_id == attributeId || attr.id == attributeId)
+      
+      const attribute = attributes.find(attr => attr.attribute_id == attributeId)
       if (!attribute) return
 
       if (Array.isArray(filterValue)) {
@@ -264,17 +240,18 @@ export default function ProductViewNew({
         // Single value filters
         let displayValue = filterValue
         if (attribute.data_type === 'boolean') {
+          // For boolean filters, show user-friendly labels
           if (filterValue === 'true') {
-            displayValue = attribute.name === 'Vegano' ? 'Vegano' :
-              attribute.name === 'Sin TACC' ? 'Sin TACC' :
-                attribute.name
+            displayValue = attribute.name === 'Vegano' ? 'Vegano' : 
+                          attribute.name === 'Sin TACC' ? 'Sin TACC' : 
+                          attribute.name
           } else if (filterValue === 'false') {
-            displayValue = attribute.name === 'Vegano' ? 'No Vegano' :
-              attribute.name === 'Sin TACC' ? 'No Sin TACC' :
-                `No ${attribute.name}`
+            displayValue = attribute.name === 'Vegano' ? 'No Vegano' : 
+                          attribute.name === 'Sin TACC' ? 'No Sin TACC' : 
+                          `No ${attribute.name}`
           }
         }
-
+        
         tags.push({
           label: displayValue,
           onRemove: () => handleAttributeChange(attributeId, null, attribute.data_type)
@@ -286,7 +263,7 @@ export default function ProductViewNew({
   }
 
   // Show loading state
-  if (loading && products.length === 0) {
+  if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="flex flex-col items-center gap-4">
@@ -333,7 +310,7 @@ export default function ProductViewNew({
               <CategoryFilter
                 categories={categories}
                 loading={categoriesLoading}
-                currentCategory={currentCategory}
+                currentCategory={getCurrentCategoryFilter()}
                 onCategoryChange={handleCategoryChange}
               />
             </div>
@@ -342,19 +319,14 @@ export default function ProductViewNew({
           {showSorting && (
             <div className="flex-1">
               <PriceSort
-                currentSort={currentSort}
-                sortOptions={[
-                  { value: 'price,asc', label: 'Menor precio' },
-                  { value: 'price,desc', label: 'Mayor precio' },
-                  { value: 'name,asc', label: 'Nombre A-Z' },
-                  { value: 'name,desc', label: 'Nombre Z-A' }
-                ]}
+                currentSort={getCurrentSortOrder()}
+                sortOptions={getAvailableSortOptions()}
                 onSortChange={handleSortChange}
               />
             </div>
           )}
 
-          {/* Search Input */}
+          {/* Search Input placed to the right of the filters on wider screens */}
           <div className="ml-auto w-full sm:w-72">
             <label className="sr-only">Buscar productos</label>
             <div className="relative">
@@ -414,9 +386,9 @@ export default function ProductViewNew({
             <AttributeFilter
               attributes={attributes}
               loading={attributesLoading}
-              attributeFilters={currentAttributeFilters}
+              attributeFilters={getCurrentAttributeFilters()}
               onAttributeFilterChange={handleAttributeChange}
-              selectedCategory={currentCategory}
+              selectedCategory={getCurrentCategoryFilter()}
               className="sticky top-4 max-h-[calc(100vh-2rem)]"
             />
           </div>
@@ -425,126 +397,124 @@ export default function ProductViewNew({
         {/* Products Grid */}
         <div className="flex-1 order-1 lg:order-2">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {products.map((product) => (
-              <Card
-                key={product.id || product.product_id}
-                className="group hover:shadow-lg transition-shadow cursor-pointer flex flex-col h-full"
-                onClick={() => onNavigate && onNavigate('product', { productId: product.id || product.product_id })}
-              >
-                <CardContent className="p-4 flex-1 flex flex-col">
-                  <div className="aspect-square bg-white rounded-lg mb-4 flex items-center justify-center p-4">
-                    {productImages[product.id || product.product_id] ? (
-                      <img
-                        src={productImages[product.id || product.product_id]}
-                        alt={product.nombre}
-                        className="w-full h-full object-cover rounded-lg"
-                        onError={(e) => {
-                          console.error('Error loading image for product:', product.id)
-                          e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjIwMCIgaGVpZ2h0PSIyMDAiIGZpbGw9IiNFNUU3RUIiLz48cGF0aCBkPSJNODAgOTBIMTIwVjExMEg4MFY5MFoiIGZpbGw9IiM5Q0EzQUYiLz48L3N2Zz4=' // Placeholder SVG
-                        }}
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-                        <svg className="w-12 h-12 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                        </svg>
-                      </div>
-                    )}
+        {filteredProducts.map((product) => (
+          <Card 
+            key={product.id} 
+            className="group hover:shadow-lg transition-shadow cursor-pointer flex flex-col h-full"
+            onClick={() => onNavigate && onNavigate('product', { productId: product.id })}
+          >
+            <CardContent className="p-4 flex-1 flex flex-col">
+              <div className="aspect-square bg-white rounded-lg mb-4 flex items-center justify-center p-4">
+                {productImages[product.id] ? (
+                  <img
+                    src={productImages[product.id]}
+                    alt={product.nombre}
+                    className="w-full h-full object-cover rounded-lg"
+                    onError={(e) => {
+                      console.error('Error loading image for product:', product.id)
+                      e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjIwMCIgaGVpZ2h0PSIyMDAiIGZpbGw9IiNFNUU3RUIiLz48cGF0aCBkPSJNODAgOTBIMTIwVjExMEg4MFY5MFoiIGZpbGw9IiM5Q0EzQUYiLz48L3N2Zz4=' // Placeholder SVG
+                    }}
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+                    <svg className="w-12 h-12 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
                   </div>
-
-                  <div className="space-y-2 flex-1 flex flex-col">
-                    <h3 className="font-semibold text-lg line-clamp-2">{product.nombre}</h3>
-                    <p className="text-sm text-muted-foreground line-clamp-2 flex-1">{product.descripcion}</p>
-
-                    <div className="flex items-center gap-2">
-                      <span className="text-2xl font-bold">{formatPrice(product.precio)}</span>
-                      {product.descuento > 0 && (
-                        <Badge variant="destructive">
-                          -{product.descuento}%
-                        </Badge>
-                      )}
-                    </div>
-
-                    <div className="flex flex-wrap gap-1">
-                      {product.vegana && <Badge variant="secondary">Vegano</Badge>}
-                      {product.sinTacc && <Badge variant="secondary">Sin TACC</Badge>}
-                      {product.destacado && <Badge variant="default">Destacado</Badge>}
-                    </div>
-                  </div>
-                </CardContent>
-
-                <CardFooter className="p-4 pt-0 mt-auto">
-                  {!isAdmin && (
-                    <div className="w-full space-y-3">
-                      {/* Quantity Selector */}
-                      <div className="flex items-center justify-center space-x-3" onClick={(e) => e.stopPropagation()}>
-                        <label className="text-sm font-medium text-muted-foreground">
-                          Cantidad:
-                        </label>
-                        <div className="flex items-center space-x-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-8 w-8 p-0"
-                            onClick={() => {
-                              const pid = product.id || product.product_id
-                              const currentQty = productQuantities[pid] || 1
-                              if (currentQty > 1) {
-                                setProductQuantities(prev => ({
-                                  ...prev,
-                                  [pid]: currentQty - 1
-                                }))
-                              }
-                            }}
-                            disabled={!isProductAvailable(product, false)}
-                          >
-                            -
-                          </Button>
-                          <span className="text-sm font-medium w-8 text-center">
-                            {productQuantities[product.id || product.product_id] || 1}
-                          </span>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-8 w-8 p-0"
-                            onClick={() => {
-                              const pid = product.id || product.product_id
-                              const currentQty = productQuantities[pid] || 1
-                              const maxQty = Math.min(product.stock, 10)
-                              if (currentQty < maxQty) {
-                                setProductQuantities(prev => ({
-                                  ...prev,
-                                  [pid]: currentQty + 1
-                                }))
-                              }
-                            }}
-                            disabled={!isProductAvailable(product, false)}
-                          >
-                            +
-                          </Button>
-                        </div>
-                      </div>
-
-                      {/* Add to Cart Button */}
-                      <div onClick={(e) => e.stopPropagation()}>
-                        <AddToCartButton
-                          product={product}
-                          quantity={productQuantities[product.id || product.product_id] || 1}
-                          disabled={!isProductAvailable(product, false)}
-                          className="w-full"
-                          onNavigate={onNavigate}
-                          image={productImages[product.id || product.product_id]}
-                        />
-                      </div>
-                    </div>
+                )}
+              </div>
+              
+              <div className="space-y-2 flex-1 flex flex-col">
+                <h3 className="font-semibold text-lg line-clamp-2">{product.nombre}</h3>
+                <p className="text-sm text-muted-foreground line-clamp-2 flex-1">{product.descripcion}</p>
+                
+                <div className="flex items-center gap-2">
+                  <span className="text-2xl font-bold">{formatPrice(product.precio)}</span>
+                  {product.descuento > 0 && (
+                    <Badge variant="destructive">
+                      -{product.descuento}%
+                    </Badge>
                   )}
-                </CardFooter>
-              </Card>
-            ))}
+                </div>
+
+                <div className="flex flex-wrap gap-1">
+                  {product.vegana && <Badge variant="secondary">Vegano</Badge>}
+                  {product.sinTacc && <Badge variant="secondary">Sin TACC</Badge>}
+                  {product.destacado && <Badge variant="default">Destacado</Badge>}
+                </div>
+              </div>
+            </CardContent>
+            
+            <CardFooter className="p-4 pt-0 mt-auto">
+              {!isAdmin() && (
+                <div className="w-full space-y-3">
+                  {/* Quantity Selector */}
+                  <div className="flex items-center justify-center space-x-3" onClick={(e) => e.stopPropagation()}>
+                    <label className="text-sm font-medium text-muted-foreground">
+                      Cantidad:
+                    </label>
+                    <div className="flex items-center space-x-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 w-8 p-0"
+                        onClick={() => {
+                          const currentQty = productQuantities[product.id] || 1
+                          if (currentQty > 1) {
+                            setProductQuantities(prev => ({
+                              ...prev,
+                              [product.id]: currentQty - 1
+                            }))
+                          }
+                        }}
+                        disabled={!isProductAvailable(product, false)}
+                      >
+                        -
+                      </Button>
+                      <span className="text-sm font-medium w-8 text-center">
+                        {productQuantities[product.id] || 1}
+                      </span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 w-8 p-0"
+                        onClick={() => {
+                          const currentQty = productQuantities[product.id] || 1
+                          const maxQty = Math.min(product.stock, 10) // Limit to stock or 10 max
+                          if (currentQty < maxQty) {
+                            setProductQuantities(prev => ({
+                              ...prev,
+                              [product.id]: currentQty + 1
+                            }))
+                          }
+                        }}
+                        disabled={!isProductAvailable(product, false)}
+                      >
+                        +
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  {/* Add to Cart Button */}
+                  <div onClick={(e) => e.stopPropagation()}>
+                    <AddToCartButton
+                      product={product}
+                      quantity={productQuantities[product.id] || 1}
+                      disabled={!isProductAvailable(product, false)}
+                      className="w-full"
+                      onNavigate={onNavigate}
+                      image={productImages[product.id]}
+                    />
+                  </div>
+                </div>
+              )}
+            </CardFooter>
+          </Card>
+        ))}
           </div>
 
           {/* No products message */}
-          {products.length === 0 && !loading && (
+          {filteredProducts.length === 0 && !loading && (
             <div className="text-center py-12">
               <p className="text-muted-foreground">No se encontraron productos</p>
             </div>
