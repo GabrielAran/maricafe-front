@@ -1,9 +1,9 @@
 import React, { useState } from 'react'
 import { ShoppingCart, Check } from 'lucide-react'
-import { useCart } from '../context/CartContext.jsx'
-import { useAuth } from '../context/AuthContext.jsx'
+import { useDispatch, useSelector } from 'react-redux'
 import { useToast } from '../context/ToastContext.jsx'
 import { getLoginRemainingTime } from '../utils/cartPersistence.js'
+import { addItem } from '../redux/slices/cartSlice.js'
 import Button from './ui/Button.jsx'
 
 export default function AddToCartButton({ 
@@ -16,8 +16,11 @@ export default function AddToCartButton({
   quantity = 1,
   image = null
 }) {
-  const { dispatch } = useCart()
-  const { isAuthenticated, user, token } = useAuth()
+  const dispatch = useDispatch()
+  const token = useSelector(state => state.user.token)
+  const currentUser = useSelector(state => state.user.currentUser)
+  const isAuthenticated = Boolean(token)
+  const userRole = currentUser?.role
   const { showError } = useToast()
   const [added, setAdded] = useState(false)
 
@@ -35,13 +38,13 @@ export default function AddToCartButton({
     }
     
     // Check if user is admin (admins can't add to cart)
-    if (user?.role === 'ADMIN') {
+    if (userRole === 'ADMIN') {
       showError('Los administradores no pueden agregar productos al carrito.')
       return
     }
     
     // Check if user has USER role
-    if (user?.role !== 'USER') {
+    if (userRole !== 'USER') {
       showError('Solo los usuarios registrados pueden agregar productos al carrito.')
       return
     }
@@ -61,7 +64,7 @@ export default function AddToCartButton({
       cantidad: quantity,
       imagen: image || product.imagen || null // Include image data if provided
     }
-    dispatch({ type: "ADD_ITEM", payload: productWithQuantity })
+    dispatch(addItem(productWithQuantity))
     setAdded(true)
     
     // Reset the "added" state after 2 seconds
