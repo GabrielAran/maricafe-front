@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react'
-import { useAuth } from '../context/AuthContext.jsx'
+import React, { useState, useEffect, useRef } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { fetchCategories, createCategory, updateCategory, deleteCategory, selectCategoryCategories, selectCategoryPending } from '../redux/slices/category.slice.js'
+import { selectIsAdmin, selectCurrentUser } from '../redux/slices/user.slice.js'
 import { Card, CardContent, CardHeader, CardTitle } from './ui/Card.jsx'
 import Button from './ui/Button.jsx'
 import Badge from './ui/Badge.jsx'
@@ -9,10 +9,12 @@ import Notification from './ui/Notification.jsx'
 import ConfirmationModal from './ui/ConfirmationModal.jsx'
 
 export default function AdminCategoryManagement() {
-  const { isAdmin } = useAuth()
   const dispatch = useDispatch()
+  const isAdmin = useSelector(selectIsAdmin)
+  const user = useSelector(selectCurrentUser)
   const categories = useSelector(selectCategoryCategories)
   const loading = useSelector(selectCategoryPending)
+  const hasLoadedCategories = useRef(false)
   const [editingCategory, setEditingCategory] = useState(null)
   const [showEditModal, setShowEditModal] = useState(false)
   const [showAddModal, setShowAddModal] = useState(false)
@@ -33,9 +35,16 @@ export default function AdminCategoryManagement() {
   })
 
   useEffect(() => {
-    if (!isAdmin()) return
-    dispatch(fetchCategories())
-  }, [isAdmin])
+    if (!isAdmin) {
+      hasLoadedCategories.current = false
+      return
+    }
+    // Only dispatch if we haven't already dispatched for this admin session
+    if (!hasLoadedCategories.current) {
+      dispatch(fetchCategories())
+      hasLoadedCategories.current = true
+    }
+  }, [dispatch, isAdmin, user?.role])
 
   const handleAddCategory = () => {
     setEditingCategory(null)
@@ -134,7 +143,7 @@ export default function AdminCategoryManagement() {
     }))
   }
 
-  if (!isAdmin()) {
+  if (!isAdmin) {
     return (
       <div className="text-center py-12">
         <h2 className="text-xl font-semibold mb-2">Acceso denegado</h2>

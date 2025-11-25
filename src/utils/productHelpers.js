@@ -88,3 +88,18 @@ export function getProductAvailabilityStatus(product) {
   return 'out-of-stock'
 }
 
+/**
+ * Format price for display
+ * 
+ * @param {number} price - Price value
+ * @returns {string} Formatted price string
+ */
+export function formatPrice(price) {
+  return new Intl.NumberFormat('es-AR', {
+    style: 'currency',
+    currency: 'ARS',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0
+  }).format(price)
+}
+

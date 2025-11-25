@@ -115,7 +115,15 @@ const userSlice = createSlice({
             .addCase(loginUser.fulfilled, (state, action) => {
                 state.pending = false
                 state.token = action.payload.access_token
-                state.currentUser = action.payload.user
+                // Map snake_case backend format to camelCase
+                const backendUser = action.payload.user
+                state.currentUser = {
+                    userId: backendUser.user_id,
+                    firstName: backendUser.first_name,
+                    lastName: backendUser.last_name,
+                    email: backendUser.email,
+                    role: backendUser.role
+                }
             })
             .addCase(loginUser.rejected, (state, action) => {
                 state.pending = false
@@ -130,7 +138,15 @@ const userSlice = createSlice({
             .addCase(registerUser.fulfilled, (state, action) => {
                 state.pending = false
                 state.token = action.payload.access_token
-                state.currentUser = action.payload.user
+                // Map snake_case backend format to camelCase
+                const backendUser = action.payload.user
+                state.currentUser = {
+                    userId: backendUser.user_id,
+                    firstName: backendUser.first_name,
+                    lastName: backendUser.last_name,
+                    email: backendUser.email,
+                    role: backendUser.role
+                }
             })
             .addCase(registerUser.rejected, (state, action) => {
                 state.pending = false
@@ -257,4 +273,13 @@ const userSlice = createSlice({
 })
 
 export const { logout } = userSlice.actions
+
+// Selectors for easy access to auth state
+export const selectCurrentUser = (state) => state.user.currentUser
+export const selectToken = (state) => state.user.token
+export const selectIsAuthenticated = (state) => !!state.user.currentUser && !!state.user.token
+export const selectIsAdmin = (state) => state.user.currentUser?.role === 'ADMIN'
+export const selectUserPending = (state) => state.user.pending
+export const selectUserError = (state) => state.user.error
+
 export default userSlice.reducer

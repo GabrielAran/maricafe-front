@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../context/AuthContext.jsx'
-import { useProductService } from '../hooks/useProductService.js'
-import { ProductApiService } from '../services/ProductApiService.js'
 import { useDispatch, useSelector } from 'react-redux'
 import { fetchCategories, selectCategoryCategories } from '../redux/slices/category.slice.js'
+import { fetchProducts, createProduct, updateProduct, deleteProduct } from '../redux/slices/product.slice.js'
+import { fetchProductImages, fetchProductImagesWithIds, createMultipleImages, deleteImage } from '../redux/slices/images.slice.js'
+import { selectIsAdmin } from '../redux/slices/user.slice.js'
+import { formatPrice, isProductAvailable } from '../utils/productHelpers.js'
 import { Card, CardContent, CardHeader, CardTitle } from './ui/Card.jsx'
 import Button from './ui/Button.jsx'
 import Badge from './ui/Badge.jsx'
@@ -12,16 +14,12 @@ import ConfirmationModal from './ui/ConfirmationModal.jsx'
 
 export default function AdminProductManagement() {
   const { isAdmin } = useAuth()
-  const {
-    products,
-    loading,
-    error,
-    loadProducts,
-    formatPrice,
-    isProductAvailable
-  } = useProductService()
   const dispatch = useDispatch()
   const categoryItems = useSelector(selectCategoryCategories)
+  const products = useSelector(state => state.products.products)
+  const loading = useSelector(state => state.products.pending)
+  const error = useSelector(state => state.products.error)
+  const isAdminUser = useSelector(selectIsAdmin)
 
   const [editingProduct, setEditingProduct] = useState(null)
   const [showEditModal, setShowEditModal] = useState(false)
@@ -56,13 +54,28 @@ export default function AdminProductManagement() {
   })
 
   const [productImages, setProductImages] = useState({})
+  const hasInitialized = useRef(false)
 
+  /**
+   * FIX: Prevent duplicate dispatch calls to fetchProducts()
+   * 
+   * Problem: 
+   * 1. React StrictMode in development intentionally double-invokes effects
+   * 2. The original dependency array included `isAdmin` (a function reference)
+   *    which could change between renders, causing the effect to re-run
+   * 
+   * Solution: 
+   * - Use a ref to track initialization status (prevents duplicate calls even with StrictMode)
+   * - Use Redux selector `selectIsAdmin` instead of function call for stable dependency
+   * - This ensures only one fetch call per component lifecycle
+   */
   useEffect(() => {
-    if (isAdmin()) {
-      loadProducts()
+    if (!hasInitialized.current && isAdminUser) {
+      hasInitialized.current = true
+      dispatch(fetchProducts())
       dispatch(fetchCategories())
     }
-  }, [isAdmin, loadProducts, dispatch])
+  }, [isAdminUser, dispatch])
 
   useEffect(() => {
     setCategories(
@@ -75,27 +88,29 @@ export default function AdminProductManagement() {
 
   // Load images for all products
   useEffect(() => {
-    const loadProductImages = async () => {
-      const imagesMap = {}
-      for (const product of products) {
-        try {
-          const images = await ProductApiService.getProductImages(product.id)
-          if (images && images.length > 0) {
-            imagesMap[product.id] = images[0].url // Store first image URL as primary
-          }
-        } catch (error) {
-          console.error(`Error loading images for product ${product.id}:`, error)
-        }
-      }
-      setProductImages(imagesMap)
-    }
-
     if (products.length > 0) {
-      loadProductImages()
+      products.forEach(product => {
+        dispatch(fetchProductImages(product.id)).then((result) => {
+          if (result.type === 'images/fetchProductImages/fulfilled' && result.payload && result.payload.length > 0) {
+            // Process base64 images from Redux response
+            const firstImage = result.payload[0]
+            let imageUrl = null
+            if (typeof firstImage === 'string') {
+              const cleanBase64 = firstImage.replace(/\s/g, '').replace(/^data:image\/[a-z]+;base64,/, '')
+              imageUrl = `data:image/png;base64,${cleanBase64}`
+            }
+            if (imageUrl) {
+              setProductImages(prev => ({
+                ...prev,
+                [product.id]: imageUrl
+              }))
+            }
+          }
+        })
+      })
     }
-  }, [products])
+  }, [products, dispatch])
 
-  const loadCategories = async () => { }
 
   const handleAddProduct = () => {
     setEditingProduct(null)
@@ -111,7 +126,7 @@ export default function AdminProductManagement() {
     setShowAddModal(true)
   }
 
-  const handleEditProduct = async (product) => {
+  const handleEditProduct = (product) => {
     console.log('handleEditProduct called with product:', product)
     if (!product || !product.id) {
       console.error('Invalid product data:', product)
@@ -131,19 +146,31 @@ export default function AdminProductManagement() {
     setShowEditModal(true) // Show modal immediately
     setCurrentImages([]) // Clear current images while loading
 
-    try {
-      // Load the product's current images with actual database IDs
-      const images = await ProductApiService.getProductImagesWithIds(product.id)
-      console.log('Loaded images with IDs:', images)
-
-      if (images && images.length > 0) {
-        setCurrentImages(images) // Images now have actual database IDs
+    // Load the product's current images with actual database IDs
+    dispatch(fetchProductImagesWithIds(product.id)).then((result) => {
+      if (result.type === 'images/fetchProductImagesWithIds/fulfilled' && result.payload) {
+        const images = result.payload.map((imageResponse) => {
+          if (!imageResponse || !imageResponse.id || !imageResponse.file) {
+            return null
+          }
+          const cleanBase64 = imageResponse.file.toString()
+            .replace(/\s/g, '')
+            .replace(/^data:image\/[a-z]+;base64,/, '')
+          return {
+            id: imageResponse.id,
+            url: `data:image/png;base64,${cleanBase64}`
+          }
+        }).filter(Boolean)
+        console.log('Loaded images with IDs:', images)
+        if (images && images.length > 0) {
+          setCurrentImages(images) // Images now have actual database IDs
+        }
+      } else if (result.type === 'images/fetchProductImagesWithIds/rejected') {
+        console.error('Error loading product images:', result.error)
+        showNotification('Error al cargar las imágenes del producto', 'error')
+        setCurrentImages([])
       }
-    } catch (error) {
-      console.error('Error loading product images:', error)
-      showNotification('Error al cargar las imágenes del producto', 'error')
-      setCurrentImages([])
-    }
+    })
   }
 
   const handleDeleteProduct = (product) => {
@@ -169,7 +196,7 @@ export default function AdminProductManagement() {
     })
   }
 
-  const handleConfirmDelete = async () => {
+  const handleConfirmDelete = () => {
     console.log('handleConfirmDelete called')
     console.log('confirmationModal:', confirmationModal)
 
@@ -178,65 +205,92 @@ export default function AdminProductManagement() {
       return
     }
 
-    try {
-      const token = localStorage.getItem('maricafe-token')
-      const authHeaders = {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
+    if (confirmationModal.action === 'deactivate') {
+      const product = confirmationModal.product
+      if (!product) {
+        showNotification('No se pudo obtener la información del producto para desactivarlo.', 'error')
+        setConfirmationModal({
+          isVisible: false,
+          title: '',
+          message: '',
+          productId: null,
+          action: 'delete',
+          product: null
+        })
+        return
       }
 
-      if (confirmationModal.action === 'deactivate') {
-        const product = confirmationModal.product
-        if (!product) {
-          throw new Error('No se pudo obtener la información del producto para desactivarlo.')
-        }
+      const basePrice = (product.precioOriginal && product.precioOriginal > 0)
+        ? product.precioOriginal
+        : product.precio
 
-        const basePrice = (product.precioOriginal && product.precioOriginal > 0)
-          ? product.precioOriginal
-          : product.precio
-
-        const numericPrice = Number(basePrice ?? 0)
-        if (Number.isNaN(numericPrice)) {
-          throw new Error('El precio del producto es inválido.')
-        }
-
-        const updatePayload = {
-          title: product.nombre,
-          description: (product.descripcion || '').slice(0, 120),
-          price: numericPrice,
-          stock: 0
-        }
-
-        if (product.categoriaId !== null && product.categoriaId !== undefined) {
-          updatePayload.category_id = product.categoriaId
-        }
-
-        console.log('Sending deactivate request for product ID:', product.id, updatePayload)
-
-        await ProductApiService.updateProduct(product.id, updatePayload, authHeaders)
-        showNotification('Producto desactivado (stock 0)', 'success')
-        await loadProducts()
-      } else {
-        console.log('Sending delete request for product ID:', confirmationModal.productId)
-
-        await ProductApiService.deleteProduct(confirmationModal.productId, authHeaders)
-        showNotification('Producto eliminado exitosamente', 'success')
-        // Reload products after successful deletion
-        await loadProducts()
+      const numericPrice = Number(basePrice ?? 0)
+      if (Number.isNaN(numericPrice)) {
+        showNotification('El precio del producto es inválido.', 'error')
+        setConfirmationModal({
+          isVisible: false,
+          title: '',
+          message: '',
+          productId: null,
+          action: 'delete',
+          product: null
+        })
+        return
       }
-    } catch (error) {
-      const actionLabel = confirmationModal.action === 'deactivate' ? 'desactivar' : 'eliminar'
-      console.error(`Error trying to ${actionLabel} product:`, error)
-      showNotification(`Error al ${actionLabel} el producto: ${error.message}`, 'error')
-      await loadProducts()
-    } finally {
-      setConfirmationModal({
-        isVisible: false,
-        title: '',
-        message: '',
-        productId: null,
-        action: 'delete',
-        product: null
+
+      const updatePayload = {
+        title: product.nombre,
+        description: (product.descripcion || '').slice(0, 120),
+        price: numericPrice,
+        stock: 0
+      }
+
+      if (product.categoriaId !== null && product.categoriaId !== undefined) {
+        updatePayload.category_id = product.categoriaId
+      }
+
+      console.log('Sending deactivate request for product ID:', product.id, updatePayload)
+
+      dispatch(updateProduct({ productId: product.id, data: updatePayload })).then((result) => {
+        if (result.type === 'products/updateProduct/fulfilled') {
+          showNotification('Producto desactivado (stock 0)', 'success')
+          // Redux state is automatically updated by the slice
+        } else if (result.type === 'products/updateProduct/rejected') {
+          showNotification(`Error al desactivar el producto: ${result.error.message}`, 'error')
+        }
+        setConfirmationModal({
+          isVisible: false,
+          title: '',
+          message: '',
+          productId: null,
+          action: 'delete',
+          product: null
+        })
+      })
+    } else {
+      console.log('Sending delete request for product ID:', confirmationModal.productId)
+
+      dispatch(deleteProduct(confirmationModal.productId)).then((result) => {
+        if (result.type === 'products/deleteProduct/fulfilled') {
+          showNotification('Producto eliminado exitosamente', 'success')
+          // Remove product image from local state
+          setProductImages(prev => {
+            const updated = { ...prev }
+            delete updated[confirmationModal.productId]
+            return updated
+          })
+          // Redux state is automatically updated by the slice
+        } else if (result.type === 'products/deleteProduct/rejected') {
+          showNotification(`Error al eliminar el producto: ${result.error.message}`, 'error')
+        }
+        setConfirmationModal({
+          isVisible: false,
+          title: '',
+          message: '',
+          productId: null,
+          action: 'delete',
+          product: null
+        })
       })
     }
   }
@@ -280,7 +334,7 @@ export default function AdminProductManagement() {
     setImagePreviews([])
   }
 
-  const handleSaveProduct = async () => {
+  const handleSaveProduct = () => {
     console.log('handleSaveProduct called')
     console.log('editingProduct:', editingProduct)
     console.log('formData:', formData)
@@ -310,118 +364,137 @@ export default function AdminProductManagement() {
       return
     }
 
-    try {
-      setSaving(true)
-      const token = localStorage.getItem('maricafe-token')
-      const authHeaders = {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
+    setSaving(true)
 
-      const productData = {
-        title: formData.title,
-        description: (formData.description || '').slice(0, 120),
-        price: parseFloat(formData.price),
-        stock: parseInt(formData.stock),
-        category_id: formData.category_id || editingProduct.categoriaId || editingProduct.category?.category_id,
-        images: currentImages.map(img => img.url)
-      }
-
-      console.log('Sending update request with data:', productData)
-      console.log('Product ID:', editingProduct.id)
-
-      await ProductApiService.updateProduct(editingProduct.id, productData, authHeaders)
-
-      // Upload new images if any
-      if (newImages.length > 0) {
-        const formData = new FormData()
-        newImages.forEach(file => {
-          formData.append('files', file)
-        })
-        formData.append('productId', editingProduct.id)
-
-        const imageAuthHeaders = {
-          'Authorization': `Bearer ${token}`
-        }
-
-        try {
-          const uploadResponse = await ProductApiService.uploadMultipleImages(formData, imageAuthHeaders)
-          console.log('Upload response:', uploadResponse)
-
-          // Get updated images and set them in state
-          const updatedImages = await ProductApiService.getProductImagesWithIds(editingProduct.id)
-          if (updatedImages && updatedImages.length > 0) {
-            setCurrentImages(updatedImages) // Images already have correct database IDs
-          }
-        } catch (uploadError) {
-          console.error('Error uploading new images:', uploadError)
-          showNotification('Error al subir las nuevas imágenes: ' + uploadError.message, 'error')
-        }
-      }
-
-      showNotification('Producto actualizado exitosamente', 'success')
-
-      // Reload products and their images after successful update
-      await loadProducts()
-
-      // Update the product's images in the state
-      if (editingProduct.id) {
-        const updatedImages = await ProductApiService.getProductImagesWithIds(editingProduct.id)
-        if (updatedImages && updatedImages.length > 0) {
-          setProductImages(prev => ({
-            ...prev,
-            [editingProduct.id]: updatedImages[0].url
-          }))
-        }
-      }
-
-      // If no new images were uploaded, we're done
-      if (newImages.length === 0) {
-        handleCloseEditModal()
-      } else {
-        // Wait a moment to show the success message before closing if we uploaded images
-        setTimeout(() => {
-          handleCloseEditModal()
-        }, 1500)
-      }
-    } catch (error) {
-      console.error('Error updating product:', error)
-      showNotification('Error al actualizar el producto: ' + error.message, 'error')
-    } finally {
-      setSaving(false)
+    const productData = {
+      title: formData.title,
+      description: (formData.description || '').slice(0, 120),
+      price: parseFloat(formData.price),
+      stock: parseInt(formData.stock),
+      category_id: formData.category_id || editingProduct.categoriaId || editingProduct.category?.category_id,
+      images: currentImages.map(img => img.url)
     }
+
+    console.log('Sending update request with data:', productData)
+    console.log('Product ID:', editingProduct.id)
+
+    dispatch(updateProduct({ productId: editingProduct.id, data: productData })).then((updateResult) => {
+      if (updateResult.type === 'products/updateProduct/fulfilled') {
+        // Upload new images if any
+        if (newImages.length > 0) {
+          dispatch(createMultipleImages({ files: newImages, productId: editingProduct.id })).then((uploadResult) => {
+            if (uploadResult.type === 'images/createMultipleImages/fulfilled') {
+              console.log('Upload response:', uploadResult.payload)
+              // Get updated images and set them in state
+              dispatch(fetchProductImagesWithIds(editingProduct.id)).then((imagesResult) => {
+                if (imagesResult.type === 'images/fetchProductImagesWithIds/fulfilled' && imagesResult.payload) {
+                  const updatedImages = imagesResult.payload.map((imageResponse) => {
+                    if (!imageResponse || !imageResponse.id || !imageResponse.file) {
+                      return null
+                    }
+                    const cleanBase64 = imageResponse.file.toString()
+                      .replace(/\s/g, '')
+                      .replace(/^data:image\/[a-z]+;base64,/, '')
+                    return {
+                      id: imageResponse.id,
+                      url: `data:image/png;base64,${cleanBase64}`
+                    }
+                  }).filter(Boolean)
+                  if (updatedImages && updatedImages.length > 0) {
+                    setCurrentImages(updatedImages)
+                  }
+                }
+              })
+            } else if (uploadResult.type === 'images/createMultipleImages/rejected') {
+              console.error('Error uploading new images:', uploadResult.error)
+              showNotification('Error al subir las nuevas imágenes: ' + uploadResult.error.message, 'error')
+            }
+          })
+        }
+
+        showNotification('Producto actualizado exitosamente', 'success')
+
+        // Update the product's thumbnail image in local state if needed
+        if (editingProduct.id && (newImages.length > 0 || currentImages.length > 0)) {
+          // Fetch updated images to update thumbnail
+          dispatch(fetchProductImages(editingProduct.id)).then((imagesResult) => {
+            if (imagesResult.type === 'images/fetchProductImages/fulfilled' && imagesResult.payload && imagesResult.payload.length > 0) {
+              const firstImage = imagesResult.payload[0]
+              let imageUrl = null
+              if (typeof firstImage === 'string') {
+                const cleanBase64 = firstImage.replace(/\s/g, '').replace(/^data:image\/[a-z]+;base64,/, '')
+                imageUrl = `data:image/png;base64,${cleanBase64}`
+              }
+              if (imageUrl) {
+                setProductImages(prev => ({
+                  ...prev,
+                  [editingProduct.id]: imageUrl
+                }))
+              }
+            }
+          })
+        }
+        // Redux state is automatically updated by the slice - no need to refetch all products
+
+        // If no new images were uploaded, we're done
+        if (newImages.length === 0) {
+          handleCloseEditModal()
+          setSaving(false)
+        } else {
+          // Wait a moment to show the success message before closing if we uploaded images
+          setTimeout(() => {
+            handleCloseEditModal()
+            setSaving(false)
+          }, 1500)
+        }
+      } else if (updateResult.type === 'products/updateProduct/rejected') {
+        console.error('Error updating product:', updateResult.error)
+        showNotification('Error al actualizar el producto: ' + updateResult.error.message, 'error')
+        setSaving(false)
+      }
+    })
   }
 
   // Handle deleting an existing image
-  const handleDeleteImage = async (imageId) => {
+  const handleDeleteImage = (imageId) => {
     if (!editingProduct || !editingProduct.id) {
       showNotification('Error: No se puede identificar el producto', 'error')
       return
     }
 
-    try {
-      const token = localStorage.getItem('maricafe-token')
-      const authHeaders = {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
+    // Delete image with just the image ID
+    dispatch(deleteImage(imageId)).then((result) => {
+      if (result.type === 'images/deleteImage/fulfilled') {
+        // Get updated images after deletion
+        dispatch(fetchProductImagesWithIds(editingProduct.id)).then((imagesResult) => {
+          if (imagesResult.type === 'images/fetchProductImagesWithIds/fulfilled' && imagesResult.payload) {
+            const updatedImages = imagesResult.payload.map((imageResponse) => {
+              if (!imageResponse || !imageResponse.id || !imageResponse.file) {
+                return null
+              }
+              const cleanBase64 = imageResponse.file.toString()
+                .replace(/\s/g, '')
+                .replace(/^data:image\/[a-z]+;base64,/, '')
+              return {
+                id: imageResponse.id,
+                url: `data:image/png;base64,${cleanBase64}`
+              }
+            }).filter(Boolean)
+            if (updatedImages) {
+              setCurrentImages(updatedImages) // Images already have correct database IDs
+            } else {
+              setCurrentImages([])
+            }
+          } else {
+            setCurrentImages([])
+          }
+        })
+        showNotification('Imagen eliminada exitosamente', 'success')
+      } else if (result.type === 'images/deleteImage/rejected') {
+        console.error('Error deleting image:', result.error)
+        showNotification('Error al eliminar la imagen: ' + result.error.message, 'error')
       }
-
-      // Delete image with just the image ID
-      await ProductApiService.deleteImage(imageId, authHeaders)
-
-      // Get updated images after deletion
-      const updatedImages = await ProductApiService.getProductImagesWithIds(editingProduct.id)
-      if (updatedImages) {
-        setCurrentImages(updatedImages) // Images already have correct database IDs
-      } else {
-        setCurrentImages([])
-      }
-
-      showNotification('Imagen eliminada exitosamente', 'success')
-    } catch (error) {
-      console.error('Error deleting image:', error)
-      showNotification('Error al eliminar la imagen: ' + error.message, 'error')
-    }
+    })
   }
 
   // Handle removing a new image that hasn't been uploaded yet
@@ -474,7 +547,7 @@ export default function AdminProductManagement() {
     })
   }
 
-  const handleCreateProduct = async () => {
+  const handleCreateProduct = () => {
     if (!formData.title.trim()) {
       showNotification('El título es obligatorio', 'error')
       return
@@ -498,69 +571,79 @@ export default function AdminProductManagement() {
       return
     }
 
-    try {
-      setSaving(true)
-      const token = localStorage.getItem('maricafe-token')
+    setSaving(true)
 
-      // Create product first
-      const productData = {
-        title: formData.title,
-        description: (formData.description || '').slice(0, 120),
-        price: parseFloat(formData.price),
-        stock: parseInt(formData.stock),
-        category_id: parseInt(formData.category_id)
-      }
-
-      const authHeaders = {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
-
-      const response = await ProductApiService.createProduct(productData, authHeaders)
-      console.log('Product creation response:', response)
-      const createdProduct = response.data || response
-      console.log('Extracted product data:', createdProduct)
-
-      // Upload images if selected
-      if (selectedImages.length > 0 && createdProduct) {
-        const productId = createdProduct.product_id || createdProduct.idProduct || createdProduct.id
-        console.log('Product created:', createdProduct)
-
-        if (productId) {
-          const formData = new FormData()
-          selectedImages.forEach((file, index) => {
-            formData.append('files', file)
-          })
-          formData.append('productId', productId)
-
-          const imageAuthHeaders = {
-            'Authorization': `Bearer ${token}`
-            // Don't set Content-Type for FormData, let browser set it with boundary
-          }
-
-          try {
-            const uploadResult = await ProductApiService.uploadMultipleImages(formData, imageAuthHeaders)
-            console.log('Images uploaded successfully:', uploadResult)
-          } catch (uploadError) {
-            console.error('Images upload error:', uploadError)
-            showNotification('Producto creado pero error al subir imágenes: ' + uploadError.message, 'error')
-          }
-        } else {
-          console.error('No product ID found for image upload')
-          showNotification('Producto creado pero no se pudo obtener ID para subir imágenes', 'error')
-        }
-      }
-
-      showNotification('Producto creado exitosamente', 'success')
-      handleCloseAddModal()
-      // Reload products after successful creation
-      await loadProducts()
-    } catch (error) {
-      console.error('Error creating product:', error)
-      showNotification('Error al crear el producto: ' + error.message, 'error')
-    } finally {
-      setSaving(false)
+    // Create product first
+    const productData = {
+      title: formData.title,
+      description: (formData.description || '').slice(0, 120),
+      price: parseFloat(formData.price),
+      stock: parseInt(formData.stock),
+      category_id: parseInt(formData.category_id)
     }
+
+    dispatch(createProduct(productData)).then((result) => {
+      if (result.type === 'products/createProduct/fulfilled') {
+        const apiResponse = result.payload
+        const createdProduct = apiResponse?.data || apiResponse
+        console.log('Product creation response:', apiResponse)
+        console.log('Extracted product data:', createdProduct)
+
+        // Upload images if selected
+        if (selectedImages.length > 0 && createdProduct) {
+          const productId = createdProduct.product_id || createdProduct.idProduct || createdProduct.id
+          console.log('Product created:', createdProduct)
+
+          if (productId) {
+            dispatch(createMultipleImages({ files: selectedImages, productId })).then((uploadResult) => {
+              if (uploadResult.type === 'images/createMultipleImages/fulfilled') {
+                console.log('Images uploaded successfully:', uploadResult.payload)
+              } else if (uploadResult.type === 'images/createMultipleImages/rejected') {
+                console.error('Images upload error:', uploadResult.error)
+                showNotification('Producto creado pero error al subir imágenes: ' + uploadResult.error.message, 'error')
+              }
+            })
+          } else {
+            console.error('No product ID found for image upload')
+            showNotification('Producto creado pero no se pudo obtener ID para subir imágenes', 'error')
+          }
+        }
+
+        showNotification('Producto creado exitosamente', 'success')
+        handleCloseAddModal()
+        // Redux state is automatically updated by the slice - no need to refetch all products
+        // Fetch image for the new product to display thumbnail
+        if (createdProduct) {
+          const productId = createdProduct.product_id || createdProduct.idProduct || createdProduct.id
+          if (productId && selectedImages.length > 0) {
+            // Wait a bit for images to be processed, then fetch the first image
+            setTimeout(() => {
+              dispatch(fetchProductImages(productId)).then((imagesResult) => {
+                if (imagesResult.type === 'images/fetchProductImages/fulfilled' && imagesResult.payload && imagesResult.payload.length > 0) {
+                  const firstImage = imagesResult.payload[0]
+                  let imageUrl = null
+                  if (typeof firstImage === 'string') {
+                    const cleanBase64 = firstImage.replace(/\s/g, '').replace(/^data:image\/[a-z]+;base64,/, '')
+                    imageUrl = `data:image/png;base64,${cleanBase64}`
+                  }
+                  if (imageUrl) {
+                    setProductImages(prev => ({
+                      ...prev,
+                      [productId]: imageUrl
+                    }))
+                  }
+                }
+              })
+            }, 500)
+          }
+        }
+        setSaving(false)
+      } else if (result.type === 'products/createProduct/rejected') {
+        console.error('Error creating product:', result.error)
+        showNotification('Error al crear el producto: ' + result.error.message, 'error')
+        setSaving(false)
+      }
+    })
   }
 
   const handleInputChange = (field, value) => {
@@ -655,7 +738,9 @@ export default function AdminProductManagement() {
     )
   }
 
-  if (loading) {
+  // Only show loading screen on initial load (when products array is empty)
+  // Don't show loading during create/update/delete operations to avoid "refresh" appearance
+  if (loading && products.length === 0) {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="text-center">
