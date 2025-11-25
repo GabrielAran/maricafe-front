@@ -25,11 +25,15 @@ export default function CategoryFilter({
           placeholder={loading ? "Cargando..." : "Todas las categorías"}
         >
           <SelectItem value="all">Todas las categorías</SelectItem>
-          {categories.map((category) => (
-            <SelectItem key={category.id} value={category.id}>
-              {category.name}
-            </SelectItem>
-          ))}
+          {categories.map((category) => {
+            // Handle both category_id (from backend) and id (legacy)
+            const categoryId = category.category_id ?? category.id
+            return (
+              <SelectItem key={categoryId} value={String(categoryId)}>
+                {category.name}
+              </SelectItem>
+            )
+          })}
         </Select>
       </div>
     </div>

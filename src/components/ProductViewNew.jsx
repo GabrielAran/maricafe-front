@@ -1,5 +1,6 @@
-// Product View - React component using new entity services
+// Product View - React component using Redux Toolkit
 import React from 'react'
+import { useSelector, useDispatch } from 'react-redux'
 import { Loader2, Search, X } from 'lucide-react'
 import { Card, CardContent, CardFooter } from './ui/Card.jsx'
 import Badge from './ui/Badge.jsx'
@@ -8,10 +9,20 @@ import Button from './ui/Button.jsx'
 import CategoryFilter from './CategoryFilter.jsx'
 import PriceSort from './PriceSort.jsx'
 import AttributeFilter from './AttributeFilter.jsx'
-import { useProductService } from '../hooks/useProductService.js'
-import { useAttributeService } from '../hooks/useAttributeService.js'
 import { useAuth } from '../context/AuthContext.jsx'
-import { ProductApiService } from '../services/ProductApiService.js'
+import { 
+  fetchProducts, 
+  fetchProductsByCategory, 
+  fetchProductsFilteredByAttributes 
+} from '../redux/slices/product.slice.js'
+import { fetchCategories } from '../redux/slices/category.slice.js'
+import { 
+  fetchAllAttributes, 
+  fetchAttributesByCategory 
+} from '../redux/slices/attribute.slice.js'
+import { fetchProductImages } from '../redux/slices/images.slice.js'
+import { formatPrice } from '../utils/index.js'
+import { isProductAvailable } from '../utils/productHelpers.js'
 
 export default function ProductViewNew({ 
   showFilters = false,
@@ -19,33 +30,26 @@ export default function ProductViewNew({
   showCategoryFilter = false,
   onNavigate
 }) {
-  const {
-    products,
-    categories,
-    loading,
-    categoriesLoading,
-    error,
-    filters,
-    loadProducts,
-    loadCategories,
-    getFilteredProducts,
-    setCategoryFilter,
-    getCurrentCategoryFilter,
-    setPriceSort,
-    getCurrentSortOrder,
-    getAvailableSortOptions,
-    setAttributeFilter,
-    clearAttributeFilters,
-    getCurrentAttributeFilters,
-    clearError,
-    retry,
-    formatPrice,
-    isProductAvailable,
-    getProductAvailabilityStatus
-  } = useProductService()
-
-  const { attributes, loading: attributesLoading, loadAttributes, getAttributesByCategory } = useAttributeService()
+  const dispatch = useDispatch()
+  
+  // Redux state
+  const products = useSelector(state => state.products.products)
+  const productsPending = useSelector(state => state.products.pending)
+  const productsError = useSelector(state => state.products.error)
+  
+  const categories = useSelector(state => state.category.categories)
+  const categoriesPending = useSelector(state => state.category.pending)
+  
+  const attributes = useSelector(state => state.attributes.attributes)
+  const attributesPending = useSelector(state => state.attributes.pending)
+  
   const { isAdmin, isAuthenticated, user } = useAuth()
+  
+  // Filter state (UI state, not in Redux)
+  const [categoryFilter, setCategoryFilter] = React.useState('all')
+  const [priceSort, setPriceSort] = React.useState('price-asc')
+  const [attributeFilters, setAttributeFilters] = React.useState({})
+  
   // Search term state (for client-side filtering)
   const [searchTerm, setSearchTerm] = React.useState('')
   const [debouncedSearch, setDebouncedSearch] = React.useState('')
@@ -59,157 +63,200 @@ export default function ProductViewNew({
   // State for managing product quantities and images
   const [productQuantities, setProductQuantities] = React.useState({})
   const [productImages, setProductImages] = React.useState({})
+  const [currentImageProductId, setCurrentImageProductId] = React.useState(null)
+  const [processedImageProducts, setProcessedImageProducts] = React.useState(new Set())
 
-  // Load images for products
-  const loadProductImages = React.useCallback(async (products) => {
-    const imagesMap = {}
-    for (const product of products) {
-      try {
-        const images = await ProductApiService.getProductImages(product.id)
-        if (images && images.length > 0) {
-          imagesMap[product.id] = images[0].url // Store first image URL as primary
-        }
-      } catch (error) {
-        console.error(`Error loading images for product ${product.id}:`, error)
+  // Load images for products using Redux thunk (one at a time to track which product)
+  React.useEffect(() => {
+    if (products && products.length > 0 && !currentImageProductId) {
+      // Find first product that needs images
+      const productNeedingImage = products.find(
+        product => !productImages[product.id] && !processedImageProducts.has(product.id)
+      )
+      
+      if (productNeedingImage) {
+        setCurrentImageProductId(productNeedingImage.id)
+        setProcessedImageProducts(prev => new Set(prev).add(productNeedingImage.id))
+        dispatch(fetchProductImages(productNeedingImage.id))
       }
     }
-    setProductImages(imagesMap)
-  }, [])
-
-  // Load images when products change
-  React.useEffect(() => {
-    if (products && products.length > 0) {
-      loadProductImages(products)
-    }
-  }, [products, loadProductImages])
+  }, [products, dispatch, productImages, currentImageProductId, processedImageProducts])
   
-  // Debug: Log attributes when they change
+  // Process images from Redux state when they arrive
+  const imagesState = useSelector(state => state.images.images)
+  const imagesPending = useSelector(state => state.images.pending)
   React.useEffect(() => {
-    console.log('ProductViewNew: Attributes updated:', attributes)
-  }, [attributes])
-
-  // Debug: Log admin status and user info
-  React.useEffect(() => {
-    console.log('ProductViewNew: User info:', { 
-      isAuthenticated, 
-      isAdmin: isAdmin(), 
-      user: user,
-      userRole: user?.role 
-    })
-  }, [isAuthenticated, isAdmin, user])
-
-  const hasLoadedProducts = React.useRef(false)
+    if (currentImageProductId && !imagesPending && imagesState && Array.isArray(imagesState) && imagesState.length > 0) {
+      // Process base64 images similar to ProductApiService
+      const base64Data = imagesState[0]
+      let finalData = null
+      
+      if (typeof base64Data === 'string') {
+        finalData = base64Data
+      } else if (base64Data && typeof base64Data === 'object') {
+        if (base64Data.data) {
+          finalData = base64Data.data
+        } else if (base64Data.imagen) {
+          finalData = base64Data.imagen
+        } else if (base64Data.base64) {
+          finalData = base64Data.base64
+        }
+      }
+      
+      if (finalData) {
+        const cleanBase64 = finalData.toString()
+          .replace(/\s/g, '')
+          .replace(/^data:image\/[a-z]+;base64,/, '')
+        const imageUrl = `data:image/png;base64,${cleanBase64}`
+        setProductImages(prev => ({ ...prev, [currentImageProductId]: imageUrl }))
+      }
+      
+      // Move to next product
+      setCurrentImageProductId(null)
+    }
+  }, [imagesState, imagesPending, currentImageProductId])
+  
   const hasLoadedCategories = React.useRef(false)
   const hasLoadedAttributes = React.useRef(false)
+  const previousFiltersRef = React.useRef(null)
 
-  // Load products when component mounts
-  React.useEffect(() => {
-    if (!hasLoadedProducts.current) {
-      console.log('ProductViewNew: Loading products...')
-      loadProducts()
-      hasLoadedProducts.current = true
-    }
-  }, []) // Remove loadProducts dependency to prevent infinite loop
-
-  // Load categories when component mounts
+  // Load categories when component mounts (only once)
   React.useEffect(() => {
     if (!hasLoadedCategories.current) {
-      console.log('ProductViewNew: Loading categories...')
-      loadCategories()
+      dispatch(fetchCategories())
       hasLoadedCategories.current = true
     }
-  }, []) // Remove loadCategories dependency to prevent infinite loop
+  }, [dispatch])
 
-  // Load attributes when component mounts
+  // Load attributes when component mounts (only once)
   React.useEffect(() => {
     if (!hasLoadedAttributes.current) {
-      console.log('ProductViewNew: Loading attributes...')
-      loadAttributes()
+      dispatch(fetchAllAttributes())
       hasLoadedAttributes.current = true
     }
-  }, [loadAttributes])
+  }, [dispatch])
+  
+  // Load products on mount and when filters change
+  // This consolidates initial load and filter changes into a single effect
+  React.useEffect(() => {
+    const sortParam = priceSort === 'price-asc' ? 'price,asc' : 
+                    priceSort === 'price-desc' ? 'price,desc' : undefined
+    const hasAttributeFilters = attributeFilters && Object.keys(attributeFilters).length > 0
+    const categoryId = categoryFilter !== 'all' ? categoryFilter : null
+    
+    // Create a filter key to compare with previous state
+    const currentFilterKey = JSON.stringify({
+      sort: sortParam,
+      categoryId,
+      attributeFilters: hasAttributeFilters ? Object.entries(attributeFilters)
+        .filter(([_, value]) => value && value !== '')
+        .sort(([a], [b]) => a.localeCompare(b))
+        .reduce((acc, [key, value]) => ({ ...acc, [key]: value }), {}) : null
+    })
+    
+    // Only dispatch if filters actually changed
+    if (previousFiltersRef.current === currentFilterKey) {
+      return
+    }
+    
+    previousFiltersRef.current = currentFilterKey
+    
+    // Determine which thunk to dispatch based on filters
+    if (hasAttributeFilters) {
+      // Build attribute filters string
+      const filterPairs = Object.entries(attributeFilters)
+        .filter(([attributeId, value]) => value && value !== '')
+        .map(([attributeId, value]) => `${attributeId}:${value}`)
+      const attributeFiltersString = filterPairs.length > 0 ? filterPairs.join(',') : null
+      
+      dispatch(fetchProductsFilteredByAttributes({ 
+        sort: sortParam, 
+        categoryId, 
+        attributeFilters: attributeFiltersString 
+      }))
+    } else if (categoryId) {
+      dispatch(fetchProductsByCategory({ categoryId, sort: sortParam }))
+    } else {
+      dispatch(fetchProducts(sortParam))
+    }
+  }, [dispatch, priceSort, categoryFilter, attributeFilters])
 
-  // Get filtered products (memoized to prevent unnecessary recalculations)
+  // Client-side search filtering (UI-only, filters already-loaded products)
   const filteredProducts = React.useMemo(() => {
-    const base = getFilteredProducts()
-
-    if (!debouncedSearch) return base
+    if (!debouncedSearch) return products
 
     const q = debouncedSearch.toLowerCase()
-    return base.filter(product => {
+    return products.filter(product => {
       return (
         (product.nombre || '').toLowerCase().includes(q) ||
         (product.descripcion || '').toLowerCase().includes(q) ||
         (product.categoria || '').toLowerCase().includes(q)
       )
     })
-  }, [getFilteredProducts, products, filters.category, filters.vegan, filters.sinTacc, filters.sort, filters.attributes, debouncedSearch]) // Use specific filter properties
+  }, [products, debouncedSearch])
 
   // Handle category filter change
-  const handleCategoryChange = async (categoryId) => {
-    console.log('ProductViewNew: Category filter changed to:', categoryId)
+  const handleCategoryChange = (categoryId) => {
     setCategoryFilter(categoryId)
-    // Clear attribute filters when category changes since different categories have different attributes
-    clearAttributeFilters()
+    // Clear attribute filters when category changes
+    setAttributeFilters({})
     
     // Load category-specific attributes
     if (categoryId && categoryId !== 'all') {
-      try {
-        console.log('ProductViewNew: Loading attributes for category:', categoryId)
-        await getAttributesByCategory(categoryId)
-      } catch (error) {
-        console.error('ProductViewNew: Error loading category attributes:', error)
-      }
+      dispatch(fetchAttributesByCategory(categoryId))
     } else {
       // Load all attributes when no specific category is selected
-      try {
-        console.log('ProductViewNew: Loading all attributes')
-        await loadAttributes()
-      } catch (error) {
-        console.error('ProductViewNew: Error loading all attributes:', error)
-      }
+      dispatch(fetchAllAttributes())
     }
   }
 
   // Handle price sort change
   const handleSortChange = (sortOrder) => {
-    console.log('ProductViewNew: Sort order changed to:', sortOrder)
     setPriceSort(sortOrder)
   }
 
   // Handle attribute filter change
   const handleAttributeChange = (attributeId, value, attributeType) => {
-    console.log('ProductViewNew: Attribute filter changed:', { attributeId, value, attributeType })
-    setAttributeFilter(attributeId, value, attributeType)
+    if (!value || value === '') {
+      const newFilters = { ...attributeFilters }
+      delete newFilters[attributeId]
+      setAttributeFilters(newFilters)
+    } else {
+      setAttributeFilters({
+        ...attributeFilters,
+        [attributeId]: value
+      })
+    }
   }
 
   // Handle clear attribute filters
   const handleClearAttributeFilters = () => {
-    console.log('ProductViewNew: Clearing attribute filters')
-    clearAttributeFilters()
+    setAttributeFilters({})
   }
 
   // Handle retry
   const handleRetry = () => {
-    console.log('ProductViewNew: Retrying...')
-    retry()
+    const sortParam = priceSort === 'price-asc' ? 'price,asc' : 
+                    priceSort === 'price-desc' ? 'price,desc' : undefined
+    dispatch(fetchProducts(sortParam))
   }
 
-  // Handle clear error
+  // Handle clear error (no-op since error is in Redux state)
   const handleClearError = () => {
-    console.log('ProductViewNew: Clearing error')
-    clearError()
+    // Error is managed by Redux, no action needed
   }
 
   // Get active filter tags for display
   const getActiveFilterTags = () => {
     const tags = []
-    const currentFilters = getCurrentAttributeFilters()
     
     // Add category filter tag
-    const currentCategory = getCurrentCategoryFilter()
-    if (currentCategory && currentCategory !== 'all') {
-      const category = categories.find(cat => cat.id == currentCategory)
+    if (categoryFilter && categoryFilter !== 'all') {
+      // Handle both category_id (from backend) and id (legacy), and type conversion
+      const category = categories.find(cat => {
+        const catId = cat.category_id ?? cat.id
+        return String(catId) === String(categoryFilter)
+      })
       if (category) {
         tags.push({
           label: category.name,
@@ -219,7 +266,7 @@ export default function ProductViewNew({
     }
 
     // Add attribute filter tags
-    Object.entries(currentFilters).forEach(([attributeId, filterValue]) => {
+    Object.entries(attributeFilters).forEach(([attributeId, filterValue]) => {
       if (!filterValue) return
       
       const attribute = attributes.find(attr => attr.attribute_id == attributeId)
@@ -263,7 +310,7 @@ export default function ProductViewNew({
   }
 
   // Show loading state
-  if (loading) {
+  if (productsPending) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="flex flex-col items-center gap-4">
@@ -275,7 +322,7 @@ export default function ProductViewNew({
   }
 
   // Show error state
-  if (error) {
+  if (productsError) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="flex flex-col items-center gap-4 text-center">
@@ -285,7 +332,7 @@ export default function ProductViewNew({
             </svg>
           </div>
           <h3 className="text-lg font-semibold">Error al cargar los productos</h3>
-          <p className="text-muted-foreground max-w-md">{error}</p>
+          <p className="text-muted-foreground max-w-md">{productsError}</p>
           <div className="flex gap-2">
             <Button onClick={handleRetry} variant="outline">
               Reintentar
@@ -309,8 +356,8 @@ export default function ProductViewNew({
             <div className="flex-1">
               <CategoryFilter
                 categories={categories}
-                loading={categoriesLoading}
-                currentCategory={getCurrentCategoryFilter()}
+                loading={categoriesPending}
+                selectedCategory={categoryFilter}
                 onCategoryChange={handleCategoryChange}
               />
             </div>
@@ -319,8 +366,11 @@ export default function ProductViewNew({
           {showSorting && (
             <div className="flex-1">
               <PriceSort
-                currentSort={getCurrentSortOrder()}
-                sortOptions={getAvailableSortOptions()}
+                currentSort={priceSort}
+                sortOptions={[
+                  { value: 'price-asc', label: 'Precio: Menor a Mayor' },
+                  { value: 'price-desc', label: 'Precio: Mayor a Menor' }
+                ]}
                 onSortChange={handleSortChange}
               />
             </div>
@@ -385,10 +435,10 @@ export default function ProductViewNew({
           <div className="lg:w-80 flex-shrink-0 order-2 lg:order-1">
             <AttributeFilter
               attributes={attributes}
-              loading={attributesLoading}
-              attributeFilters={getCurrentAttributeFilters()}
+              loading={attributesPending}
+              attributeFilters={attributeFilters}
               onAttributeFilterChange={handleAttributeChange}
-              selectedCategory={getCurrentCategoryFilter()}
+              selectedCategory={categoryFilter}
               className="sticky top-4 max-h-[calc(100vh-2rem)]"
             />
           </div>
@@ -514,7 +564,7 @@ export default function ProductViewNew({
           </div>
 
           {/* No products message */}
-          {filteredProducts.length === 0 && !loading && (
+          {filteredProducts.length === 0 && !productsPending && (
             <div className="text-center py-12">
               <p className="text-muted-foreground">No se encontraron productos</p>
             </div>

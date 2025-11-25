@@ -1,9 +1,7 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit'
 import { api } from '../api/axiosInstance'
-
-// Backend base URL (same server as categories)
-
 import { buildAuthHeaders } from './user.slice'
+import { normalizeProduct } from '../../utils/productHelpers.js'
 
 // 3.8 GET /products?sort=price,asc|desc
 export const fetchProducts = createAsyncThunk(
@@ -173,13 +171,10 @@ const productSlice = createSlice({
       .addCase(fetchProducts.fulfilled, (state, action) => {
         state.pending = false
         const page = action.payload
-        if (Array.isArray(page)) {
-          state.products = page
-        } else if (page && Array.isArray(page.content)) {
-          state.products = page.content
-        } else {
-          state.products = []
-        }
+        const rawItems = Array.isArray(page)
+          ? page
+          : page?.content ?? []
+        state.products = rawItems.map(normalizeProduct)
       })
       .addCase(fetchProducts.rejected, (state, action) => {
         state.pending = false
@@ -194,14 +189,14 @@ const productSlice = createSlice({
       })
       .addCase(fetchProductById.fulfilled, (state, action) => {
         state.pending = false
-        const product = action.payload
-        state.currentItem = product
-        if (product && product.product_id != null) {
-          const index = state.products.findIndex((p) => p.product_id === product.product_id)
+        const normalized = normalizeProduct(action.payload)
+        state.currentItem = normalized
+        if (normalized && normalized.id != null) {
+          const index = state.products.findIndex((p) => p.id === normalized.id)
           if (index !== -1) {
-            state.products[index] = product
+            state.products[index] = normalized
           } else {
-            state.products.push(product)
+            state.products.push(normalized)
           }
         }
       })
@@ -218,7 +213,8 @@ const productSlice = createSlice({
       })
       .addCase(fetchProductsByCategory.fulfilled, (state, action) => {
         state.pending = false
-        state.products = Array.isArray(action.payload) ? action.payload : []
+        const rawItems = Array.isArray(action.payload) ? action.payload : []
+        state.products = rawItems.map(normalizeProduct)
       })
       .addCase(fetchProductsByCategory.rejected, (state, action) => {
         state.pending = false
@@ -233,7 +229,8 @@ const productSlice = createSlice({
       })
       .addCase(fetchProductsFilteredByPrice.fulfilled, (state, action) => {
         state.pending = false
-        state.products = Array.isArray(action.payload) ? action.payload : []
+        const rawItems = Array.isArray(action.payload) ? action.payload : []
+        state.products = rawItems.map(normalizeProduct)
       })
       .addCase(fetchProductsFilteredByPrice.rejected, (state, action) => {
         state.pending = false
@@ -248,7 +245,8 @@ const productSlice = createSlice({
       })
       .addCase(fetchProductsByAttributes.fulfilled, (state, action) => {
         state.pending = false
-        state.products = Array.isArray(action.payload) ? action.payload : []
+        const rawItems = Array.isArray(action.payload) ? action.payload : []
+        state.products = rawItems.map(normalizeProduct)
       })
       .addCase(fetchProductsByAttributes.rejected, (state, action) => {
         state.pending = false
@@ -263,7 +261,8 @@ const productSlice = createSlice({
       })
       .addCase(fetchProductsWithAttributes.fulfilled, (state, action) => {
         state.pending = false
-        state.products = Array.isArray(action.payload) ? action.payload : []
+        const rawItems = Array.isArray(action.payload) ? action.payload : []
+        state.products = rawItems.map(normalizeProduct)
       })
       .addCase(fetchProductsWithAttributes.rejected, (state, action) => {
         state.pending = false
@@ -278,7 +277,8 @@ const productSlice = createSlice({
       })
       .addCase(fetchProductsFilteredByAttributes.fulfilled, (state, action) => {
         state.pending = false
-        state.products = Array.isArray(action.payload) ? action.payload : []
+        const rawItems = Array.isArray(action.payload) ? action.payload : []
+        state.products = rawItems.map(normalizeProduct)
       })
       .addCase(fetchProductsFilteredByAttributes.rejected, (state, action) => {
         state.pending = false
@@ -295,7 +295,7 @@ const productSlice = createSlice({
         state.pending = false
         const apiResponse = action.payload
         if (apiResponse && apiResponse.data) {
-          state.products.push(apiResponse.data)
+          state.products.push(normalizeProduct(apiResponse.data))
         }
       })
       .addCase(createProduct.rejected, (state, action) => {
@@ -313,13 +313,13 @@ const productSlice = createSlice({
         state.pending = false
         const apiResponse = action.payload
         if (apiResponse && apiResponse.data && apiResponse.data.product_id != null) {
-          const updated = apiResponse.data
-          const index = state.products.findIndex((p) => p.product_id === updated.product_id)
+          const normalized = normalizeProduct(apiResponse.data)
+          const index = state.products.findIndex((p) => p.id === normalized.id)
           if (index !== -1) {
-            state.products[index] = updated
+            state.products[index] = normalized
           }
-          if (state.currentItem && state.currentItem.product_id === updated.product_id) {
-            state.currentItem = updated
+          if (state.currentItem && state.currentItem.id === normalized.id) {
+            state.currentItem = normalized
           }
         }
       })
@@ -337,8 +337,8 @@ const productSlice = createSlice({
       .addCase(deleteProduct.fulfilled, (state, action) => {
         state.pending = false
         const productId = action.meta.arg
-        state.products = state.products.filter((p) => p.product_id !== productId)
-        if (state.currentItem && state.currentItem.product_id === productId) {
+        state.products = state.products.filter((p) => p.id !== productId)
+        if (state.currentItem && state.currentItem.id === productId) {
           state.currentItem = null
         }
       })
