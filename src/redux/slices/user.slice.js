@@ -90,6 +90,7 @@ export const deleteUser = createAsyncThunk(
 const initialState = {
     currentUser: null,
     token: null,
+    loginTimestamp: null, // Timestamp when user logged in (for cart expiry)
     users: [],
     selectedUser: null,
     pending: false,
@@ -103,7 +104,13 @@ const userSlice = createSlice({
         logout: (state) => {
             state.currentUser = null
             state.token = null
+            state.loginTimestamp = null
             state.error = null
+        },
+        refreshLoginTimestamp: (state) => {
+            if (state.token) {
+                state.loginTimestamp = Date.now()
+            }
         }
     },
 
@@ -116,7 +123,7 @@ const userSlice = createSlice({
             .addCase(loginUser.fulfilled, (state, action) => {
                 state.pending = false
                 state.token = action.payload.access_token
-                console.log("The token in slice: ", state.token)
+                state.loginTimestamp = Date.now() // Set login timestamp for cart expiry
                 const backendUser = action.payload.user
                 state.currentUser = normalizeUser(backendUser)
             })
@@ -133,6 +140,7 @@ const userSlice = createSlice({
             .addCase(registerUser.fulfilled, (state, action) => {
                 state.pending = false
                 state.token = action.payload.access_token
+                state.loginTimestamp = Date.now() // Set login timestamp for cart expiry
                 const backendUser = action.payload.user
                 state.currentUser = normalizeUser(backendUser)
             })
@@ -230,6 +238,7 @@ const userSlice = createSlice({
                 if (state.currentUser && state.currentUser.userId === userId) {
                     state.currentUser = null
                     state.token = null
+                    state.loginTimestamp = null
                 }
             })
             .addCase(deleteUser.rejected, (state, action) => {
@@ -239,11 +248,12 @@ const userSlice = createSlice({
     }
 })
 
-export const { logout } = userSlice.actions
+export const { logout, refreshLoginTimestamp } = userSlice.actions
 
 // Selectors for easy access to auth state
 export const selectCurrentUser = (state) => state.user.currentUser
 export const selectToken = (state) => state.user.token
+export const selectLoginTimestamp = (state) => state.user.loginTimestamp
 export const selectIsAuthenticated = (state) => !!state.user.currentUser && !!state.user.token
 export const selectIsAdmin = (state) => state.user.currentUser?.role === 'ADMIN'
 export const selectUserPending = (state) => state.user.pending

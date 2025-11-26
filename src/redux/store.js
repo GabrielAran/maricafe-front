@@ -13,14 +13,22 @@ import adminStatsReducer from './slices/adminStats.slice.js'
 import cartReducer from './slices/cartSlice.js'
 import toastReducer from './slices/toastSlice.js'
 
-// Persist only the fields needed inside the user slice
+// Persist user authentication state
 const userPersistConfig = {
   key: 'user',
   storage,
-  whitelist: ['token', 'currentUser'],
+  whitelist: ['token', 'currentUser', 'loginTimestamp'],
+}
+
+// Persist cart state
+const cartPersistConfig = {
+  key: 'cart',
+  storage,
+  whitelist: ['cart', 'total', 'itemCount'],
 }
 
 const persistedUserReducer = persistReducer(userPersistConfig, userReducer)
+const persistedCartReducer = persistReducer(cartPersistConfig, cartReducer)
 
 export const store = configureStore({
   reducer: {
@@ -32,7 +40,7 @@ export const store = configureStore({
     images: imagesReducer,
     order: orderReducer,
     adminStats: adminStatsReducer,
-    cart: cartReducer,
+    cart: persistedCartReducer,
     toast: toastReducer,
   },
   middleware: (getDefaultMiddleware) =>
