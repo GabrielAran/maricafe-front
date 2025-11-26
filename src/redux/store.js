@@ -24,7 +24,7 @@ const userPersistConfig = {
 const cartPersistConfig = {
   key: 'cart',
   storage,
-  whitelist: ['cart', 'total', 'itemCount'],
+  whitelist: ['cart', 'total', 'itemCount', 'ownerUserId'],
 }
 
 const persistedUserReducer = persistReducer(userPersistConfig, userReducer)

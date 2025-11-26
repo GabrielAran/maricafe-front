@@ -8,7 +8,8 @@ import {
   clearCart,
   selectCart,
   selectCartTotal,
-  selectCartItemCount
+  selectCartItemCount,
+  selectCartOwnerUserId,
 } from '../redux/slices/cartSlice.js'
 import { 
   selectCurrentUser, 
@@ -25,6 +26,7 @@ export default function CartSheet({ onNavigate }) {
   const cartItems = useSelector(selectCart)
   const cartTotal = useSelector(selectCartTotal)
   const cartItemCount = useSelector(selectCartItemCount)
+  const cartOwnerUserId = useSelector(selectCartOwnerUserId)
   
   // Redux state - Auth
   const currentUser = useSelector(selectCurrentUser)
@@ -33,6 +35,10 @@ export default function CartSheet({ onNavigate }) {
   
   // UI state
   const [isOpen, setIsOpen] = useState(false)
+
+  const isCartOwner = isAuthenticated && currentUser && cartOwnerUserId && currentUser.userId === cartOwnerUserId
+  const visibleCartItems = isCartOwner ? cartItems : []
+  const visibleCartItemCount = isCartOwner ? cartItemCount : 0
 
 
   const formatearPrecio = (precio) => {
@@ -71,8 +77,9 @@ export default function CartSheet({ onNavigate }) {
       return
     }
 
-    if (cartItems.length === 0) {
-      showError(dispatch, 'Tu carrito está vacío')
+    // Only allow checkout if the current user is the cart owner and has visible items
+    if (!isCartOwner || visibleCartItems.length === 0) {
+      showError(dispatch, 'Tu carrito está vacío. Agrega productos antes de continuar.')
       return
     }
 
@@ -116,9 +123,9 @@ export default function CartSheet({ onNavigate }) {
         onClick={handleCartClick}
       >
         <ShoppingCart className="h-5 w-5" />
-        {cartItemCount > 0 && (
+        {visibleCartItemCount > 0 && (
           <span className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground text-xs rounded-full h-5 w-5 flex items-center justify-center">
-            {cartItemCount}
+            {visibleCartItemCount}
           </span>
         )}
       </button>
@@ -151,7 +158,7 @@ export default function CartSheet({ onNavigate }) {
             <div className="flex items-center justify-between p-6 border-b">
               <div className="flex items-center space-x-2">
                 <ShoppingCart className="h-5 w-5" />
-                <h2 className="text-lg font-semibold">Tu Carrito ({cartItemCount})</h2>
+                <h2 className="text-lg font-semibold">Tu Carrito ({visibleCartItemCount})</h2>
               </div>
               <button 
                 onClick={() => setIsOpen(false)}
@@ -164,7 +171,7 @@ export default function CartSheet({ onNavigate }) {
             {/* Content */}
             <div className="flex-1 overflow-hidden flex flex-col">
               
-              {cartItems.length === 0 ? (
+              {visibleCartItems.length === 0 ? (
                 <div className="flex-1 flex flex-col items-center justify-center space-y-4 p-8 min-h-0">
                   <ShoppingCart className="h-16 w-16 text-muted-foreground" />
                   <div className="text-center space-y-2">
@@ -179,7 +186,7 @@ export default function CartSheet({ onNavigate }) {
                 <>
                   {/* Items del carrito */}
                   <div className="flex-1 overflow-y-auto p-6 space-y-4 min-h-0">
-                    {cartItems.map((item) => (
+                    {visibleCartItems.map((item) => (
                       <div key={item.id} className="flex space-x-3 p-3 border rounded-lg">
                         <img
                           src={item.imagen || "/placeholder.svg"}

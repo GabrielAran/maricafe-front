@@ -4,7 +4,8 @@ import { ArrowLeft, MapPin, ShoppingBag, CreditCard } from 'lucide-react'
 import Button from '../components/ui/Button.jsx'
 import { createPortal } from 'react-dom'
 import { createOrder } from '../redux/slices/order.slice.js'
-import { selectIsAuthenticated, selectToken } from '../redux/slices/user.slice.js'
+import { selectIsAuthenticated, selectToken, selectCurrentUser } from '../redux/slices/user.slice.js'
+import { selectCartOwnerUserId } from '../redux/slices/cartSlice.js'
 import { clearCart } from '../redux/slices/cartSlice.js'
 import { showSuccess, showError } from '../utils/toastHelper.js'
 
@@ -20,22 +21,42 @@ const PICKUP_LOCATIONS = [
 export default function CheckoutPage({ onNavigate }) {
   const dispatch = useDispatch()
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false)
+  const [hasSubmittedOrder, setHasSubmittedOrder] = useState(false)
   
   // Redux state
   const isAuthenticated = useSelector(selectIsAuthenticated)
   const token = useSelector(selectToken)
   const cartItems = useSelector(state => state.cart.cart)
+  const cartOwnerUserId = useSelector(selectCartOwnerUserId)
+  const currentUser = useSelector(selectCurrentUser)
   const orderPending = useSelector(state => state.order.pending)
   const orderError = useSelector(state => state.order.error)
   const currentOrder = useSelector(state => state.order.currentItem)
   
   // Track if we've handled the order creation success
   const hasHandledOrderSuccess = useRef(false)
+  const didRunInitialValidation = useRef(false)
+
+  // Derive the visible cart for the current user (respect cart ownership)
+  const isCartOwner =
+    isAuthenticated &&
+    currentUser &&
+    cartOwnerUserId &&
+    currentUser.userId === cartOwnerUserId
+
+  const visibleCartItems = isCartOwner ? cartItems : []
 
   // Handle order creation success
   useEffect(() => {
-    if (!orderPending && !orderError && currentOrder && !hasHandledOrderSuccess.current) {
+    if (
+      hasSubmittedOrder &&
+      !orderPending &&
+      !orderError &&
+      currentOrder &&
+      !hasHandledOrderSuccess.current
+    ) {
       hasHandledOrderSuccess.current = true
+      setHasSubmittedOrder(false)
       showSuccess(dispatch, '¡Orden creada exitosamente!')
       dispatch(clearCart())
 
@@ -57,21 +78,24 @@ export default function CheckoutPage({ onNavigate }) {
 
   // Initial validation
   useEffect(() => {
+    if (didRunInitialValidation.current) return
+    didRunInitialValidation.current = true
+
     if (!isAuthenticated || !token) {
       showError(dispatch, 'Debes iniciar sesión para finalizar tu compra.')
       onNavigate && onNavigate('login')
       return
     }
 
-    if (cartItems.length === 0) {
+    if (visibleCartItems.length === 0) {
       showError(dispatch, 'Tu carrito está vacío. Agrega productos antes de continuar.')
       onNavigate && onNavigate('productos')
     }
-  }, [isAuthenticated, token, cartItems.length, onNavigate, dispatch])
+  }, [isAuthenticated, token, visibleCartItems.length, onNavigate, dispatch])
 
   const subtotal = useMemo(() => {
-    return cartItems.reduce((acc, item) => acc + item.precio * item.cantidad, 0)
-  }, [cartItems])
+    return visibleCartItems.reduce((acc, item) => acc + item.precio * item.cantidad, 0)
+  }, [visibleCartItems])
 
   const handleConfirmOrder = () => {
     if (orderPending) {
@@ -84,13 +108,13 @@ export default function CheckoutPage({ onNavigate }) {
       return
     }
 
-    if (cartItems.length === 0) {
-      showError(dispatch, 'Tu carrito está vacío.')
+    if (visibleCartItems.length === 0) {
+      showError(dispatch, 'Tu carrito está vacío. Agrega productos antes de continuar.')
       onNavigate && onNavigate('productos')
       return
     }
 
-    const orderItems = cartItems.map(item => ({
+    const orderItems = visibleCartItems.map(item => ({
       product_id: item.id,
       quantity: item.cantidad,
       unit_price: item.precio
@@ -102,10 +126,11 @@ export default function CheckoutPage({ onNavigate }) {
     }
 
     hasHandledOrderSuccess.current = false
+    setHasSubmittedOrder(true)
     dispatch(createOrder(orderData))
   }
 
-  if (!isAuthenticated || cartItems.length === 0) {
+  if (!isAuthenticated || visibleCartItems.length === 0) {
     return null
   }
 
@@ -140,7 +165,7 @@ export default function CheckoutPage({ onNavigate }) {
               <section>
                 <h2 className="text-lg font-semibold mb-3">Productos del pedido</h2>
                 <div className="space-y-4">
-                  {cartItems.map((item) => (
+                  {visibleCartItems.map((item) => (
                     <div key={item.id} className="flex items-center space-x-4 rounded-lg border p-4">
                       <img
                         src={item.imagen || '/placeholder.svg'}
