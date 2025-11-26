@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useSelector } from 'react-redux'
 import Header from './components/Header.jsx'
 import Footer from './components/Footer.jsx'
 import HomePage from './pages/HomePage.jsx'
@@ -14,10 +15,12 @@ import CheckoutPage from './pages/CheckoutPage.jsx'
 import ToastContainer from './components/ToastContainer.jsx'
 import './App.css'
 import BackToTopButton from './components/ui/BackToTopButton'
+import { selectIsAdmin } from './redux/slices/user.slice.js'
 
 function App() {
   const [currentPage, setCurrentPage] = useState('home')
   const [pageData, setPageData] = useState(null)
+  const isAdminUser = useSelector(selectIsAdmin)
 
   const handleNavigate = (page, data = null) => {
     // Scroll to top smoothly when navigating
@@ -29,7 +32,9 @@ function App() {
   const renderPage = () => {
     switch (currentPage) {
       case 'home':
-        return <HomePage onNavigate={handleNavigate} />
+        return isAdminUser
+          ? <AdminPanel />
+          : <HomePage onNavigate={handleNavigate} />
       case 'productos':
         return <ProductosPage onNavigate={handleNavigate} />
       case 'product':
@@ -51,7 +56,9 @@ function App() {
       case 'checkout':
         return <CheckoutPage onNavigate={handleNavigate} />
       default:
-        return <HomePage onNavigate={handleNavigate} />
+        return isAdminUser
+          ? <AdminPanel />
+          : <HomePage onNavigate={handleNavigate} />
     }
   }
 
