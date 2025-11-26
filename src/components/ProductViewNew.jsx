@@ -9,12 +9,12 @@ import Button from './ui/Button.jsx'
 import CategoryFilter from './CategoryFilter.jsx'
 import PriceSort from './PriceSort.jsx'
 import AttributeFilter from './AttributeFilter.jsx'
-import { useAuth } from '../context/AuthContext.jsx'
 import { 
   fetchProducts, 
   fetchProductsByCategory, 
   fetchProductsFilteredByAttributes 
 } from '../redux/slices/product.slice.js'
+import { selectIsAdmin } from '../redux/slices/user.slice.js'
 import { fetchCategories } from '../redux/slices/category.slice.js'
 import { 
   fetchAllAttributes, 
@@ -43,7 +43,8 @@ export default function ProductViewNew({
   const attributes = useSelector(state => state.attributes.attributes)
   const attributesPending = useSelector(state => state.attributes.pending)
   
-  const { isAdmin, isAuthenticated, user } = useAuth()
+  // Auth state from Redux
+  const isAdminUser = useSelector(selectIsAdmin)
   
   // Filter state (UI state, not in Redux)
   const [categoryFilter, setCategoryFilter] = React.useState('all')
@@ -496,7 +497,7 @@ export default function ProductViewNew({
             </CardContent>
             
             <CardFooter className="p-4 pt-0 mt-auto">
-              {!isAdmin() && (
+              {!isAdminUser && (
                 <div className="w-full space-y-3">
                   {/* Quantity Selector */}
                   <div className="flex items-center justify-center space-x-3" onClick={(e) => e.stopPropagation()}>

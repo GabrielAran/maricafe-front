@@ -1,7 +1,4 @@
 import { useState } from 'react'
-import { CartProvider } from './context/CartContext.jsx'
-import { AuthProvider } from './context/AuthContext.jsx'
-import { ToastProvider } from './context/ToastContext.jsx'
 import Header from './components/Header.jsx'
 import Footer from './components/Footer.jsx'
 import HomePage from './pages/HomePage.jsx'
@@ -14,6 +11,7 @@ import AdminPanel from './pages/AdminPanel.jsx'
 import ProfilePage from './pages/ProfilePage.jsx'
 import OrderDetailsPage from './pages/OrderDetailsPage.jsx'
 import CheckoutPage from './pages/CheckoutPage.jsx'
+import ToastContainer from './components/ToastContainer.jsx'
 import './App.css'
 import BackToTopButton from './components/ui/BackToTopButton'
 
@@ -58,20 +56,15 @@ function App() {
   }
 
   return (
-    <AuthProvider>
-      <CartProvider>
-        <ToastProvider>
-          <div className="min-h-screen bg-background">
-            <Header onNavigate={handleNavigate} currentPage={currentPage} />
-            <main className="flex-1">
-              {renderPage()}
-            </main>
-            <Footer onNavigate={handleNavigate} />
-            <BackToTopButton />
-          </div>
-        </ToastProvider>
-      </CartProvider>
-    </AuthProvider>
+    <div className="min-h-screen bg-background">
+      <Header onNavigate={handleNavigate} currentPage={currentPage} />
+      <main className="flex-1">
+        {renderPage()}
+      </main>
+      <Footer onNavigate={handleNavigate} />
+      <BackToTopButton />
+      <ToastContainer />
+    </div>
   )
 }
 
