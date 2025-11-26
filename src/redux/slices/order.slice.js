@@ -2,6 +2,7 @@ import { createSlice, createAsyncThunk } from '@reduxjs/toolkit'
 import { api } from '../api/axiosInstance'
 
 import { buildAuthHeaders } from './user.slice'
+import { normalizeOrder } from '../../utils/orderHelper.js'
 
 // 4.1 POST /orders -> Crear orden del usuario autenticado
 export const createOrder = createAsyncThunk(
@@ -100,9 +101,15 @@ const orderSlice = createSlice({
       })
       .addCase(createOrder.fulfilled, (state, action) => {
         state.pending = false
-        const apiResponse = action.payload
-        if (apiResponse && apiResponse.data) {
-          state.orders.push(apiResponse.data)
+        const normalized = normalizeOrder(action.payload)
+        state.currentItem = normalized
+        if (normalized && normalized.order_id != null) {
+          const index = state.orders.findIndex((o) => o.order_id === normalized.order_id)
+          if (index !== -1) {
+            state.orders[index] = normalized
+          } else {
+            state.orders.push(normalized)
+          }
         }
       })
       .addCase(createOrder.rejected, (state, action) => {
@@ -118,7 +125,8 @@ const orderSlice = createSlice({
       })
       .addCase(fetchUserOrders.fulfilled, (state, action) => {
         state.pending = false
-        state.orders = Array.isArray(action.payload) ? action.payload : []
+        const rawItems = Array.isArray(action.payload) ? action.payload : []
+        state.orders = rawItems.map(normalizeOrder)
       })
       .addCase(fetchUserOrders.rejected, (state, action) => {
         state.pending = false
@@ -133,14 +141,14 @@ const orderSlice = createSlice({
       })
       .addCase(fetchOrderById.fulfilled, (state, action) => {
         state.pending = false
-        const order = action.payload
-        state.currentItem = order
-        if (order && order.order_id != null) {
-          const index = state.orders.findIndex((o) => o.order_id === order.order_id)
+        const normalized = normalizeOrder(action.payload)
+        state.currentItem = normalized
+        if (normalized && normalized.order_id != null) {
+          const index = state.orders.findIndex((o) => o.order_id === normalized.order_id)
           if (index !== -1) {
-            state.orders[index] = order
+            state.orders[index] = normalized
           } else {
-            state.orders.push(order)
+            state.orders.push(normalized)
           }
         }
       })
@@ -157,14 +165,14 @@ const orderSlice = createSlice({
       })
       .addCase(fetchUserOrderById.fulfilled, (state, action) => {
         state.pending = false
-        const order = action.payload
-        state.currentItem = order
-        if (order && order.order_id != null) {
-          const index = state.orders.findIndex((o) => o.order_id === order.order_id)
+        const normalized = normalizeOrder(action.payload)
+        state.currentItem = normalized
+        if (normalized && normalized.order_id != null) {
+          const index = state.orders.findIndex((o) => o.order_id === normalized.order_id)
           if (index !== -1) {
-            state.orders[index] = order
+            state.orders[index] = normalized
           } else {
-            state.orders.push(order)
+            state.orders.push(normalized)
           }
         }
       })
@@ -200,7 +208,8 @@ const orderSlice = createSlice({
       })
       .addCase(fetchActiveOrders.fulfilled, (state, action) => {
         state.pending = false
-        state.orders = Array.isArray(action.payload) ? action.payload : []
+        const rawItems = Array.isArray(action.payload) ? action.payload : []
+        state.orders = rawItems.map(normalizeOrder)
       })
       .addCase(fetchActiveOrders.rejected, (state, action) => {
         state.pending = false
@@ -215,7 +224,8 @@ const orderSlice = createSlice({
       })
       .addCase(fetchInactiveOrders.fulfilled, (state, action) => {
         state.pending = false
-        state.orders = Array.isArray(action.payload) ? action.payload : []
+        const rawItems = Array.isArray(action.payload) ? action.payload : []
+        state.orders = rawItems.map(normalizeOrder)
       })
       .addCase(fetchInactiveOrders.rejected, (state, action) => {
         state.pending = false

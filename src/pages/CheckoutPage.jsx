@@ -1,10 +1,12 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState, useRef } from 'react'
+import { useSelector, useDispatch } from 'react-redux'
 import { ArrowLeft, MapPin, ShoppingBag, CreditCard } from 'lucide-react'
-import { useCart } from '../context/CartContext.jsx'
-import { useAuth } from '../context/AuthContext.jsx'
-import { useToast } from '../context/ToastContext.jsx'
 import Button from '../components/ui/Button.jsx'
 import { createPortal } from 'react-dom'
+import { createOrder } from '../redux/slices/order.slice.js'
+import { selectIsAuthenticated, selectToken } from '../redux/slices/user.slice.js'
+import { clearCart } from '../redux/slices/cartSlice.js'
+import { showSuccess, showError } from '../utils/toastHelper.js'
 
 const PICKUP_LOCATIONS = [
   {
@@ -16,92 +18,94 @@ const PICKUP_LOCATIONS = [
 ]
 
 export default function CheckoutPage({ onNavigate }) {
-  const { state, dispatch } = useCart()
-  const { isAuthenticated, token } = useAuth()
-  const { showError, showSuccess } = useToast()
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const dispatch = useDispatch()
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false)
+  
+  // Redux state
+  const isAuthenticated = useSelector(selectIsAuthenticated)
+  const token = useSelector(selectToken)
+  const cartItems = useSelector(state => state.cart.cart)
+  const orderPending = useSelector(state => state.order.pending)
+  const orderError = useSelector(state => state.order.error)
+  const currentOrder = useSelector(state => state.order.currentItem)
+  
+  // Track if we've handled the order creation success
+  const hasHandledOrderSuccess = useRef(false)
 
+  // Handle order creation success
   useEffect(() => {
-    if (!isAuthenticated || !token) {
-      showError('Debes iniciar sesión para finalizar tu compra.')
-      onNavigate && onNavigate('login')
-      return
-    }
+    if (!orderPending && !orderError && currentOrder && !hasHandledOrderSuccess.current) {
+      hasHandledOrderSuccess.current = true
+      showSuccess(dispatch, '¡Orden creada exitosamente!')
+      dispatch(clearCart())
 
-    if (state.items.length === 0) {
-      showError('Tu carrito está vacío. Agrega productos antes de continuar.')
-      onNavigate && onNavigate('productos')
-    }
-  }, [isAuthenticated, token, state.items.length, onNavigate, showError])
-
-  const subtotal = useMemo(() => {
-    return state.items.reduce((acc, item) => acc + item.precio * item.cantidad, 0)
-  }, [state.items])
-
-  const handleConfirmOrder = async () => {
-    if (isSubmitting) {
-      return
-    }
-
-    if (!isAuthenticated || !token) {
-      showError('Debes iniciar sesión para finalizar tu compra.')
-      onNavigate && onNavigate('login')
-      return
-    }
-
-    if (state.items.length === 0) {
-      showError('Tu carrito está vacío.')
-      onNavigate && onNavigate('productos')
-      return
-    }
-
-    try {
-      setIsSubmitting(true)
-
-      const orderItems = state.items.map(item => ({
-        product_id: item.id,
-        quantity: item.cantidad,
-        unit_price: item.precio
-      }))
-
-      const response = await fetch('http://localhost:4002/orders', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          items: orderItems,
-          pickup_location: PICKUP_LOCATIONS[0].name
-        })
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.message || 'Error al crear la orden')
-      }
-
-      const data = await response.json()
-
-      showSuccess('¡Orden creada exitosamente!')
-      dispatch({ type: 'CLEAR_CART' })
-
-      const newOrderId = data?.data?.order_id || data?.order_id || data?.id
+      const newOrderId = currentOrder?.order_id || currentOrder?.id
       if (newOrderId) {
         onNavigate && onNavigate('order-details', { orderId: newOrderId })
       } else {
         onNavigate && onNavigate('profile')
       }
-    } catch (error) {
-      console.error('Error creating order:', error)
-      showError(`Error al crear la orden: ${error.message}`)
-    } finally {
-      setIsSubmitting(false)
     }
+  }, [orderPending, orderError, currentOrder, dispatch, onNavigate])
+
+  // Handle order creation error
+  useEffect(() => {
+    if (orderError && !orderPending) {
+      showError(dispatch, `Error al crear la orden: ${orderError}`)
+    }
+  }, [orderError, orderPending, dispatch])
+
+  // Initial validation
+  useEffect(() => {
+    if (!isAuthenticated || !token) {
+      showError(dispatch, 'Debes iniciar sesión para finalizar tu compra.')
+      onNavigate && onNavigate('login')
+      return
+    }
+
+    if (cartItems.length === 0) {
+      showError(dispatch, 'Tu carrito está vacío. Agrega productos antes de continuar.')
+      onNavigate && onNavigate('productos')
+    }
+  }, [isAuthenticated, token, cartItems.length, onNavigate, dispatch])
+
+  const subtotal = useMemo(() => {
+    return cartItems.reduce((acc, item) => acc + item.precio * item.cantidad, 0)
+  }, [cartItems])
+
+  const handleConfirmOrder = () => {
+    if (orderPending) {
+      return
+    }
+
+    if (!isAuthenticated || !token) {
+      showError('Debes iniciar sesión para finalizar tu compra.')
+      onNavigate && onNavigate('login')
+      return
+    }
+
+    if (cartItems.length === 0) {
+      showError(dispatch, 'Tu carrito está vacío.')
+      onNavigate && onNavigate('productos')
+      return
+    }
+
+    const orderItems = cartItems.map(item => ({
+      product_id: item.id,
+      quantity: item.cantidad,
+      unit_price: item.precio
+    }))
+
+    const orderData = {
+      items: orderItems,
+      pickup_location: PICKUP_LOCATIONS[0].name
+    }
+
+    hasHandledOrderSuccess.current = false
+    dispatch(createOrder(orderData))
   }
 
-  if (!isAuthenticated || state.items.length === 0) {
+  if (!isAuthenticated || cartItems.length === 0) {
     return null
   }
 
@@ -136,7 +140,7 @@ export default function CheckoutPage({ onNavigate }) {
               <section>
                 <h2 className="text-lg font-semibold mb-3">Productos del pedido</h2>
                 <div className="space-y-4">
-                  {state.items.map((item) => (
+                  {cartItems.map((item) => (
                     <div key={item.id} className="flex items-center space-x-4 rounded-lg border p-4">
                       <img
                         src={item.imagen || '/placeholder.svg'}
@@ -218,16 +222,16 @@ export default function CheckoutPage({ onNavigate }) {
                 onClick={handleConfirmOrder}
                 size="lg"
                 className="w-full"
-                disabled={isSubmitting}
+                disabled={orderPending}
               >
-                {isSubmitting ? 'Confirmando...' : 'Confirmar pedido'}
+                {orderPending ? 'Confirmando...' : 'Confirmar pedido'}
               </Button>
 
               <Button
                 variant="outline"
                 className="w-full"
                 onClick={() => onNavigate && onNavigate('productos')}
-                disabled={isSubmitting}
+                disabled={orderPending}
               >
                 Seguir comprando
               </Button>

@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
-import { useAuth } from '../context/AuthContext.jsx'
+import { useSelector } from 'react-redux'
+import { selectIsAuthenticated, selectIsAdmin, selectCurrentUser } from '../redux/slices/user.slice.js'
 import AdminProductManagement from '../components/AdminProductManagement.jsx'
 import AdminCategoryManagement from '../components/AdminCategoryManagement.jsx'
 import AdminDiscountManagement from '../components/AdminDiscountManagement.jsx'
@@ -7,10 +8,12 @@ import AdminOrdersManagement from '../components/AdminOrdersManagement.jsx'
 import AdminDashboard from '../components/AdminDashboard.jsx'
 
 export default function AdminPanel() {
-  const { isAuthenticated, isAdmin, user } = useAuth()
+  const isAuthenticated = useSelector(selectIsAuthenticated)
+  const isAdminUser = useSelector(selectIsAdmin)
+  const user = useSelector(selectCurrentUser)
   const [activeTab, setActiveTab] = useState('overview')
 
-  if (!isAuthenticated || !isAdmin()) {
+  if (!isAuthenticated || !isAdminUser) {
     return (
       <div className="container mx-auto px-4 py-12">
         <h1 className="text-2xl font-bold">Acceso denegado</h1>
