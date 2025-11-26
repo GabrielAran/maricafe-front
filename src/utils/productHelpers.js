@@ -59,7 +59,11 @@ export function normalizeProduct(backendProduct) {
     vegana: text.includes('vegan') || text.includes('vegana') || Object.values(attributes).some(attr => attr.name === 'Vegano' && attr.value === 'true'),
     sinTacc: text.includes('tacc') || text.includes('gluten') || text.includes('celiac') || Object.values(attributes).some(attr => attr.name === 'Sin TACC' && attr.value === 'true'),
     stock: backendProduct.stock || 0,
-    attributes: attributes
+    attributes: attributes,
+    // Preserve original backend attributes array for UIs that need full attribute objects
+    attributesList: backendProduct.attributes && Array.isArray(backendProduct.attributes)
+      ? backendProduct.attributes
+      : []
   }
 }
 

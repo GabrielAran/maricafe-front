@@ -1,31 +1,61 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
+import { useDispatch, useSelector } from 'react-redux'
 import Button from '../components/ui/Button.jsx'
-import { useAuth } from '../context/AuthContext.jsx'
+import {
+  registerUser,
+  selectCurrentUser,
+  selectIsAdmin,
+  selectUserPending,
+  selectUserError,
+} from '../redux/slices/user.slice.js'
 
 export default function RegisterPage({ onNavigate }) {
-  const { register, loading, user } = useAuth()
+  const dispatch = useDispatch()
+
+  const currentUser = useSelector(selectCurrentUser)
+  const isAdminUser = useSelector(selectIsAdmin)
+  const loading = useSelector(selectUserPending)
+  const backendError = useSelector(selectUserError)
+
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
+  const [hasSubmitted, setHasSubmitted] = useState(false)
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault()
     setError('')
-    const result = await register({ firstname: firstName, lastname: lastName, email, password })
-    if (!result.success) {
-      setError(result.error || 'Error al registrar')
-      return
+    setHasSubmitted(true)
+    dispatch(
+      registerUser({
+        firstname: firstName,
+        lastname: lastName,
+        email,
+        password,
+      })
+    )
+  }
+
+  useEffect(() => {
+    if (!hasSubmitted) return
+
+    if (backendError) {
+      setError(backendError || 'Error al registrar')
     }
-    
-    // Redirect based on user role (though new registrations are typically USER role)
-    if (user?.role === 'ADMIN') {
+  }, [backendError, hasSubmitted])
+
+  useEffect(() => {
+    if (!hasSubmitted) return
+    if (!currentUser) return
+
+    if (isAdminUser) {
       onNavigate && onNavigate('admin')
     } else {
       onNavigate && onNavigate('home')
     }
-  }
+  }, [hasSubmitted, currentUser, isAdminUser, onNavigate])
 
   return (
     <div className="container mx-auto px-4 py-12 max-w-md">

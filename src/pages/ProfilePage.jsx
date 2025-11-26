@@ -1,11 +1,28 @@
-import React, { useState, useEffect } from 'react'
-import { useAuth } from '../context/AuthContext.jsx'
+import React, { useState, useEffect, useRef } from 'react'
+import { useDispatch, useSelector } from 'react-redux'
 import { User, Edit3, Save, X, Package, Clock, CheckCircle, Lock, Eye, EyeOff, Calendar, DollarSign, ArrowRight } from 'lucide-react'
+import { 
+  selectCurrentUser,
+  selectIsAuthenticated,
+  selectUserPending,
+  selectUserError,
+  updateUser,
+  changePassword,
+} from '../redux/slices/user.slice.js'
+import { fetchUserOrders } from '../redux/slices/order.slice.js'
 
 export default function ProfilePage({ onNavigate }) {
-  const { user, getAuthHeaders, isAuthenticated, updateUser } = useAuth()
+  const dispatch = useDispatch()
+  const user = useSelector(selectCurrentUser)
+  const isAuthenticated = useSelector(selectIsAuthenticated)
+  const userPending = useSelector(selectUserPending)
+  const userError = useSelector(selectUserError)
+
+  const orders = useSelector(state => state.order.orders)
+  const ordersLoading = useSelector(state => state.order.pending)
+  const ordersError = useSelector(state => state.order.error)
+
   const [isEditing, setIsEditing] = useState(false)
-  const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
   const [formData, setFormData] = useState({
     firstName: '',
@@ -15,7 +32,6 @@ export default function ProfilePage({ onNavigate }) {
   
   // Password change state
   const [isChangingPassword, setIsChangingPassword] = useState(false)
-  const [passwordLoading, setPasswordLoading] = useState(false)
   const [passwordMessage, setPasswordMessage] = useState('')
   const [passwordData, setPasswordData] = useState({
     currentPassword: '',
@@ -28,10 +44,9 @@ export default function ProfilePage({ onNavigate }) {
     confirm: false
   })
 
-  // Orders state
-  const [orders, setOrders] = useState([])
-  const [ordersLoading, setOrdersLoading] = useState(false)
-  const [ordersError, setOrdersError] = useState('')
+  const [lastUserAction, setLastUserAction] = useState(null)
+
+  const hasLoadedOrders = useRef(false)
 
   // Initialize form data when user data is available
   useEffect(() => {
@@ -46,39 +61,12 @@ export default function ProfilePage({ onNavigate }) {
 
   // Fetch orders when component mounts
   useEffect(() => {
-    if (isAuthenticated && user?.role === 'USER') {
-      fetchOrders()
+    const isUserRole = user?.role === 'USER'
+    if (!hasLoadedOrders.current && isAuthenticated && isUserRole) {
+      hasLoadedOrders.current = true
+      dispatch(fetchUserOrders())
     }
-  }, [isAuthenticated, user])
-
-  const fetchOrders = async () => {
-    setOrdersLoading(true)
-    setOrdersError('')
-    
-    try {
-      const response = await fetch('http://localhost:4002/orders/user', {
-        headers: getAuthHeaders()
-      })
-
-      if (!response.ok) {
-        throw new Error('Error al cargar las órdenes')
-      }
-
-      const ordersData = await response.json()
-      // Sort orders by date descending (newest first)
-      const sortedOrders = [...ordersData].sort((a, b) => {
-        const da = new Date(a.order_date || a.orderDate || 0)
-        const db = new Date(b.order_date || b.orderDate || 0)
-        return db - da
-      })
-      setOrders(sortedOrders)
-    } catch (error) {
-      console.error('Error fetching orders:', error)
-      setOrdersError('Error al cargar las órdenes')
-    } finally {
-      setOrdersLoading(false)
-    }
-  }
+  }, [dispatch, isAuthenticated, user?.role])
 
   // Update form data when user data changes (after successful update)
   useEffect(() => {
@@ -99,50 +87,19 @@ export default function ProfilePage({ onNavigate }) {
     }))
   }
 
-  const handleSave = async () => {
-    setLoading(true)
+  const handleSave = () => {
+    if (!user) return
     setMessage('')
-    
-    try {
-      const response = await fetch(`http://localhost:4002/users/${user.userId}`, {
-        method: 'PUT',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({
-          first_name: formData.firstName,
-          last_name: formData.lastName,
-          email: formData.email
-        })
-      })
+    setLastUserAction('updateProfile')
 
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.message || 'Error al actualizar perfil')
-      }
-
-      const data = await response.json()
-      console.log('Server response:', data) // Debug: see what the server returns
-      console.log('Server user data:', data.data) // Debug: see the user data structure
-      setMessage('Perfil actualizado exitosamente')
-      setIsEditing(false)
-      
-      // Update user data in context and localStorage with the server response data
-      // Map backend field names to frontend field names
-      const serverUserData = data.data // The server returns the updated user in data.data
-      const updatedUser = {
-        userId: serverUserData.user_id,
-        firstName: serverUserData.first_name,
-        lastName: serverUserData.last_name,
-        email: serverUserData.email,
-        role: serverUserData.role
-      }
-      console.log('Mapped user data:', updatedUser) // Debug: see the mapped user data
-      updateUser(updatedUser)
-      
-    } catch (error) {
-      setMessage(`Error: ${error.message}`)
-    } finally {
-      setLoading(false)
-    }
+    dispatch(updateUser({
+      userId: user.userId,
+      data: {
+        first_name: formData.firstName,
+        last_name: formData.lastName,
+        email: formData.email,
+      },
+    }))
   }
 
   const handleCancel = () => {
@@ -173,58 +130,35 @@ export default function ProfilePage({ onNavigate }) {
     }))
   }
 
-  const handlePasswordChange = async () => {
-    setPasswordLoading(true)
+  const handlePasswordChange = () => {
     setPasswordMessage('')
     
     // Validation
     if (!passwordData.currentPassword || !passwordData.newPassword || !passwordData.confirmPassword) {
       setPasswordMessage('Todos los campos son obligatorios')
-      setPasswordLoading(false)
       return
     }
     
     if (passwordData.newPassword !== passwordData.confirmPassword) {
       setPasswordMessage('Las contraseñas nuevas no coinciden')
-      setPasswordLoading(false)
       return
     }
     
     if (passwordData.newPassword.length < 6) {
       setPasswordMessage('La nueva contraseña debe tener al menos 6 caracteres')
-      setPasswordLoading(false)
       return
     }
-    
-    try {
-      const response = await fetch(`http://localhost:4002/users/${user.userId}/change-password`, {
-        method: 'PUT',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({
-          current_password: passwordData.currentPassword,
-          new_password: passwordData.newPassword
-        })
-      })
+    if (!user) return
 
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.message || 'Error al cambiar contraseña')
-      }
+    setLastUserAction('changePassword')
 
-      const data = await response.json()
-      setPasswordMessage('Contraseña actualizada exitosamente')
-      setIsChangingPassword(false)
-      setPasswordData({
-        currentPassword: '',
-        newPassword: '',
-        confirmPassword: ''
-      })
-      
-    } catch (error) {
-      setPasswordMessage(`Error: ${error.message}`)
-    } finally {
-      setPasswordLoading(false)
-    }
+    dispatch(changePassword({
+      userId: user.userId,
+      data: {
+        current_password: passwordData.currentPassword,
+        new_password: passwordData.newPassword,
+      },
+    }))
   }
 
   const handlePasswordCancel = () => {
@@ -236,6 +170,38 @@ export default function ProfilePage({ onNavigate }) {
     })
     setPasswordMessage('')
   }
+
+  const isSavingProfile = userPending && lastUserAction === 'updateProfile'
+  const isChangingPasswordLoading = userPending && lastUserAction === 'changePassword'
+
+  useEffect(() => {
+    if (!lastUserAction || userPending) return
+
+    if (lastUserAction === 'updateProfile') {
+      if (userError) {
+        setMessage(`Error: ${userError}`)
+      } else {
+        setMessage('Perfil actualizado exitosamente')
+        setIsEditing(false)
+      }
+    }
+
+    if (lastUserAction === 'changePassword') {
+      if (userError) {
+        setPasswordMessage(`Error: ${userError}`)
+      } else {
+        setPasswordMessage('Contraseña actualizada exitosamente')
+        setIsChangingPassword(false)
+        setPasswordData({
+          currentPassword: '',
+          newPassword: '',
+          confirmPassword: ''
+        })
+      }
+    }
+
+    setLastUserAction(null)
+  }, [lastUserAction, userPending, userError])
 
   const formatearPrecio = (precio) => {
     return new Intl.NumberFormat("es-AR", {
@@ -378,15 +344,15 @@ export default function ProfilePage({ onNavigate }) {
                   <div className="flex gap-3 pt-4">
                     <button
                       onClick={handleSave}
-                      disabled={loading}
+                      disabled={isSavingProfile}
                       className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 disabled:opacity-50 transition-colors"
                     >
-                      {loading ? (
+                      {isSavingProfile ? (
                         <Clock className="h-4 w-4 animate-spin" />
                       ) : (
                         <Save className="h-4 w-4" />
                       )}
-                      {loading ? 'Guardando...' : 'Guardar'}
+                      {isSavingProfile ? 'Guardando...' : 'Guardar'}
                     </button>
                     <button
                       onClick={handleCancel}
@@ -502,15 +468,15 @@ export default function ProfilePage({ onNavigate }) {
                   <div className="flex gap-3 pt-4">
                     <button
                       onClick={handlePasswordChange}
-                      disabled={passwordLoading}
+                      disabled={isChangingPasswordLoading}
                       className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 disabled:opacity-50 transition-colors"
                     >
-                      {passwordLoading ? (
+                      {isChangingPasswordLoading ? (
                         <Clock className="h-4 w-4 animate-spin" />
                       ) : (
                         <Lock className="h-4 w-4" />
                       )}
-                      {passwordLoading ? 'Cambiando...' : 'Cambiar Contraseña'}
+                      {isChangingPasswordLoading ? 'Cambiando...' : 'Cambiar Contraseña'}
                     </button>
                     <button
                       onClick={handlePasswordCancel}
@@ -555,7 +521,7 @@ export default function ProfilePage({ onNavigate }) {
                     {ordersError}
                   </p>
                   <button 
-                    onClick={fetchOrders}
+                    onClick={() => dispatch(fetchUserOrders())}
                     className="text-sm bg-primary text-primary-foreground px-3 py-2 rounded-md hover:bg-primary/90 transition-colors"
                   >
                     Reintentar

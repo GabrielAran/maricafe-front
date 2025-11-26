@@ -1,126 +1,85 @@
-import React, { useState, useEffect } from 'react'
-import { ArrowLeft, Loader2, ShoppingCart, Star } from 'lucide-react'
-import { Card, CardContent } from '../components/ui/Card.jsx'
+import React from 'react'
+import { useDispatch, useSelector } from 'react-redux'
+import { ArrowLeft, Loader2 } from 'lucide-react'
 import Badge from '../components/ui/Badge.jsx'
 import Button from '../components/ui/Button.jsx'
 import AddToCartButton from '../components/AddToCartButton.jsx'
-import { useProductService } from '../hooks/useProductService.js'
+import { fetchProductById, selectCurrentProduct, selectProductError, selectProductPending } from '../redux/slices/product.slice.js'
+import { fetchProductImages } from '../redux/slices/images.slice.js'
+import { formatPrice, isProductAvailable, getProductAvailabilityStatus } from '../utils/productHelpers.js'
 import { useAuth } from '../context/AuthContext.jsx'
 
 export default function ProductPage({ onNavigate, productId }) {
-  const [product, setProduct] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
-  const [selectedImageIndex, setSelectedImageIndex] = useState(0)
-  
-  const { formatPrice, isProductAvailable, getProductAvailabilityStatus } = useProductService()
+  const dispatch = useDispatch()
+
+  // Redux product state
+  const product = useSelector(selectCurrentProduct)
+  const loading = useSelector(selectProductPending)
+  const error = useSelector(selectProductError)
+
+  // Redux images state
+  const imagesState = useSelector(state => state.images.images)
+  const imagesPending = useSelector(state => state.images.pending)
+
+  // Local UI state
+  const [selectedImageIndex, setSelectedImageIndex] = React.useState(0)
+  const [productImages, setProductImages] = React.useState([])
+
   const { isAuthenticated } = useAuth()
 
-  useEffect(() => {
-    if (productId) {
-      loadProductDetails(productId)
-    }
-  }, [productId])
+  const hasInitialized = React.useRef(false)
 
-  const loadProductDetails = async (id) => {
-    try {
-      setLoading(true)
-      setError(null)
-      
-      // Get token if available, but don't require it for viewing products
-      const token = localStorage.getItem('maricafe-token')
-      
-      const headers = {
-        'Content-Type': 'application/json'
-      }
-      
-      // Add authorization header only if token exists
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`
-      }
-      
-      const response = await fetch(`http://127.0.0.1:4002/products/${id}`, {
-        headers
-      })
-      
-      if (!response.ok) {
-        if (response.status === 404) {
-          throw new Error('Producto no encontrado')
-        } else {
-          throw new Error(`Error del servidor: ${response.status}`)
-        }
-      }
-      
-      const productData = await response.json()
-      
-      // Transform the backend data to frontend format
-      const transformedProduct = {
-        id: productData.product_id,
-        nombre: productData.title,
-        descripcion: productData.description,
-        precio: productData.new_price || productData.price,
-        precioOriginal: productData.price,
-        descuento: productData.discount_percentage || 0,
-        categoria: productData.category?.name || 'General',
-        stock: productData.stock,
-        imagen: null, // Will be loaded from backend
-        attributes: productData.attributes || [],
-        // Legacy fields for compatibility
-        vegana: false,
-        sinTacc: false,
-        destacado: false
-      }
-      
-      // Load product images
-      try {
-        const imageResponse = await fetch(`http://127.0.0.1:4002/images/${id}`)
-        if (imageResponse.ok) {
-          const imageData = await imageResponse.json()
-          if (imageData && imageData.length > 0) {
-            // Process all images and set main image as first
-            const processedImages = imageData.map(base64Data => {
-              const cleanBase64 = base64Data.replace(/\s/g, '')
-              return `data:image/png;base64,${cleanBase64}`
-            })
-            transformedProduct.images = processedImages
-            transformedProduct.imagen = processedImages[0] // Main image is first
-          }
-        }
-      } catch (imageError) {
-        console.log('No images found for product:', id)
-      }
-      
-      // Process attributes to extract legacy fields
-      if (productData.attributes && Array.isArray(productData.attributes)) {
-        productData.attributes.forEach(attr => {
-          if (attr.attribute && attr.value) {
-            const attrName = attr.attribute.name?.toLowerCase()
-            const attrValue = attr.value?.toLowerCase()
-            
-            if (attrName === 'vegan' || attrName === 'vegano') {
-              transformedProduct.vegana = attrValue === 'true' || attrValue === 'si' || attrValue === 'yes'
-            }
-            if (attrName === 'sin tacc' || attrName === 'gluten-free') {
-              transformedProduct.sinTacc = attrValue === 'true' || attrValue === 'si' || attrValue === 'yes'
-            }
-          }
-        })
-        
-        // Keep the original attributes array for display
-        transformedProduct.attributes = productData.attributes
-        
-        // Debug: Log attributes structure
-        console.log('Product attributes:', productData.attributes)
-      }
-      
-      setProduct(transformedProduct)
-    } catch (err) {
-      console.error('Error loading product:', err)
-      setError(err.message)
-    } finally {
-      setLoading(false)
+  /**
+   * Load product details and images via Redux thunks.
+   * StrictMode-safe: guarded by ref + stable primitive deps.
+   */
+  React.useEffect(() => {
+    if (!productId) return
+    if (hasInitialized.current) return
+
+    hasInitialized.current = true
+    dispatch(fetchProductById(productId))
+    dispatch(fetchProductImages(productId))
+  }, [productId, dispatch])
+
+  // Process images from Redux state into data URLs for this product
+  React.useEffect(() => {
+    if (!imagesState || !Array.isArray(imagesState) || imagesPending) {
+      return
     }
-  }
+
+    const processedImages = imagesState
+      .map((item) => {
+        let base64Data = null
+
+        if (typeof item === 'string') {
+          base64Data = item
+        } else if (item && typeof item === 'object') {
+          if (item.file) {
+            base64Data = item.file
+          } else if (item.data) {
+            base64Data = item.data
+          } else if (item.imagen) {
+            base64Data = item.imagen
+          } else if (item.base64) {
+            base64Data = item.base64
+          }
+        }
+
+        if (!base64Data) return null
+
+        const cleanBase64 = base64Data
+          .toString()
+          .replace(/\s/g, '')
+          .replace(/^data:image\/[a-z]+;base64,/, '')
+
+        return `data:image/png;base64,${cleanBase64}`
+      })
+      .filter(Boolean)
+
+    setProductImages(processedImages)
+    setSelectedImageIndex(0)
+  }, [imagesState, imagesPending])
 
   const handleBack = () => {
     onNavigate && onNavigate('productos')
@@ -162,6 +121,10 @@ export default function ProductPage({ onNavigate, productId }) {
   const availabilityStatus = getProductAvailabilityStatus(product)
   const isAvailable = isProductAvailable(product)
 
+  const effectiveImages = productImages && productImages.length > 0
+    ? productImages
+    : (product.imagen ? [product.imagen] : [])
+
   return (
     <div className="container mx-auto px-4 py-8">
       {/* Back Button */}
@@ -178,9 +141,9 @@ export default function ProductPage({ onNavigate, productId }) {
         {/* Product Images */}
         <div className="space-y-4">
           <div className="aspect-square bg-muted rounded-lg overflow-hidden">
-            {product.images && product.images.length > 0 ? (
+            {effectiveImages && effectiveImages.length > 0 ? (
               <img
-                src={product.images[selectedImageIndex]}
+                src={effectiveImages[selectedImageIndex]}
                 alt={product.nombre}
                 className="w-full h-full object-cover"
                 onError={(e) => {
@@ -205,9 +168,9 @@ export default function ProductPage({ onNavigate, productId }) {
           </div>
           
           {/* Image thumbnails (if multiple images) */}
-          {product.images && product.images.length > 1 && (
+          {effectiveImages && effectiveImages.length > 1 && (
             <div className="grid grid-cols-4 gap-2">
-              {product.images.map((image, index) => (
+              {effectiveImages.map((image, index) => (
                 <button
                   key={index}
                   onClick={() => setSelectedImageIndex(index)}
@@ -268,11 +231,11 @@ export default function ProductPage({ onNavigate, productId }) {
           </div>
 
           {/* Product Attributes */}
-          {product.attributes && product.attributes.length > 0 && (
+          {product.attributesList && product.attributesList.length > 0 && (
             <div className="space-y-4">
               <h3 className="text-lg font-semibold text-gray-900">Características del Producto</h3>
               <div className="bg-gray-50 rounded-lg p-4 space-y-3">
-                {product.attributes.map((attr, index) => (
+                {product.attributesList.map((attr, index) => (
                   <div key={index} className="flex justify-between items-start">
                     <span className="font-medium text-gray-600 text-sm">
                       {attr.attribute?.name || 'Atributo'}:
