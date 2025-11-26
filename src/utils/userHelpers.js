@@ -2,9 +2,10 @@ export const normalizeUser = (backendUser) => {
   if (!backendUser) return null
 
   return {
-    userId: backendUser.user_id,
-    firstName: backendUser.first_name,
-    lastName: backendUser.last_name,
+    // Prefer camelCase fields from current backend, fall back to legacy snake_case if present
+    userId: backendUser.userId ?? backendUser.user_id,
+    firstName: backendUser.firstName ?? backendUser.first_name,
+    lastName: backendUser.lastName ?? backendUser.last_name,
     email: backendUser.email,
     role: backendUser.role,
   }
