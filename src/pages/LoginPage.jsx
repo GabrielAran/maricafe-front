@@ -42,6 +42,21 @@ export default function LoginPage({ onNavigate }) {
     }
   }, [hasAttemptedLogin, isAuthenticated, currentUser, isAdminUser, onNavigate])
 
+  // Map low-level auth errors to user-friendly Spanish messages
+  const getFriendlyAuthError = () => {
+    if (!authError) return ''
+
+    // Wrong credentials typically come back as a 401 from Axios
+    if (authError.includes('401')) {
+      return 'Contraseña incorrecta'
+    }
+
+    // Fallback: show a generic login error without leaking raw technical details
+    return 'Ocurrió un error al iniciar sesión. Intenta nuevamente.'
+  }
+
+  const effectiveAuthError = error || (authError ? getFriendlyAuthError() : '')
+
   return (
     <div className="container mx-auto px-4 py-12 max-w-md">
       <h1 className="text-2xl font-bold mb-6">Iniciar sesión</h1>
@@ -76,7 +91,9 @@ export default function LoginPage({ onNavigate }) {
             <p className="text-yellow-700 text-sm mt-1">Caps Lock está activado — asegúrate de escribir la contraseña correctamente.</p>
           )}
         </div>
-        {(error || authError) && <p className="text-red-500 text-sm">{error || authError}</p>}
+        {effectiveAuthError && (
+          <p className="text-red-500 text-sm">{effectiveAuthError}</p>
+        )}
         <Button type="submit" disabled={loading} className="w-full">
           {loading ? 'Ingresando...' : 'Ingresar'}
         </Button>
