@@ -81,6 +81,28 @@ export const fetchInactiveOrders = createAsyncThunk(
   }
 )
 
+// GET /orders/admin/active + /orders/admin/inactive -> Obtener todas las órdenes (solo ADMIN)
+// Combines both active and inactive orders, replicating OrderService.loadOrders() behavior
+export const fetchAllOrders = createAsyncThunk(
+  'order/fetchAllOrders',
+  async (_, { getState }) => {
+    const headers = buildAuthHeaders(getState())
+    const [activeResponse, inactiveResponse] = await Promise.all([
+      api.get('/orders/admin/active', { headers }),
+      api.get('/orders/admin/inactive', { headers })
+    ])
+    const activeOrders = Array.isArray(activeResponse.data) ? activeResponse.data : []
+    const inactiveOrders = Array.isArray(inactiveResponse.data) ? inactiveResponse.data : []
+    // Combine and sort by date (newest first), matching OrderService behavior
+    const allOrders = [...activeOrders, ...inactiveOrders].sort((a, b) => {
+      const dateA = new Date(a.order_date || a.createdAt || 0)
+      const dateB = new Date(b.order_date || b.createdAt || 0)
+      return dateB - dateA
+    })
+    return allOrders
+  }
+)
+
 const initialState = {
   orders: [],
   pending: false,
@@ -228,6 +250,22 @@ const orderSlice = createSlice({
         state.orders = rawItems.map(normalizeOrder)
       })
       .addCase(fetchInactiveOrders.rejected, (state, action) => {
+        state.pending = false
+        state.error = action.error.message || null
+      })
+
+    // Fetch all orders (admin) - combines active and inactive
+    builder
+      .addCase(fetchAllOrders.pending, (state) => {
+        state.pending = true
+        state.error = null
+      })
+      .addCase(fetchAllOrders.fulfilled, (state, action) => {
+        state.pending = false
+        const rawItems = Array.isArray(action.payload) ? action.payload : []
+        state.orders = rawItems.map(normalizeOrder)
+      })
+      .addCase(fetchAllOrders.rejected, (state, action) => {
         state.pending = false
         state.error = action.error.message || null
       })

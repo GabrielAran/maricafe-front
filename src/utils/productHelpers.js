@@ -93,17 +93,24 @@ export function getProductAvailabilityStatus(product) {
 }
 
 /**
- * Format price for display
- * 
- * @param {number} price - Price value
- * @returns {string} Formatted price string
+ * Check if a string contains keywords for vegan products
+ * @param {string} text - Text to check
+ * @returns {boolean} True if text contains vegan keywords
  */
-export function formatPrice(price) {
-  return new Intl.NumberFormat('es-AR', {
-    style: 'currency',
-    currency: 'ARS',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0
-  }).format(price)
+export function isVegan(text) {
+  const veganKeywords = ['vegan', 'vegana', 'vegetal', 'plant-based']
+  const lowerText = text.toLowerCase()
+  return veganKeywords.some(keyword => lowerText.includes(keyword))
+}
+
+/**
+ * Check if a string contains keywords for gluten-free products
+ * @param {string} text - Text to check
+ * @returns {boolean} True if text contains gluten-free keywords
+ */
+export function isGlutenFree(text) {
+  const glutenFreeKeywords = ['tacc', 'gluten', 'celiac', 'sin gluten', 'gluten-free']
+  const lowerText = text.toLowerCase()
+  return glutenFreeKeywords.some(keyword => lowerText.includes(keyword))
 }
 

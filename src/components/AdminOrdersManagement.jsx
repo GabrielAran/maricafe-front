@@ -1,15 +1,23 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { orderService } from '../services/OrderService.js'
+import { useDispatch, useSelector } from 'react-redux'
+import { fetchAllOrders, deleteOrder } from '../redux/slices/order.slice.js'
 import Button from './ui/Button.jsx'
 import { Badge } from './ui/Badge.jsx'
 import { Card } from './ui/Card.jsx'
 import ConfirmationModal from './ui/ConfirmationModal.jsx'
-import { useToast } from '../context/ToastContext.jsx'
+import { showSuccess, showError } from '../utils/toastHelper.js'
+import { formatPrice } from '../utils/priceHelpers.js'
+import { formatOrderDate, getStatusBadgeClass, getStatusDisplayName } from '../utils/orderHelper.js'
 
 export default function AdminOrdersManagement() {
-  const [orders, setOrders] = useState([])
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState(null)
+  const dispatch = useDispatch()
+  
+  // Redux state
+  const orders = useSelector(state => state.order.orders)
+  const loading = useSelector(state => state.order.pending)
+  const error = useSelector(state => state.order.error)
+  
+  // UI state only
   const [selectedOrder, setSelectedOrder] = useState(null)
   const [showOrderDetails, setShowOrderDetails] = useState(false)
   const [deleteOrderId, setDeleteOrderId] = useState(null)
@@ -21,25 +29,21 @@ export default function AdminOrdersManagement() {
   const [orderNumberFilter, setOrderNumberFilter] = useState('')
   const [sortBy, setSortBy] = useState('dateDesc') // Default sort: newest first
   const [dateRangeError, setDateRangeError] = useState('')
-  const { showToast } = useToast()
+  const [isRefreshing, setIsRefreshing] = useState(false)
   
   // Refs for direct input control
   const startDateRef = useRef(null)
   const endDateRef = useRef(null)
   const orderNumberRef = useRef(null)
+  const hasInitialized = useRef(false)
 
+  // Load orders on mount (StrictMode-safe pattern)
   useEffect(() => {
-    loadOrders()
-    
-    // Subscribe to order service updates
-    const unsubscribe = orderService.subscribe((state) => {
-      setOrders(state.orders)
-      setLoading(state.loading)
-      setError(state.error)
-    })
-
-    return unsubscribe
-  }, [])
+    if (!hasInitialized.current) {
+      hasInitialized.current = true
+      dispatch(fetchAllOrders())
+    }
+  }, [dispatch])
 
   // Apply filters when orders or filter values change
   useEffect(() => {
@@ -95,20 +99,13 @@ export default function AdminOrdersManagement() {
     setFilteredOrders(filtered)
   }, [orders, startDateFilter, endDateFilter, orderNumberFilter, sortBy, dateRangeError])
 
-  const [isRefreshing, setIsRefreshing] = useState(false)
-
-  const loadOrders = async () => {
+  const loadOrders = () => {
     if (loading || isRefreshing) return
     
     setIsRefreshing(true)
-    try {
-      await orderService.loadOrders()
-    } catch (error) {
-      showToast('Error al cargar las órdenes', 'error')
-    } finally {
-      // Keep animation visible for a moment even after load completes
-      setTimeout(() => setIsRefreshing(false), 500)
-    }
+    dispatch(fetchAllOrders())
+    // Keep animation visible for a moment even after load completes
+    setTimeout(() => setIsRefreshing(false), 500)
   }
 
   const handleViewOrder = (order) => {
@@ -122,19 +119,48 @@ export default function AdminOrdersManagement() {
     setIsCancelling(false) // Reset cancelling state when opening modal
   }
 
-  const confirmDeleteOrder = async () => {
+  const [pendingDeleteOrderId, setPendingDeleteOrderId] = useState(null)
+  const previousError = useRef(null)
+  const previousLoading = useRef(false)
+
+  const confirmDeleteOrder = () => {
     // Close modal immediately
     setShowDeleteModal(false)
+    const orderIdToDelete = deleteOrderId
     setDeleteOrderId(null)
     setIsCancelling(false)
+    setPendingDeleteOrderId(orderIdToDelete)
     
-    try {
-      await orderService.deleteOrder(deleteOrderId)
-      showToast('✅ Orden cancelada correctamente. El stock ha sido restaurado automáticamente.', 'success')
-    } catch (error) {
-      showToast('❌ Error al cancelar la orden. Inténtalo de nuevo.', 'error')
-    }
+    dispatch(deleteOrder(orderIdToDelete))
   }
+  
+  // Handle delete order success/error from Redux state
+  useEffect(() => {
+    if (pendingDeleteOrderId) {
+      // Check if order was successfully removed (no longer in orders array)
+      const orderStillExists = orders.some(o => (o.id === pendingDeleteOrderId || o.order_id === pendingDeleteOrderId))
+      
+      if (!loading && !orderStillExists && !error) {
+        // Success: order was removed
+        showSuccess(dispatch, '✅ Orden cancelada correctamente. El stock ha sido restaurado automáticamente.')
+        setPendingDeleteOrderId(null)
+        previousError.current = null
+      } else if (!loading && error && error !== previousError.current) {
+        // Error occurred
+        previousError.current = error
+        showError(dispatch, `❌ Error al cancelar la orden. Inténtalo de nuevo.`)
+        setPendingDeleteOrderId(null)
+      }
+    }
+  }, [orders, loading, error, pendingDeleteOrderId, dispatch])
+  
+  // Handle general errors (not from delete operation)
+  useEffect(() => {
+    if (error && error !== previousError.current && !pendingDeleteOrderId) {
+      previousError.current = error
+      showError(dispatch, `❌ Error: ${error}`)
+    }
+  }, [error, pendingDeleteOrderId, dispatch])
 
   const closeOrderDetails = () => {
     setShowOrderDetails(false)
@@ -438,16 +464,16 @@ export default function AdminOrdersManagement() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900">
-                        {orderService.formatCurrency(order.total)}
+                        {formatPrice(order.total)}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <Badge className={orderService.getStatusBadgeClass(order.status)}>
-                        {orderService.getStatusDisplayName(order.status)}
+                      <Badge className={getStatusBadgeClass(order.status)}>
+                        {getStatusDisplayName(order.status)}
                       </Badge>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {orderService.formatDate(order.createdAt)}
+                      {formatOrderDate(order.createdAt)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
                       <Button
@@ -534,12 +560,12 @@ function OrderDetailsModal({ order, onClose }) {
                 <h4 className="font-medium text-gray-900 mb-2">Información de la Orden</h4>
                 <div className="space-y-1 text-sm">
                   <p><span className="font-medium">Estado:</span> 
-                    <Badge className={`ml-2 ${orderService.getStatusBadgeClass(order.status)}`}>
-                      {orderService.getStatusDisplayName(order.status)}
+                    <Badge className={`ml-2 ${getStatusBadgeClass(order.status)}`}>
+                      {getStatusDisplayName(order.status)}
                     </Badge>
                   </p>
-                  <p><span className="font-medium">Fecha:</span> {orderService.formatDate(order.createdAt)}</p>
-                  <p><span className="font-medium">Total:</span> {orderService.formatCurrency(order.total)}</p>
+                  <p><span className="font-medium">Fecha:</span> {formatOrderDate(order.createdAt)}</p>
+                  <p><span className="font-medium">Total:</span> {formatPrice(order.total)}</p>
                 </div>
               </div>
             </div>
@@ -582,9 +608,9 @@ function OrderDetailsModal({ order, onClose }) {
                           </div>
                         </td>
                         <td className="px-4 py-2 text-sm">{item.quantity}</td>
-                        <td className="px-4 py-2 text-sm">{orderService.formatCurrency(item.price)}</td>
+                        <td className="px-4 py-2 text-sm">{formatPrice(item.price)}</td>
                         <td className="px-4 py-2 text-sm font-medium">
-                          {orderService.formatCurrency(item.total)}
+                          {formatPrice(item.total)}
                         </td>
                       </tr>
                     ))}

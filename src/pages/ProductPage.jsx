@@ -6,7 +6,8 @@ import Button from '../components/ui/Button.jsx'
 import AddToCartButton from '../components/AddToCartButton.jsx'
 import { fetchProductById, selectCurrentProduct, selectProductError, selectProductPending } from '../redux/slices/product.slice.js'
 import { fetchProductImages } from '../redux/slices/images.slice.js'
-import { formatPrice, isProductAvailable, getProductAvailabilityStatus } from '../utils/productHelpers.js'
+import { formatPrice } from '../utils/priceHelpers.js'
+import { isProductAvailable, getProductAvailabilityStatus } from '../utils/productHelpers.js'
 
 export default function ProductPage({ onNavigate, productId }) {
   const dispatch = useDispatch()

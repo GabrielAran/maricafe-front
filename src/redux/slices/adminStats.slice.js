@@ -2,6 +2,14 @@ import { createSlice, createAsyncThunk } from '@reduxjs/toolkit'
 import { api } from '../api/axiosInstance'
 
 import { buildAuthHeaders } from './user.slice'
+import {
+  normalizeOverviewStats,
+  normalizeProductsByCategory,
+  normalizeLowStockProduct,
+  normalizeTopSellingProduct,
+  normalizeTopSpendingUser,
+  normalizeDiscountedProduct,
+} from '../../utils/adminStatsHelper.js'
 
 // GET /admin/stats/overview
 export const fetchOverviewStats = createAsyncThunk(
@@ -95,7 +103,7 @@ const adminStatsSlice = createSlice({
         state.pending = false
         const apiResponse = action.payload
         if (apiResponse && apiResponse.data) {
-          state.overview = apiResponse.data
+          state.overview = normalizeOverviewStats(apiResponse.data)
         }
       })
       .addCase(fetchOverviewStats.rejected, (state, action) => {
@@ -113,7 +121,7 @@ const adminStatsSlice = createSlice({
         state.pending = false
         const apiResponse = action.payload
         if (apiResponse && apiResponse.data) {
-          state.productsByCategory = apiResponse.data
+          state.productsByCategory = normalizeProductsByCategory(apiResponse.data)
         }
       })
       .addCase(fetchProductsByCategory.rejected, (state, action) => {
@@ -131,7 +139,8 @@ const adminStatsSlice = createSlice({
         state.pending = false
         const apiResponse = action.payload
         if (apiResponse && apiResponse.data) {
-          state.lowStockProducts = Array.isArray(apiResponse.data) ? apiResponse.data : []
+          const rawItems = Array.isArray(apiResponse.data) ? apiResponse.data : []
+          state.lowStockProducts = rawItems.map(normalizeLowStockProduct).filter(item => item !== null)
         }
       })
       .addCase(fetchLowStockProducts.rejected, (state, action) => {
@@ -149,7 +158,8 @@ const adminStatsSlice = createSlice({
         state.pending = false
         const apiResponse = action.payload
         if (apiResponse && apiResponse.data) {
-          state.topSellingProducts = Array.isArray(apiResponse.data) ? apiResponse.data : []
+          const rawItems = Array.isArray(apiResponse.data) ? apiResponse.data : []
+          state.topSellingProducts = rawItems.map(normalizeTopSellingProduct).filter(item => item !== null)
         }
       })
       .addCase(fetchTopSellingProducts.rejected, (state, action) => {
@@ -167,7 +177,8 @@ const adminStatsSlice = createSlice({
         state.pending = false
         const apiResponse = action.payload
         if (apiResponse && apiResponse.data) {
-          state.topSpendingUsers = Array.isArray(apiResponse.data) ? apiResponse.data : []
+          const rawItems = Array.isArray(apiResponse.data) ? apiResponse.data : []
+          state.topSpendingUsers = rawItems.map(normalizeTopSpendingUser).filter(item => item !== null)
         }
       })
       .addCase(fetchTopSpendingUsers.rejected, (state, action) => {
@@ -185,7 +196,8 @@ const adminStatsSlice = createSlice({
         state.pending = false
         const apiResponse = action.payload
         if (apiResponse && apiResponse.data) {
-          state.discountedProducts = Array.isArray(apiResponse.data) ? apiResponse.data : []
+          const rawItems = Array.isArray(apiResponse.data) ? apiResponse.data : []
+          state.discountedProducts = rawItems.map(normalizeDiscountedProduct).filter(item => item !== null)
         }
       })
       .addCase(fetchDiscountedProducts.rejected, (state, action) => {
@@ -196,4 +208,14 @@ const adminStatsSlice = createSlice({
 })
 
 export default adminStatsSlice.reducer
+
+// Selectors
+export const selectOverviewStats = (state) => state.adminStats.overview
+export const selectProductsByCategory = (state) => state.adminStats.productsByCategory
+export const selectLowStockProducts = (state) => state.adminStats.lowStockProducts
+export const selectTopSellingProducts = (state) => state.adminStats.topSellingProducts
+export const selectTopSpendingUsers = (state) => state.adminStats.topSpendingUsers
+export const selectDiscountedProducts = (state) => state.adminStats.discountedProducts
+export const selectAdminStatsPending = (state) => state.adminStats.pending
+export const selectAdminStatsError = (state) => state.adminStats.error
 
