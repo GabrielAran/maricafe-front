@@ -1,39 +1,39 @@
-import React, { useState, useEffect } from 'react'
-import { useAuth } from '../context/AuthContext.jsx'
+import React, { useEffect, useRef } from 'react'
+import { useDispatch, useSelector } from 'react-redux'
 import { ArrowLeft, Package, Calendar, DollarSign, ShoppingBag, Clock, CheckCircle } from 'lucide-react'
+import { fetchUserOrderById } from '../redux/slices/order.slice.js'
+import { 
+  selectCurrentUser, 
+  selectIsAuthenticated 
+} from '../redux/slices/user.slice.js'
 
 export default function OrderDetailsPage({ onNavigate, orderId }) {
-  const { getAuthHeaders, isAuthenticated, user } = useAuth()
-  const [order, setOrder] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
+  const dispatch = useDispatch()
+
+  const isAuthenticated = useSelector(selectIsAuthenticated)
+  const currentUser = useSelector(selectCurrentUser)
+  const userRole = currentUser?.role
+
+  const order = useSelector((state) => state.order.currentItem)
+  const loading = useSelector((state) => state.order.pending)
+  const orderError = useSelector((state) => state.order.error)
+
+  const hasInitialized = useRef(false)
 
   useEffect(() => {
-    if (orderId && isAuthenticated && user?.role === 'USER') {
-      fetchOrderDetails()
+    /**
+     * FIX: Prevent duplicate dispatch calls caused by StrictMode + unstable deps.
+     * Uses a ref guard and stable selector-based dependencies.
+     */
+    if (!hasInitialized.current && orderId && isAuthenticated && userRole === 'USER') {
+      hasInitialized.current = true
+      dispatch(fetchUserOrderById(orderId))
     }
-  }, [orderId, isAuthenticated, user])
+  }, [orderId, isAuthenticated, userRole, dispatch])
 
-  const fetchOrderDetails = async () => {
-    setLoading(true)
-    setError('')
-    
-    try {
-      const response = await fetch(`http://localhost:4002/orders/user/${orderId}`, {
-        headers: getAuthHeaders()
-      })
-
-      if (!response.ok) {
-        throw new Error('Error al cargar los detalles de la orden')
-      }
-
-      const orderData = await response.json()
-      setOrder(orderData)
-    } catch (error) {
-      console.error('Error fetching order details:', error)
-      setError('Error al cargar los detalles de la orden')
-    } finally {
-      setLoading(false)
+  const handleRetry = () => {
+    if (orderId && isAuthenticated && userRole === 'USER') {
+      dispatch(fetchUserOrderById(orderId))
     }
   }
 
@@ -54,7 +54,7 @@ export default function OrderDetailsPage({ onNavigate, orderId }) {
   }
 
   // Redirect if not authenticated or not USER role
-  if (!isAuthenticated || user?.role !== 'USER') {
+  if (!isAuthenticated || userRole !== 'USER') {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -77,7 +77,7 @@ export default function OrderDetailsPage({ onNavigate, orderId }) {
     return (
       <div className="min-h-screen bg-background">
         <div className="container mx-auto px-4 py-8">
-          <div className="flex items-center justify-center min-h-[400px]">
+          <div className="flex items-center justify-between mb-8">
             <div className="text-center">
               <Clock className="h-8 w-8 animate-spin mx-auto mb-4 text-muted-foreground" />
               <p className="text-muted-foreground">Cargando detalles de la orden...</p>
@@ -88,7 +88,7 @@ export default function OrderDetailsPage({ onNavigate, orderId }) {
     )
   }
 
-  if (error) {
+  if (orderError) {
     return (
       <div className="min-h-screen bg-background">
         <div className="container mx-auto px-4 py-8">
@@ -101,10 +101,10 @@ export default function OrderDetailsPage({ onNavigate, orderId }) {
                 Error al cargar la orden
               </h3>
               <p className="text-sm text-muted-foreground mb-4">
-                {error}
+                {'Error al cargar los detalles de la orden'}
               </p>
               <button 
-                onClick={fetchOrderDetails}
+                onClick={handleRetry}
                 className="text-sm bg-primary text-primary-foreground px-3 py-2 rounded-md hover:bg-primary/90 transition-colors"
               >
                 Reintentar
@@ -233,10 +233,10 @@ export default function OrderDetailsPage({ onNavigate, orderId }) {
                       </div>
                       <div className="text-right">
                         <p className="font-semibold text-foreground">
-                          {formatearPrecio((item.unit_price || 0) * item.quantity)}
+                          {formatearPrecio((item.price || 0) * item.quantity)}
                         </p>
                         <p className="text-sm text-muted-foreground">
-                          {formatearPrecio(item.unit_price || 0)} c/u
+                          {formatearPrecio(item.price || 0)} c/u
                         </p>
                       </div>
                     </div>
