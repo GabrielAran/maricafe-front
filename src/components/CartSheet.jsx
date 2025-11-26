@@ -1,15 +1,37 @@
 import React, { useState } from 'react'
 import { createPortal } from 'react-dom'
+import { useSelector, useDispatch } from 'react-redux'
 import { ShoppingCart, Plus, Minus, Trash2, X } from 'lucide-react'
-import { useCart } from '../context/CartContext.jsx'
-import { useAuth } from '../context/AuthContext.jsx'
-import { useToast } from '../context/ToastContext.jsx'
+import { 
+  updateQuantity, 
+  removeItem, 
+  clearCart,
+  selectCart,
+  selectCartTotal,
+  selectCartItemCount
+} from '../redux/slices/cartSlice.js'
+import { 
+  selectCurrentUser, 
+  selectToken, 
+  selectIsAuthenticated 
+} from '../redux/slices/user.slice.js'
+import { showError } from '../utils/toastHelper.js'
 import Button from './ui/Button.jsx'
 
 export default function CartSheet({ onNavigate }) {
-  const { state, dispatch } = useCart()
-  const { isAuthenticated, user, token } = useAuth()
-  const { showError } = useToast()
+  const dispatch = useDispatch()
+  
+  // Redux state - Cart
+  const cartItems = useSelector(selectCart)
+  const cartTotal = useSelector(selectCartTotal)
+  const cartItemCount = useSelector(selectCartItemCount)
+  
+  // Redux state - Auth
+  const currentUser = useSelector(selectCurrentUser)
+  const token = useSelector(selectToken)
+  const isAuthenticated = useSelector(selectIsAuthenticated)
+  
+  // UI state
   const [isOpen, setIsOpen] = useState(false)
 
 
@@ -21,9 +43,9 @@ export default function CartSheet({ onNavigate }) {
     }).format(precio)
   }
 
-  const updateQuantity = (id, cantidad) => {
+  const handleUpdateQuantity = (id, cantidad) => {
     // Find the item to check stock
-    const item = state.items.find(item => item.id === id)
+    const item = cartItems.find(item => item.id === id)
     if (item && cantidad > item.stock) {
       // Don't allow quantity to exceed stock
       return
@@ -32,25 +54,25 @@ export default function CartSheet({ onNavigate }) {
       // Don't allow quantity below 1
       return
     }
-    dispatch({ type: "UPDATE_QUANTITY", payload: { id, cantidad } })
+    dispatch(updateQuantity({ id, cantidad }))
   }
 
-  const removeItem = (id) => {
-    dispatch({ type: "REMOVE_ITEM", payload: id })
+  const handleRemoveItem = (id) => {
+    dispatch(removeItem(id))
   }
 
-  const clearCart = () => {
-    dispatch({ type: "CLEAR_CART" })
+  const handleClearCart = () => {
+    dispatch(clearCart())
   }
 
   const handleCheckoutClick = () => {
     if (!isAuthenticated || !token) {
-      showError('Debes estar autenticado para proceder al checkout')
+      showError(dispatch, 'Debes estar autenticado para proceder al checkout')
       return
     }
 
-    if (state.items.length === 0) {
-      showError('Tu carrito está vacío')
+    if (cartItems.length === 0) {
+      showError(dispatch, 'Tu carrito está vacío')
       return
     }
 
@@ -71,14 +93,14 @@ export default function CartSheet({ onNavigate }) {
     }
     
     // Check if user is admin (admins can't access cart)
-    if (user?.role === 'ADMIN') {
-      showError('Los administradores no pueden acceder al carrito de compras.')
+    if (currentUser?.role === 'ADMIN') {
+      showError(dispatch, 'Los administradores no pueden acceder al carrito de compras.')
       return
     }
     
     // Check if user has USER role
-    if (user?.role !== 'USER') {
-      showError('Solo los usuarios registrados pueden acceder al carrito de compras.')
+    if (currentUser?.role !== 'USER') {
+      showError(dispatch, 'Solo los usuarios registrados pueden acceder al carrito de compras.')
       return
     }
     
@@ -94,9 +116,9 @@ export default function CartSheet({ onNavigate }) {
         onClick={handleCartClick}
       >
         <ShoppingCart className="h-5 w-5" />
-        {state.itemCount > 0 && (
+        {cartItemCount > 0 && (
           <span className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground text-xs rounded-full h-5 w-5 flex items-center justify-center">
-            {state.itemCount}
+            {cartItemCount}
           </span>
         )}
       </button>
@@ -129,7 +151,7 @@ export default function CartSheet({ onNavigate }) {
             <div className="flex items-center justify-between p-6 border-b">
               <div className="flex items-center space-x-2">
                 <ShoppingCart className="h-5 w-5" />
-                <h2 className="text-lg font-semibold">Tu Carrito ({state.itemCount})</h2>
+                <h2 className="text-lg font-semibold">Tu Carrito ({cartItemCount})</h2>
               </div>
               <button 
                 onClick={() => setIsOpen(false)}
@@ -142,7 +164,7 @@ export default function CartSheet({ onNavigate }) {
             {/* Content */}
             <div className="flex-1 overflow-hidden flex flex-col">
               
-              {state.items.length === 0 ? (
+              {cartItems.length === 0 ? (
                 <div className="flex-1 flex flex-col items-center justify-center space-y-4 p-8 min-h-0">
                   <ShoppingCart className="h-16 w-16 text-muted-foreground" />
                   <div className="text-center space-y-2">
@@ -157,7 +179,7 @@ export default function CartSheet({ onNavigate }) {
                 <>
                   {/* Items del carrito */}
                   <div className="flex-1 overflow-y-auto p-6 space-y-4 min-h-0">
-                    {state.items.map((item) => (
+                    {cartItems.map((item) => (
                       <div key={item.id} className="flex space-x-3 p-3 border rounded-lg">
                         <img
                           src={item.imagen || "/placeholder.svg"}
@@ -181,7 +203,7 @@ export default function CartSheet({ onNavigate }) {
                                 variant="outline"
                                 size="sm"
                                 className="h-10 w-10 p-0 flex items-center justify-center"
-                                onClick={() => updateQuantity(item.id, item.cantidad - 1)}
+                                onClick={() => handleUpdateQuantity(item.id, item.cantidad - 1)}
                                 disabled={item.cantidad <= 1}
                               >
                                 <Minus className="h-5 w-5" />
@@ -191,7 +213,7 @@ export default function CartSheet({ onNavigate }) {
                                 variant="outline"
                                 size="sm"
                                 className="h-10 w-10 p-0 flex items-center justify-center"
-                                onClick={() => updateQuantity(item.id, item.cantidad + 1)}
+                                onClick={() => handleUpdateQuantity(item.id, item.cantidad + 1)}
                                 disabled={item.cantidad >= item.stock}
                                 title={item.cantidad >= item.stock ? `Stock máximo: ${item.stock}` : 'Aumentar cantidad'}
                               >
@@ -205,7 +227,7 @@ export default function CartSheet({ onNavigate }) {
                                 variant="ghost"
                                 size="sm"
                                 className="h-10 w-10 p-0 text-destructive hover:text-destructive hover:bg-destructive/10 flex items-center justify-center"
-                                onClick={() => removeItem(item.id)}
+                                onClick={() => handleRemoveItem(item.id)}
                                 title="Eliminar del carrito"
                               >
                                 <Trash2 className="h-5 w-5" />
@@ -221,7 +243,7 @@ export default function CartSheet({ onNavigate }) {
                   <div className="border-t p-6 space-y-4">
                     <div className="flex items-center justify-between">
                       <span className="font-semibold">Total:</span>
-                      <span className="text-xl font-bold text-primary">{formatearPrecio(state.total)}</span>
+                      <span className="text-xl font-bold text-primary">{formatearPrecio(cartTotal)}</span>
                     </div>
 
                     <div className="space-y-2">
@@ -243,7 +265,7 @@ export default function CartSheet({ onNavigate }) {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={clearCart}
+                          onClick={handleClearCart}
                           className="text-destructive hover:text-destructive"
                         >
                           <Trash2 className="h-4 w-4" />

@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { useAuth } from '../context/AuthContext.jsx'
 import { useDispatch, useSelector } from 'react-redux'
 import { fetchCategories, selectCategoryCategories } from '../redux/slices/category.slice.js'
 import { fetchProducts, createProduct, updateProduct, deleteProduct } from '../redux/slices/product.slice.js'
@@ -14,7 +13,6 @@ import Notification from './ui/Notification.jsx'
 import ConfirmationModal from './ui/ConfirmationModal.jsx'
 
 export default function AdminProductManagement() {
-  const { isAdmin } = useAuth()
   const dispatch = useDispatch()
   const categoryItems = useSelector(selectCategoryCategories)
   const products = useSelector(state => state.products.products)
@@ -728,7 +726,7 @@ export default function AdminProductManagement() {
     }))
   }
 
-  if (!isAdmin()) {
+  if (!isAdminUser) {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="text-center">

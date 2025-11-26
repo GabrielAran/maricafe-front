@@ -1,14 +1,18 @@
 import React, { useState } from 'react'
 import { Menu, X, User, LogOut } from 'lucide-react'
-import { useAuth } from '../context/AuthContext.jsx'
+import { useDispatch, useSelector } from 'react-redux'
+import { logout, selectCurrentUser, selectIsAuthenticated, selectIsAdmin } from '../redux/slices/user.slice.js'
 import CartSheet from './CartSheet.jsx'
 
 export default function Header({ onNavigate, currentPage }) {
+  const dispatch = useDispatch()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
-  const { isAuthenticated, user, logout, isAdmin } = useAuth()
+  const currentUser = useSelector(selectCurrentUser)
+  const isAuthenticated = useSelector(selectIsAuthenticated)
+  const isAdminUser = useSelector(selectIsAdmin)
 
   const handleLogout = () => {
-    logout()
+    dispatch(logout())
     setIsMenuOpen(false)
     onNavigate('home')
   }
@@ -44,7 +48,7 @@ export default function Header({ onNavigate, currentPage }) {
           >
             Inicio
           </button>
-          {!isAdmin() && (
+          {!isAdminUser && (
             <>
               <button 
                 className={`transition-colors ${currentPage === 'productos' ? 'text-primary' : 'text-foreground hover:text-primary'}`}
@@ -60,7 +64,7 @@ export default function Header({ onNavigate, currentPage }) {
               </button>
             </>
           )}
-          {isAuthenticated && isAdmin() && (
+          {isAuthenticated && isAdminUser && (
             <button 
               className={`transition-colors ${currentPage === 'admin' ? 'text-primary' : 'text-foreground hover:text-primary'}`}
               onClick={() => handleNavigation('admin')}
@@ -73,15 +77,15 @@ export default function Header({ onNavigate, currentPage }) {
         {/* Right side actions */}
         <div className="flex items-center space-x-4">
           {/* Cart - Visible to all except admins, but access controlled */}
-          {!isAdmin() && <CartSheet onNavigate={onNavigate} />}
+          {!isAdminUser && <CartSheet onNavigate={onNavigate} />}
 
           {/* User menu */}
           {isAuthenticated ? (
             <div className="flex items-center space-x-2">
-              {!isAdmin() && (
+              {!isAdminUser && (
                 <>
                   <span className="text-sm text-muted-foreground hidden md:block">
-                    Hola, {user?.firstName}
+                    Hola, {currentUser?.firstName}
                   </span>
                   <button 
                     onClick={() => handleNavigation('profile')}
@@ -92,7 +96,7 @@ export default function Header({ onNavigate, currentPage }) {
                   </button>
                 </>
               )}
-              {isAdmin() && (
+              {isAdminUser && (
                 <span className="text-xs bg-primary text-primary-foreground px-2 py-1 rounded">
                   ADMIN
                 </span>
@@ -135,7 +139,7 @@ export default function Header({ onNavigate, currentPage }) {
             >
               Inicio
             </button>
-            {!isAdmin() && (
+            {!isAdminUser && (
               <>
                 <button 
                   className={`w-full text-center transition-colors ${currentPage === 'productos' ? 'text-primary' : 'text-foreground hover:text-primary'}`}
@@ -151,7 +155,7 @@ export default function Header({ onNavigate, currentPage }) {
                 </button>
               </>
             )}
-            {isAuthenticated && isAdmin() && (
+            {isAuthenticated && isAdminUser && (
               <button 
                 className={`w-full text-center transition-colors ${currentPage === 'admin' ? 'text-primary' : 'text-foreground hover:text-primary'}`}
                 onClick={() => handleNavigation('admin')}
@@ -164,10 +168,10 @@ export default function Header({ onNavigate, currentPage }) {
             <div className="border-t pt-4 mt-4">
               {isAuthenticated ? (
                 <div className="space-y-2">
-                  {!isAdmin() && (
+                  {!isAdminUser && (
                     <>
                       <div className="text-sm text-muted-foreground">
-                        Hola, {user?.firstName} {user?.lastName}
+                        Hola, {currentUser?.firstName} {currentUser?.lastName}
                       </div>
                       <button 
                         onClick={() => handleNavigation('profile')}
@@ -178,7 +182,7 @@ export default function Header({ onNavigate, currentPage }) {
                       </button>
                     </>
                   )}
-                  {isAdmin() && (
+                  {isAdminUser && (
                     <div className="text-xs bg-primary text-primary-foreground px-2 py-1 rounded inline-block">
                       ADMINISTRADOR
                     </div>
