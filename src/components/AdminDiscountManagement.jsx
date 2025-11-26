@@ -9,7 +9,7 @@ import {
   deleteBulkDiscounts
 } from '../redux/slices/discount.slice.js'
 import { selectProductsWithDiscounts } from '../redux/selectors/productSelectors.js'
-import { formatPrice } from '../utils/index.js'
+import { formatPrice } from '../utils/priceHelpers.js'
 import { Card, CardContent, CardHeader, CardTitle } from './ui/Card.jsx'
 import Button from './ui/Button.jsx'
 import Badge from './ui/Badge.jsx'

@@ -1,65 +1,52 @@
 import React, { useState, useEffect, useRef, useLayoutEffect } from 'react'
-import { useAuth } from '../context/AuthContext.jsx'
-
-const API_BASE_URL = 'http://127.0.0.1:4002'
+import { useSelector, useDispatch } from 'react-redux'
+import { selectIsAdmin } from '../redux/slices/user.slice.js'
+import {
+  fetchOverviewStats,
+  fetchProductsByCategory,
+  fetchLowStockProducts,
+  fetchTopSellingProducts,
+  fetchTopSpendingUsers,
+  fetchDiscountedProducts,
+} from '../redux/slices/adminStats.slice.js'
 
 export default function AdminDashboard() {
-  const { getAuthHeaders } = useAuth()
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
-  const [stats, setStats] = useState({
-    overview: {},
-    productsByCategory: {},
-    lowStockProducts: [],
-    topSellingProducts: [],
-    topSpendingUsers: [],
-    discountedProducts: []
-  })
+  const dispatch = useDispatch()
+  
+  // Redux state
+  const isAdminUser = useSelector(selectIsAdmin)
+  const overview = useSelector(state => state.adminStats.overview)
+  const productsByCategory = useSelector(state => state.adminStats.productsByCategory)
+  const lowStockProducts = useSelector(state => state.adminStats.lowStockProducts)
+  const topSellingProducts = useSelector(state => state.adminStats.topSellingProducts)
+  const topSpendingUsers = useSelector(state => state.adminStats.topSpendingUsers)
+  const discountedProducts = useSelector(state => state.adminStats.discountedProducts)
+  const loading = useSelector(state => state.adminStats.pending)
+  const error = useSelector(state => state.adminStats.error)
+
+  // StrictMode-safe initialization pattern
+  const hasInitialized = useRef(false)
 
   useEffect(() => {
-    fetchDashboardData()
-  }, [])
-
-  const fetchDashboardData = async () => {
-    try {
-      setLoading(true)
-      setError(null)
-      
-      const authHeaders = getAuthHeaders()
-      
-      // Fetch all dashboard data in parallel
-      const [overviewRes, categoryRes, lowStockRes, topSellingRes, topSpendingRes, discountedRes] = await Promise.all([
-        fetch(`${API_BASE_URL}/admin/stats/overview`, { headers: authHeaders }),
-        fetch(`${API_BASE_URL}/admin/stats/products-by-category`, { headers: authHeaders }),
-        fetch(`${API_BASE_URL}/admin/stats/low-stock-products`, { headers: authHeaders }),
-        fetch(`${API_BASE_URL}/admin/stats/top-selling-products`, { headers: authHeaders }),
-        fetch(`${API_BASE_URL}/admin/stats/top-spending-users`, { headers: authHeaders }),
-        fetch(`${API_BASE_URL}/admin/stats/discounted-products`, { headers: authHeaders })
-      ])
-
-      const [overview, productsByCategory, lowStockProducts, topSellingProducts, topSpendingUsers, discountedProducts] = await Promise.all([
-        overviewRes.json(),
-        categoryRes.json(),
-        lowStockRes.json(),
-        topSellingRes.json(),
-        topSpendingRes.json(),
-        discountedRes.json()
-      ])
-
-      setStats({
-        overview: overview.data || {},
-        productsByCategory: productsByCategory.data || {},
-        lowStockProducts: lowStockProducts.data || [],
-        topSellingProducts: topSellingProducts.data || [],
-        topSpendingUsers: topSpendingUsers.data || [],
-        discountedProducts: discountedProducts.data || []
-      })
-    } catch (err) {
-      console.error('Error fetching dashboard data:', err)
-      setError('Error al cargar los datos del dashboard')
-    } finally {
-      setLoading(false)
+    if (!hasInitialized.current && isAdminUser) {
+      hasInitialized.current = true
+      // Dispatch all dashboard data thunks in parallel (fire-and-forget)
+      dispatch(fetchOverviewStats())
+      dispatch(fetchProductsByCategory())
+      dispatch(fetchLowStockProducts())
+      dispatch(fetchTopSellingProducts())
+      dispatch(fetchTopSpendingUsers())
+      dispatch(fetchDiscountedProducts())
     }
+  }, [isAdminUser, dispatch])
+
+  const handleRetry = () => {
+    dispatch(fetchOverviewStats())
+    dispatch(fetchProductsByCategory())
+    dispatch(fetchLowStockProducts())
+    dispatch(fetchTopSellingProducts())
+    dispatch(fetchTopSpendingUsers())
+    dispatch(fetchDiscountedProducts())
   }
 
   const formatCurrency = (amount) => {
@@ -130,9 +117,9 @@ export default function AdminDashboard() {
   if (error) {
     return (
       <div className="text-center py-12">
-        <div className="text-red-500 mb-4">{error}</div>
+        <div className="text-red-500 mb-4">Error al cargar los datos del dashboard</div>
         <button 
-          onClick={fetchDashboardData}
+          onClick={handleRetry}
           className="px-4 py-2 bg-primary text-white rounded hover:bg-primary/80"
         >
           Reintentar
@@ -154,7 +141,7 @@ export default function AdminDashboard() {
             </div>
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">Total Productos</p>
-              <p className="text-2xl font-semibold text-gray-900">{stats.overview.totalProducts || 0}</p>
+              <p className="text-2xl font-semibold text-gray-900">{overview.totalProducts || 0}</p>
             </div>
           </div>
         </div>
@@ -168,7 +155,7 @@ export default function AdminDashboard() {
             </div>
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">Total Usuarios</p>
-              <p className="text-2xl font-semibold text-gray-900">{stats.overview.totalUsers || 0}</p>
+              <p className="text-2xl font-semibold text-gray-900">{overview.totalUsers || 0}</p>
             </div>
           </div>
         </div>
@@ -182,7 +169,7 @@ export default function AdminDashboard() {
             </div>
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">Total Órdenes</p>
-              <p className="text-2xl font-semibold text-gray-900">{stats.overview.totalOrders || 0}</p>
+              <p className="text-2xl font-semibold text-gray-900">{overview.totalOrders || 0}</p>
             </div>
           </div>
         </div>
@@ -200,7 +187,7 @@ export default function AdminDashboard() {
                   line instead of wrapping or overflowing. */}
               <div className="w-full">
                 <AutoShrinkText maxFontSize={28} minFontSize={12} className="font-semibold text-gray-900">
-                  {formatCurrency(stats.overview.totalRevenue || 0)}
+                  {formatCurrency(overview.totalRevenue || 0)}
                 </AutoShrinkText>
               </div>
             </div>
@@ -216,7 +203,7 @@ export default function AdminDashboard() {
             </div>
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">Productos con Descuento</p>
-              <p className="text-2xl font-semibold text-gray-900">{stats.overview.totalDiscounts || 0}</p>
+              <p className="text-2xl font-semibold text-gray-900">{overview.totalDiscounts || 0}</p>
             </div>
           </div>
         </div>
@@ -226,7 +213,7 @@ export default function AdminDashboard() {
       <div className="bg-white p-6 rounded-lg shadow border">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Productos por Categoría</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {Object.entries(stats.productsByCategory).map(([category, count]) => (
+          {Object.entries(productsByCategory).map(([category, count]) => (
             <div key={category} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
               <span className="font-medium text-gray-700">{category}</span>
               <span className="text-lg font-semibold text-primary">{count}</span>
@@ -238,7 +225,7 @@ export default function AdminDashboard() {
       {/* Low Stock Products */}
       <div className="bg-white p-6 rounded-lg shadow border">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Productos con Stock Bajo (≤ 5 unidades)</h3>
-        {stats.lowStockProducts.length === 0 ? (
+        {lowStockProducts.length === 0 ? (
           <p className="text-gray-500 text-center py-4">No hay productos con stock bajo</p>
         ) : (
           <div className="overflow-x-auto">
@@ -252,7 +239,7 @@ export default function AdminDashboard() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {stats.lowStockProducts.map((product, index) => (
+                {lowStockProducts.map((product, index) => (
                   <tr key={index} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{product.title}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{product.category}</td>
@@ -275,11 +262,11 @@ export default function AdminDashboard() {
       {/* Top Selling Products */}
       <div className="bg-white p-6 rounded-lg shadow border">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Productos Más Vendidos</h3>
-        {stats.topSellingProducts.length === 0 ? (
+        {topSellingProducts.length === 0 ? (
           <p className="text-gray-500 text-center py-4">No hay datos de ventas disponibles</p>
         ) : (
           <div className="space-y-3">
-            {stats.topSellingProducts.map((product, index) => (
+            {topSellingProducts.map((product, index) => (
               <div key={index} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
                 <div className="flex items-center">
                   <span className="text-lg font-bold text-primary mr-3">#{index + 1}</span>
@@ -300,11 +287,11 @@ export default function AdminDashboard() {
       {/* Top Spending Users */}
       <div className="bg-white p-6 rounded-lg shadow border">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Usuarios que Más Gastan</h3>
-        {stats.topSpendingUsers.length === 0 ? (
+        {topSpendingUsers.length === 0 ? (
           <p className="text-gray-500 text-center py-4">No hay datos de usuarios disponibles</p>
         ) : (
           <div className="space-y-3">
-            {stats.topSpendingUsers.map((user, index) => (
+            {topSpendingUsers.map((user, index) => (
               <div key={index} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
                 <div className="flex items-center">
                   <span className="text-lg font-bold text-primary mr-3">#{index + 1}</span>
@@ -325,7 +312,7 @@ export default function AdminDashboard() {
       {/* Discounted Products */}
       <div className="bg-white p-6 rounded-lg shadow border">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Productos con Descuento</h3>
-        {stats.discountedProducts.length === 0 ? (
+        {discountedProducts.length === 0 ? (
           <p className="text-gray-500 text-center py-4">No hay productos con descuento actualmente</p>
         ) : (
           <div className="overflow-x-auto">
@@ -342,7 +329,7 @@ export default function AdminDashboard() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {stats.discountedProducts.map((product, index) => (
+                {discountedProducts.map((product, index) => (
                   <tr key={index} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{product.productName}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{product.category}</td>

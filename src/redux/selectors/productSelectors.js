@@ -1,4 +1,4 @@
-import { calculateDiscountedPrice } from '../../utils/index.js'
+import { calculateDiscountedPrice } from '../../utils/priceHelpers.js'
 
 /**
  * Selector that merges products with discount info from discountSlice

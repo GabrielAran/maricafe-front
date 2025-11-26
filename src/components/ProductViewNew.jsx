@@ -21,7 +21,7 @@ import {
   fetchAttributesByCategory 
 } from '../redux/slices/attribute.slice.js'
 import { fetchProductImages } from '../redux/slices/images.slice.js'
-import { formatPrice } from '../utils/index.js'
+import { formatPrice } from '../utils/priceHelpers.js'
 import { isProductAvailable } from '../utils/productHelpers.js'
 
 export default function ProductViewNew({ 

@@ -9,3 +9,15 @@ export const normalizeUser = (backendUser) => {
     role: backendUser.role,
   }
 }
+
+/**
+ * Get user initials from name
+ * @param {string} firstName - First name
+ * @param {string} lastName - Last name
+ * @returns {string} User initials
+ */
+export function getUserInitials(firstName, lastName) {
+  const first = firstName ? firstName.charAt(0).toUpperCase() : ''
+  const last = lastName ? lastName.charAt(0).toUpperCase() : ''
+  return first + last
+}
