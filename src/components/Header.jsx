@@ -42,12 +42,14 @@ export default function Header({ onNavigate, currentPage }) {
     {/* Absolutely center the desktop nav so links remain centered regardless
         of logo/actions presence (works for admin/non-auth states). */}
     <nav className="hidden md:flex items-center absolute left-1/2 transform -translate-x-1/2 space-x-8">
-          <button 
-            className={`transition-colors ${currentPage === 'home' ? 'text-primary' : 'text-foreground hover:text-primary'}`}
-            onClick={() => handleNavigation('home')}
-          >
-            Inicio
-          </button>
+          {!isAdminUser && (
+            <button 
+              className={`transition-colors ${currentPage === 'home' ? 'text-primary' : 'text-foreground hover:text-primary'}`}
+              onClick={() => handleNavigation('home')}
+            >
+              Inicio
+            </button>
+          )}
           {!isAdminUser && (
             <>
               <button 
@@ -133,12 +135,14 @@ export default function Header({ onNavigate, currentPage }) {
       {isMenuOpen && (
         <div className="md:hidden border-t bg-background">
           <nav className="container mx-auto px-4 py-4 flex flex-col space-y-4">
-            <button 
-              className={`w-full text-center transition-colors ${currentPage === 'home' ? 'text-primary' : 'text-foreground hover:text-primary'}`}
-              onClick={() => handleNavigation('home')}
-            >
-              Inicio
-            </button>
+            {!isAdminUser && (
+              <button 
+                className={`w-full text-center transition-colors ${currentPage === 'home' ? 'text-primary' : 'text-foreground hover:text-primary'}`}
+                onClick={() => handleNavigation('home')}
+              >
+                Inicio
+              </button>
+            )}
             {!isAdminUser && (
               <>
                 <button 
