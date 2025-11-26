@@ -1,30 +1,46 @@
-import React, { useState } from 'react'
+import React, { useState, useRef } from 'react'
+import { useDispatch, useSelector } from 'react-redux'
 import Button from '../components/ui/Button.jsx'
-import { useAuth } from '../context/AuthContext.jsx'
+import { 
+  loginUser, 
+  selectCurrentUser, 
+  selectIsAuthenticated, 
+  selectIsAdmin, 
+  selectUserPending, 
+  selectUserError 
+} from '../redux/slices/user.slice.js'
 
 export default function LoginPage({ onNavigate }) {
-  const { login, loading, user } = useAuth()
+  const dispatch = useDispatch()
+  const currentUser = useSelector(selectCurrentUser)
+  const isAuthenticated = useSelector(selectIsAuthenticated)
+  const isAdminUser = useSelector(selectIsAdmin)
+  const loading = useSelector(selectUserPending)
+  const authError = useSelector(selectUserError)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [capsLock, setCapsLock] = useState(false)
+  const [hasAttemptedLogin, setHasAttemptedLogin] = useState(false)
+  const hasRedirected = useRef(false)
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault()
     setError('')
-    const result = await login(email, password)
-    if (!result.success) {
-      setError(result.error || 'Error de autenticación')
-      return
-    }
-    
-    // Redirect based on user role
-    if (user?.role === 'ADMIN') {
-      onNavigate && onNavigate('admin')
-    } else {
-      onNavigate && onNavigate('home')
-    }
+    setHasAttemptedLogin(true)
+    dispatch(loginUser({ email, password }))
   }
+
+  React.useEffect(() => {
+    if (!hasRedirected.current && hasAttemptedLogin && isAuthenticated && currentUser) {
+      hasRedirected.current = true
+      if (currentUser.role === 'ADMIN' || isAdminUser) {
+        onNavigate && onNavigate('admin')
+      } else {
+        onNavigate && onNavigate('home')
+      }
+    }
+  }, [hasAttemptedLogin, isAuthenticated, currentUser, isAdminUser, onNavigate])
 
   return (
     <div className="container mx-auto px-4 py-12 max-w-md">
@@ -60,7 +76,7 @@ export default function LoginPage({ onNavigate }) {
             <p className="text-yellow-700 text-sm mt-1">Caps Lock está activado — asegúrate de escribir la contraseña correctamente.</p>
           )}
         </div>
-        {error && <p className="text-red-500 text-sm">{error}</p>}
+        {(error || authError) && <p className="text-red-500 text-sm">{error || authError}</p>}
         <Button type="submit" disabled={loading} className="w-full">
           {loading ? 'Ingresando...' : 'Ingresar'}
         </Button>

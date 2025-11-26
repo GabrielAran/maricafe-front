@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit'
 import { api } from '../api/axiosInstance'
+import { normalizeUser } from '../../utils/userHelpers.js'
 
 export const buildAuthHeaders = (state, includeJson = false) => {
     const token = state.user.token
@@ -115,15 +116,9 @@ const userSlice = createSlice({
             .addCase(loginUser.fulfilled, (state, action) => {
                 state.pending = false
                 state.token = action.payload.access_token
-                // Map snake_case backend format to camelCase
+                console.log("The token in slice: ", state.token)
                 const backendUser = action.payload.user
-                state.currentUser = {
-                    userId: backendUser.user_id,
-                    firstName: backendUser.first_name,
-                    lastName: backendUser.last_name,
-                    email: backendUser.email,
-                    role: backendUser.role
-                }
+                state.currentUser = normalizeUser(backendUser)
             })
             .addCase(loginUser.rejected, (state, action) => {
                 state.pending = false
@@ -138,15 +133,8 @@ const userSlice = createSlice({
             .addCase(registerUser.fulfilled, (state, action) => {
                 state.pending = false
                 state.token = action.payload.access_token
-                // Map snake_case backend format to camelCase
                 const backendUser = action.payload.user
-                state.currentUser = {
-                    userId: backendUser.user_id,
-                    firstName: backendUser.first_name,
-                    lastName: backendUser.last_name,
-                    email: backendUser.email,
-                    role: backendUser.role
-                }
+                state.currentUser = normalizeUser(backendUser)
             })
             .addCase(registerUser.rejected, (state, action) => {
                 state.pending = false
@@ -162,14 +150,7 @@ const userSlice = createSlice({
                 state.pending = false
                 const backendUser = action.payload.data
 
-                // Map snake_case to camelCase
-                const mappedUser = {
-                    userId: backendUser.user_id,
-                    firstName: backendUser.first_name,
-                    lastName: backendUser.last_name,
-                    email: backendUser.email,
-                    role: backendUser.role
-                }
+                const mappedUser = normalizeUser(backendUser)
 
                 if (state.currentUser && state.currentUser.userId === mappedUser.userId) {
                     state.currentUser = mappedUser
@@ -202,14 +183,7 @@ const userSlice = createSlice({
             .addCase(fetchAllUsers.fulfilled, (state, action) => {
                 state.pending = false
                 const users = Array.isArray(action.payload) ? action.payload : []
-                // Map snake_case to camelCase
-                state.users = users.map(user => ({
-                    userId: user.user_id,
-                    firstName: user.first_name,
-                    lastName: user.last_name,
-                    email: user.email,
-                    role: user.role
-                }))
+                state.users = users.map((user) => normalizeUser(user))
             })
             .addCase(fetchAllUsers.rejected, (state, action) => {
                 state.pending = false
@@ -226,14 +200,7 @@ const userSlice = createSlice({
                 state.pending = false
                 const backendUser = action.payload
                 if (backendUser) {
-                    // Map snake_case to camelCase
-                    const mappedUser = {
-                        userId: backendUser.user_id,
-                        firstName: backendUser.first_name,
-                        lastName: backendUser.last_name,
-                        email: backendUser.email,
-                        role: backendUser.role
-                    }
+                    const mappedUser = normalizeUser(backendUser)
                     state.selectedUser = mappedUser
                     // Also update in users array if it exists
                     const index = state.users.findIndex(u => u.userId === mappedUser.userId)
