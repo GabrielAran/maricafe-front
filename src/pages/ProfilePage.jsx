@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
-import { User, Edit3, Save, X, Package, Clock, CheckCircle, Lock, Eye, EyeOff, Calendar, DollarSign, ArrowRight } from 'lucide-react'
+import { User, Edit3, Save, X, Package, Clock, Lock, Eye, EyeOff, Calendar, DollarSign, ArrowRight } from 'lucide-react'
 import { 
   selectCurrentUser,
   selectIsAuthenticated,
