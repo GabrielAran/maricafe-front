@@ -4,6 +4,11 @@ import { useDispatch, useSelector } from 'react-redux'
 import { useToast } from '../context/ToastContext.jsx'
 import { getLoginRemainingTime } from '../utils/cartPersistence.js'
 import { addItem } from '../redux/slices/cartSlice.js'
+import {
+  selectToken,
+  selectCurrentUser,
+  selectIsAuthenticated,
+} from '../redux/slices/user.slice.js'
 import Button from './ui/Button.jsx'
 
 export default function AddToCartButton({ 
@@ -17,9 +22,9 @@ export default function AddToCartButton({
   image = null
 }) {
   const dispatch = useDispatch()
-  const token = useSelector(state => state.user.token)
-  const currentUser = useSelector(state => state.user.currentUser)
-  const isAuthenticated = Boolean(token)
+  const token = useSelector(selectToken)
+  const currentUser = useSelector(selectCurrentUser)
+  const isAuthenticated = useSelector(selectIsAuthenticated)
   const userRole = currentUser?.role
   const { showError } = useToast()
   const [added, setAdded] = useState(false)
