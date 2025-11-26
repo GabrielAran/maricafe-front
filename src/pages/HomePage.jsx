@@ -1,76 +1,128 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useRef } from 'react'
+import { useSelector, useDispatch } from 'react-redux'
 import { Cake, Gift, Users, Heart, ArrowRight } from 'lucide-react'
 import CakeCarousel from '../components/CakeCarousel.jsx'
-import { useProductService } from '../hooks/useProductService.js'
-import { ProductApiService } from '../services/ProductApiService.js'
-import { useAuth } from '../context/AuthContext.jsx'
+import { fetchProducts } from '../redux/slices/product.slice.js'
+import { fetchProductImages } from '../redux/slices/images.slice.js'
+import { selectIsAdmin } from '../redux/slices/user.slice.js'
 
 export default function HomePage({ onNavigate }) {
-  const { products, loading, loadProducts, getProductsByCategoryName } = useProductService()
-  const { user, isAdmin } = useAuth()
+  const dispatch = useDispatch()
+  
+  // Redux state
+  const products = useSelector(state => state.products.products)
+  const productsPending = useSelector(state => state.products.pending)
+  const isAdminUser = useSelector(selectIsAdmin)
+  
+  // Images state
+  const imagesState = useSelector(state => state.images.images)
+  const imagesPending = useSelector(state => state.images.pending)
+  
+  // UI state
   const [cakeProducts, setCakeProducts] = useState([])
+  const [productImages, setProductImages] = useState({})
+  const [currentImageProductId, setCurrentImageProductId] = useState(null)
+  const [processedImageProducts, setProcessedImageProducts] = useState(new Set())
+  
+  // StrictMode-safe initialization
+  const hasInitialized = useRef(false)
 
-  // Load products when component mounts
+  // Load products when component mounts (only once)
   useEffect(() => {
-    loadProducts()
-  }, [loadProducts])
+    if (!hasInitialized.current) {
+      hasInitialized.current = true
+      dispatch(fetchProducts())
+    }
+  }, [dispatch])
 
   // Filter products to get only cakes when products are loaded
   useEffect(() => {
-    const loadCakeProducts = async () => {
-      if (products && products.length > 0) {
-        // Try different possible category names for cakes
-        const possibleCakeCategories = ['tortas', 'torta', 'cakes', 'cake', 'tortas artesanales']
-        let cakeProducts = []
-        
-        for (const categoryName of possibleCakeCategories) {
-          const categoryProducts = getProductsByCategoryName(categoryName)
-          if (categoryProducts && categoryProducts.length > 0) {
-            cakeProducts = categoryProducts
-            break
-          }
+    if (products && products.length > 0) {
+      // Try different possible category names for cakes
+      const possibleCakeCategories = ['tortas', 'torta', 'cakes', 'cake', 'tortas artesanales']
+      let cakeProducts = []
+      
+      // Filter by category name
+      for (const categoryName of possibleCakeCategories) {
+        const categoryProducts = products.filter(product => {
+          const productCategory = product.categoria?.toLowerCase() || ''
+          return productCategory === categoryName.toLowerCase()
+        })
+        if (categoryProducts && categoryProducts.length > 0) {
+          cakeProducts = categoryProducts
+          break
         }
-        
-        // If no specific cake category found, filter by product name containing cake-related keywords
-        if (cakeProducts.length === 0) {
-          cakeProducts = products.filter(product => {
-            const name = product.nombre?.toLowerCase() || ''
-            const description = product.descripcion?.toLowerCase() || ''
-            return name.includes('torta') || name.includes('cake') || 
-                   description.includes('torta') || description.includes('cake')
-          })
-        }
-        
-        // Load images for each cake product
-        const transformedCakes = []
-        for (const product of cakeProducts.slice(0, 5)) {
-          try {
-            const images = await ProductApiService.getProductImages(product.id)
-            const imageUrl = images && images.length > 0 ? images[0].url : '/placeholder.jpg'
-            
-            transformedCakes.push({
-              id: product.id,
-              name: product.nombre,
-              image: imageUrl,
-              description: product.descripcion || 'Deliciosa torta artesanal'
-            })
-          } catch (error) {
-            console.error(`Error loading image for product ${product.id}:`, error)
-            transformedCakes.push({
-              id: product.id,
-              name: product.nombre,
-              image: '/placeholder.jpg',
-              description: product.descripcion || 'Deliciosa torta artesanal'
-            })
-          }
-        }
-        
-        setCakeProducts(transformedCakes)
+      }
+      
+      // If no specific cake category found, filter by product name containing cake-related keywords
+      if (cakeProducts.length === 0) {
+        cakeProducts = products.filter(product => {
+          const name = product.nombre?.toLowerCase() || ''
+          const description = product.descripcion?.toLowerCase() || ''
+          return name.includes('torta') || name.includes('cake') || 
+                 description.includes('torta') || description.includes('cake')
+        })
+      }
+      
+      // Transform to cake format (UI-specific transformation)
+      const transformedCakes = cakeProducts.slice(0, 5).map(product => ({
+        id: product.id,
+        name: product.nombre,
+        image: productImages[product.id] || '/placeholder.jpg',
+        description: product.descripcion || 'Deliciosa torta artesanal'
+      }))
+      
+      setCakeProducts(transformedCakes)
+    }
+  }, [products, productImages])
+
+  // Load images for products using Redux thunk (one at a time to track which product)
+  useEffect(() => {
+    if (cakeProducts && cakeProducts.length > 0 && !currentImageProductId) {
+      // Find first product that needs images
+      const productNeedingImage = cakeProducts.find(
+        product => !productImages[product.id] && !processedImageProducts.has(product.id)
+      )
+      
+      if (productNeedingImage) {
+        setCurrentImageProductId(productNeedingImage.id)
+        setProcessedImageProducts(prev => new Set(prev).add(productNeedingImage.id))
+        dispatch(fetchProductImages(productNeedingImage.id))
       }
     }
+  }, [cakeProducts, dispatch, productImages, currentImageProductId, processedImageProducts])
 
-    loadCakeProducts()
-  }, [products, getProductsByCategoryName])
+  // Process images from Redux state when they arrive
+  useEffect(() => {
+    if (currentImageProductId && !imagesPending && imagesState && Array.isArray(imagesState) && imagesState.length > 0) {
+      // Process base64 images similar to ProductApiService
+      const base64Data = imagesState[0]
+      let finalData = null
+      
+      if (typeof base64Data === 'string') {
+        finalData = base64Data
+      } else if (base64Data && typeof base64Data === 'object') {
+        if (base64Data.data) {
+          finalData = base64Data.data
+        } else if (base64Data.imagen) {
+          finalData = base64Data.imagen
+        } else if (base64Data.base64) {
+          finalData = base64Data.base64
+        }
+      }
+      
+      if (finalData) {
+        const cleanBase64 = finalData.toString()
+          .replace(/\s/g, '')
+          .replace(/^data:image\/[a-z]+;base64,/, '')
+        const imageUrl = `data:image/png;base64,${cleanBase64}`
+        setProductImages(prev => ({ ...prev, [currentImageProductId]: imageUrl }))
+      }
+      
+      // Move to next product
+      setCurrentImageProductId(null)
+    }
+  }, [imagesState, imagesPending, currentImageProductId])
 
   // Handle cake click navigation
   const handleCakeClick = (cake) => {
@@ -82,7 +134,7 @@ export default function HomePage({ onNavigate }) {
   // Handle navigation based on user role
   const handleProductsNavigation = () => {
     if (onNavigate) {
-      if (isAdmin()) {
+      if (isAdminUser) {
         onNavigate('admin')
       } else {
         onNavigate('productos')
@@ -213,7 +265,7 @@ export default function HomePage({ onNavigate }) {
             </p>
           </div>
           
-          {loading ? (
+          {productsPending ? (
             <div className="flex justify-center items-center py-12">
               <div className="text-center">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
