@@ -1,10 +1,10 @@
 import { createSlice } from '@reduxjs/toolkit';
 
-// Initial state of the cart: empty cart list, 0 total price, and 0 total items.
 const initialState = {
     cart: [],
     total: 0,
     itemCount: 0,
+    ownerUserId: null,
 };
 
 const cartSlice = createSlice({
@@ -58,6 +58,9 @@ const cartSlice = createSlice({
             state.total = 0;
             state.itemCount = 0;
         },
+        setCartOwner: (state, action) => {
+            state.ownerUserId = action.payload;
+        },
         // Loads a cart from an external source (like local storage or API) replacing current state.
         loadCart: (state, action) => {
             state.cart = action.payload;
@@ -67,11 +70,12 @@ const cartSlice = createSlice({
     },
 });
 
-export const { addItem, removeItem, updateQuantity, clearCart, loadCart } = cartSlice.actions;
+export const { addItem, removeItem, updateQuantity, clearCart, loadCart, setCartOwner } = cartSlice.actions;
 
 // Selectors
 export const selectCart = (state) => state.cart.cart;
 export const selectCartTotal = (state) => state.cart.total;
 export const selectCartItemCount = (state) => state.cart.itemCount;
+export const selectCartOwnerUserId = (state) => state.cart.ownerUserId;
 
 export default cartSlice.reducer;

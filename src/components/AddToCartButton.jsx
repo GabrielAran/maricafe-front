@@ -3,7 +3,7 @@ import { ShoppingCart, Check } from 'lucide-react'
 import { useDispatch, useSelector } from 'react-redux'
 import { showError } from '../utils/toastHelper.js'
 import { getLoginRemainingTime } from '../utils/cartRemainingTime.js'
-import { addItem } from '../redux/slices/cartSlice.js'
+import { addItem, clearCart, setCartOwner, selectCartOwnerUserId } from '../redux/slices/cartSlice.js'
 import {
   selectToken,
   selectCurrentUser,
@@ -28,6 +28,7 @@ export default function AddToCartButton({
   const isAuthenticated = useSelector(selectIsAuthenticated)
   const loginTimestamp = useSelector(selectLoginTimestamp)
   const userRole = currentUser?.role
+  const cartOwnerUserId = useSelector(selectCartOwnerUserId)
   const [added, setAdded] = useState(false)
 
   const handleAddToCart = () => {
@@ -62,7 +63,18 @@ export default function AddToCartButton({
       return
     }
     
-    // Add to cart for authenticated USER with selected quantity
+    if (!currentUser || !currentUser.userId) {
+      return
+    }
+
+    if (cartOwnerUserId && cartOwnerUserId !== currentUser.userId) {
+      dispatch(clearCart())
+    }
+
+    if (!cartOwnerUserId || cartOwnerUserId !== currentUser.userId) {
+      dispatch(setCartOwner(currentUser.userId))
+    }
+
     const productWithQuantity = { 
       ...product, 
       cantidad: quantity,
