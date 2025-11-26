@@ -350,3 +350,9 @@ const productSlice = createSlice({
 })
 
 export default productSlice.reducer
+
+// Selectors
+export const selectProducts = (state) => state.products.products
+export const selectProductPending = (state) => state.products.pending
+export const selectProductError = (state) => state.products.error
+export const selectCurrentProduct = (state) => state.products.currentItem
