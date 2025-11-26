@@ -7,7 +7,6 @@ import AddToCartButton from '../components/AddToCartButton.jsx'
 import { fetchProductById, selectCurrentProduct, selectProductError, selectProductPending } from '../redux/slices/product.slice.js'
 import { fetchProductImages } from '../redux/slices/images.slice.js'
 import { formatPrice, isProductAvailable, getProductAvailabilityStatus } from '../utils/productHelpers.js'
-import { useAuth } from '../context/AuthContext.jsx'
 
 export default function ProductPage({ onNavigate, productId }) {
   const dispatch = useDispatch()
@@ -24,8 +23,6 @@ export default function ProductPage({ onNavigate, productId }) {
   // Local UI state
   const [selectedImageIndex, setSelectedImageIndex] = React.useState(0)
   const [productImages, setProductImages] = React.useState([])
-
-  const { isAuthenticated } = useAuth()
 
   const hasInitialized = React.useRef(false)
 
