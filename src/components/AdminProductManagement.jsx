@@ -73,7 +73,7 @@ export default function AdminProductManagement() {
   const [lastProductId, setLastProductId] = useState(null)
   const [createDraft, setCreateDraft] = useState(null)
 
-  const [lastImageAction, setLastImageAction] = useState(null) // 'loadThumbnails' | 'loadEditImages' | 'uploadForCreated' | 'uploadForUpdated' | 'deleteImage'
+  const [lastImageAction, setLastImageAction] = useState(null) // 'loadEditImages' | 'uploadForCreated' | 'uploadForUpdated' | 'deleteImage'
   const [lastImageProductId, setLastImageProductId] = useState(null)
 
   const prevProductsPending = useRef(false)
@@ -504,11 +504,6 @@ export default function AdminProductManagement() {
       if (lastAction === 'update') {
         if (!productsError) {
           showNotification('Producto actualizado exitosamente', 'success')
-          if (lastProductId) {
-            setLastImageAction('loadThumbnails')
-            setLastImageProductId(lastProductId)
-            dispatch(fetchProductImages(lastProductId))
-          }
           handleCloseEditModal()
           setSaving(false)
         } else {
@@ -563,37 +558,18 @@ export default function AdminProductManagement() {
   }, [productsState.pending, productsState.error, lastAction, lastProductId, products, createDraft, selectedImages, dispatch])
 
   useEffect(() => {
-    const { pending, error: imagesError, images } = imagesState
+    const { pending, error: imagesError, imagesByProductId } = imagesState
     const wasPending = prevImagesPending.current
 
     if (wasPending && !pending && lastImageAction) {
-      if (lastImageAction === 'loadThumbnails' && lastImageProductId && Array.isArray(images) && images.length > 0) {
-        const firstImage = images[0]
-        let base64 = null
-
-        if (typeof firstImage === 'string') {
-          base64 = firstImage
-        } else if (firstImage && typeof firstImage === 'object') {
-          base64 = firstImage.file || firstImage.data || firstImage.imagen || firstImage.base64 || null
-        }
-
-        if (base64) {
-          const cleanBase64 = base64.toString()
-            .replace(/\s/g, '')
-            .replace(/^data:image\/[a-z]+;base64,/, '')
-          const imageUrl = `data:image/png;base64,${cleanBase64}`
-          setProductImages(prev => ({
-            ...prev,
-            [lastImageProductId]: imageUrl
-          }))
-        }
-        setLastImageAction(null)
-        setLastImageProductId(null)
-      }
-
       if (lastImageAction === 'loadEditImages') {
-        if (!imagesError && Array.isArray(images)) {
-          const mapped = images.map(imageResponse => {
+        const productImages =
+          lastImageProductId != null && imagesByProductId
+            ? imagesByProductId[lastImageProductId] || []
+            : []
+
+        if (!imagesError && Array.isArray(productImages)) {
+          const mapped = productImages.map(imageResponse => {
             if (!imageResponse || !imageResponse.id || !imageResponse.file) return null
             const cleanBase64 = imageResponse.file.toString()
               .replace(/\s/g, '')
@@ -650,7 +626,7 @@ export default function AdminProductManagement() {
     }
 
     prevImagesPending.current = pending
-  }, [imagesState.pending, imagesState.error, imagesState.images, lastImageAction, lastImageProductId, dispatch])
+  }, [imagesState.pending, imagesState.error, imagesState.imagesByProductId, lastImageAction, lastImageProductId, dispatch])
 
   const handleInputChange = (field, value) => {
     // If updating description, enforce 120 char limit and set inline error when limit reached
