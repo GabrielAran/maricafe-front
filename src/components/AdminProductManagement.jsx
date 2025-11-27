@@ -68,7 +68,6 @@ export default function AdminProductManagement() {
 
   const thumbnailsByProductId = useSelector(state => state.images.thumbnailsByProductId || {})
   const imagesByProductId = useSelector(state => state.images.imagesByProductId || {})
-  const imagesPending = useSelector(state => state.images.pending)
   const hasInitialized = useRef(false)
 
   const [lastAction, setLastAction] = useState(null) // 'create' | 'update' | 'delete' | 'activate'
@@ -81,8 +80,8 @@ export default function AdminProductManagement() {
   const prevProductsPending = useRef(false)
   const prevImagesPending = useRef(false)
   
-  // Track which product IDs have been requested to avoid duplicate requests
-  const [requestedProductIds, setRequestedProductIds] = useState(new Set())
+  // Simple tracking: which product IDs we've already requested images for
+  const requestedProductIdsRef = useRef(new Set())
 
   useEffect(() => {
     if (!hasInitialized.current && isAdminUser) {
@@ -101,59 +100,34 @@ export default function AdminProductManagement() {
     )
   }, [categoryItems])
 
-  // Load images for all products (cache per product to avoid refetching)
-  // Only fetch if we don't have images cached AND haven't already requested them
+  // Simple image fetching: fetch images for products that don't have them yet
+  // Each product's images are fetched once and cached in Redux
   useEffect(() => {
-    if (products.length === 0) return
-    if (imagesPending) return // Don't fetch if images are currently being fetched
+    if (!products || products.length === 0) return
 
     products.forEach((product) => {
-      const productId = product.id
+      const productId = product?.id
       if (!productId) return
 
-      // Skip if we already have images cached (either thumbnail or full images array)
+      // Check if we already have images for this product
       const hasThumbnail = thumbnailsByProductId[productId]
       const hasImages = imagesByProductId[productId] && Array.isArray(imagesByProductId[productId]) && imagesByProductId[productId].length > 0
       
+      // If we have images, we're done
       if (hasThumbnail || hasImages) {
+        // Clean up tracking if it was there
+        requestedProductIdsRef.current.delete(productId)
         return
       }
 
-      // Skip if we've already requested this product's images
-      if (requestedProductIds.has(productId)) return
+      // If we've already requested images for this product, skip
+      if (requestedProductIdsRef.current.has(productId)) return
 
       // Mark as requested and fetch
-      setRequestedProductIds(prev => new Set(prev).add(productId))
+      requestedProductIdsRef.current.add(productId)
       dispatch(fetchProductImages(productId))
     })
-  }, [products, dispatch, imagesPending]) // Removed thumbnailsByProductId and imagesByProductId from deps to prevent re-runs
-
-  // Clean up requestedProductIds when images are successfully loaded
-  // This effect runs when images state changes (images loaded or updated)
-  useEffect(() => {
-    if (products.length === 0) return
-    
-    setRequestedProductIds(prev => {
-      const next = new Set(prev)
-      let changed = false
-      
-      products.forEach((product) => {
-        const productId = product.id
-        if (!productId) return
-
-        const hasThumbnail = thumbnailsByProductId[productId]
-        const hasImages = imagesByProductId[productId] && Array.isArray(imagesByProductId[productId]) && imagesByProductId[productId].length > 0
-        
-        // If we have images now, remove from requested set
-        if ((hasThumbnail || hasImages) && next.has(productId)) {
-          next.delete(productId)
-          changed = true
-        }
-      })
-      
-      return changed ? next : prev
-    })
-  }, [thumbnailsByProductId, imagesByProductId, products])
+  }, [products, thumbnailsByProductId, imagesByProductId, dispatch])
 
 
   const handleAddProduct = () => {
@@ -653,12 +627,8 @@ export default function AdminProductManagement() {
           showNotification('Producto creado pero error al subir imágenes: ' + imagesError, 'error')
         } else {
           // Fetch images to update the cache and display thumbnails
-          // Remove from requestedProductIds so it can be fetched fresh
-          setRequestedProductIds(prev => {
-            const next = new Set(prev)
-            next.delete(lastImageProductId)
-            return next
-          })
+          // Remove from tracking so it can be fetched fresh
+          requestedProductIdsRef.current.delete(lastImageProductId)
           dispatch(fetchProductImages(lastImageProductId))
         }
         setLastImageAction(null)
