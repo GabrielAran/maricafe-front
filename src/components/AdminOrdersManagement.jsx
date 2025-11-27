@@ -510,7 +510,7 @@ export default function AdminOrdersManagement() {
                             onClick={() => handleFinalizeOrder(order.id)}
                             variant="secondary"
                             size="sm"
-                            className="bg-blue-600 hover:bg-blue-700 text-white border-blue-600"
+                            className="!bg-blue-700 hover:!bg-blue-800 !text-white !border-blue-700"
                           >
                             Finalizar
                           </Button>
