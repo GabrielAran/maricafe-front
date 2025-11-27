@@ -183,12 +183,37 @@ export default function CheckoutPage({ onNavigate }) {
                           Cantidad: {item.cantidad}
                         </p>
                       </div>
-                      <div className="text-sm sm:text-base font-semibold">
-                        {new Intl.NumberFormat('es-AR', {
-                          style: 'currency',
-                          currency: 'ARS',
-                          minimumFractionDigits: 0
-                        }).format(item.precio * item.cantidad)}
+                      <div className="text-right text-sm sm:text-base font-semibold">
+                        {(() => {
+                          const hasDiscount = (item.descuento ?? 0) > 0 && (item.precioOriginal ?? 0) > item.precio
+                          const formatter = new Intl.NumberFormat('es-AR', {
+                            style: 'currency',
+                            currency: 'ARS',
+                            minimumFractionDigits: 0
+                          })
+
+                          const currentTotal = formatter.format(item.precio * item.cantidad)
+
+                          if (!hasDiscount) {
+                            return <span>{currentTotal}</span>
+                          }
+
+                          const originalTotal = formatter.format((item.precioOriginal ?? item.precio) * item.cantidad)
+
+                          return (
+                            <div className="flex flex-col items-end space-y-0.5">
+                              <span>{currentTotal}</span>
+                              <span className="text-xs sm:text-sm text-muted-foreground line-through">
+                                {originalTotal}
+                              </span>
+                              {item.descuento > 0 && (
+                                <span className="text-xs text-green-600 font-medium">
+                                  -{item.descuento}%
+                                </span>
+                              )}
+                            </div>
+                          )
+                        })()}
                       </div>
                     </div>
                   ))}
