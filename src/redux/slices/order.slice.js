@@ -203,7 +203,7 @@ const orderSlice = createSlice({
         state.error = action.error.message || null
       })
 
-    // Delete order
+    // Delete (cancel) order
     builder
       .addCase(deleteOrder.pending, (state) => {
         state.pending = true
@@ -212,9 +212,22 @@ const orderSlice = createSlice({
       .addCase(deleteOrder.fulfilled, (state, action) => {
         state.pending = false
         const orderId = action.meta.arg
-        state.orders = state.orders.filter((o) => o.order_id !== orderId)
+
+        // Update list
+        const index = state.orders.findIndex((o) => o.order_id === orderId)
+        if (index !== -1) {
+          state.orders[index] = {
+            ...state.orders[index],
+            active: false,
+          }
+        }
+
+        // Update detail if it's the same order
         if (state.currentItem && state.currentItem.order_id === orderId) {
-          state.currentItem = null
+          state.currentItem = {
+            ...state.currentItem,
+            active: false,
+          }
         }
       })
       .addCase(deleteOrder.rejected, (state, action) => {
