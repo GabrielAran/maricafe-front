@@ -1,31 +1,7 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit'
 import { api } from '../api/axiosInstance'
 import { buildAuthHeaders } from './user.slice'
-import { normalizeProduct } from '../../utils/productHelpers.js'
-
-// Helper to adjust stock based on cart content
-const adjustStock = (data, cart) => {
-  if (!data || !cart) return data
-  const cartMap = new Map(cart.map(c => [c.id, c.cantidad]))
-
-  const processItem = (item) => {
-    if (!item) return item
-    const qty = cartMap.get(item.product_id)
-    if (qty) {
-      return { ...item, stock: Math.max(0, item.stock - qty) }
-    }
-    return item
-  }
-
-  if (Array.isArray(data)) {
-    return data.map(processItem)
-  }
-  if (data.content && Array.isArray(data.content)) {
-    return { ...data, content: data.content.map(processItem) }
-  }
-  // Single item
-  return processItem(data)
-}
+import { normalizeProduct, adjustStock } from '../../utils/productHelpers.js'
 
 // 3.8 GET /products?sort=price,asc|desc
 export const fetchProducts = createAsyncThunk(

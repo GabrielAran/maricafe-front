@@ -119,6 +119,12 @@ export default function AdminProductManagement() {
   const prevProductsPending = useRef(false)
   const prevImagesPending = useRef(false)
 
+  // Helper function to capitalize first letter
+  const capitalizeFirst = (str) => {
+    if (!str || typeof str !== 'string') return str
+    return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase()
+  }
+
   useEffect(() => {
     // Only initialize if user is admin and we haven't initialized yet
     // Also check that isAdminUser is not undefined (wait for auth state to be ready)
@@ -128,7 +134,8 @@ export default function AdminProductManagement() {
       if (isAdminUser) {
         hasInitialized.current = true
         try {
-          dispatch(fetchProducts())
+          // Fetch products sorted by effective price (discounted when available)
+          dispatch(fetchProducts('price,asc'))
           dispatch(fetchCategories())
         } catch (error) {
           console.error('Error initializing product management:', error)
@@ -143,13 +150,42 @@ export default function AdminProductManagement() {
   }, [isAdminUser, dispatch])
 
   useEffect(() => {
-    setCategories(
-      categoryItems.map((c) => ({
+    // Get active categories
+    const activeCategories = categoryItems
+      .filter((c) => c.active !== false)
+      .map((c) => ({
         id: c.category_id,
         name: c.name,
-      })),
-    )
-  }, [categoryItems])
+        active: true,
+      }))
+
+    // If editing a product, check if its current category is inactive
+    // If so, include it in the list (but marked as inactive) so it's visible
+    let categoriesToShow = [...activeCategories]
+    
+    if (editingProduct && formData.category_id) {
+      const currentCategoryId = formData.category_id
+      const currentCategory = categoryItems.find(
+        (c) => c.category_id === currentCategoryId || String(c.category_id) === String(currentCategoryId)
+      )
+      
+      // If the current category is inactive and not already in the list, add it
+      if (currentCategory && currentCategory.active === false) {
+        const alreadyIncluded = categoriesToShow.some(
+          (c) => String(c.id) === String(currentCategoryId)
+        )
+        if (!alreadyIncluded) {
+          categoriesToShow.push({
+            id: currentCategory.category_id,
+            name: currentCategory.name,
+            active: false,
+          })
+        }
+      }
+    }
+
+    setCategories(categoriesToShow)
+  }, [categoryItems, editingProduct, formData.category_id])
 
   useEffect(() => {
     if (!isAdminUser) return
@@ -1004,7 +1040,7 @@ export default function AdminProductManagement() {
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-muted-foreground">
-                    Categoría: {product.categoria}
+                    Categoría: {capitalizeFirst(product.categoria)}
                   </span>
                   <div className="flex gap-1">
                     {!product.active && (
@@ -1088,8 +1124,12 @@ export default function AdminProductManagement() {
                 >
                   <option value="">Seleccione una categoría</option>
                   {categories.map(category => (
-                    <option key={category.id} value={category.id}>
-                      {category.name}
+                    <option 
+                      key={category.id} 
+                      value={category.id}
+                      disabled={category.active === false}
+                    >
+                      {category.name}{category.active === false ? ' (Inactiva)' : ''}
                     </option>
                   ))}
                 </select>
@@ -1279,8 +1319,12 @@ export default function AdminProductManagement() {
                 >
                   <option value="">Seleccione una categoría</option>
                   {categories.map(category => (
-                    <option key={category.id} value={category.id}>
-                      {category.name}
+                    <option 
+                      key={category.id} 
+                      value={category.id}
+                      disabled={category.active === false}
+                    >
+                      {category.name}{category.active === false ? ' (Inactiva)' : ''}
                     </option>
                   ))}
                 </select>
