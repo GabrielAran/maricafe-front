@@ -5,7 +5,7 @@ import Badge from '../components/ui/Badge.jsx'
 import Button from '../components/ui/Button.jsx'
 import AddToCartButton from '../components/AddToCartButton.jsx'
 import { fetchProductById, selectCurrentProduct, selectProductError, selectProductPending } from '../redux/slices/product.slice.js'
-import { fetchProductImages } from '../redux/slices/images.slice.js'
+import { fetchProductImages, selectImagesByProductId } from '../redux/slices/images.slice.js'
 import { formatPrice } from '../utils/priceHelpers.js'
 import { isProductAvailable, getProductAvailabilityStatus } from '../utils/productHelpers.js'
 
@@ -17,13 +17,12 @@ export default function ProductPage({ onNavigate, productId }) {
   const loading = useSelector(selectProductPending)
   const error = useSelector(selectProductError)
 
-  // Redux images state
-  const imagesState = useSelector(state => state.images.images)
+  // Redux images state - get images for this specific product
+  const imagesForProduct = useSelector(state => selectImagesByProductId(state, productId))
   const imagesPending = useSelector(state => state.images.pending)
 
   // Local UI state
   const [selectedImageIndex, setSelectedImageIndex] = React.useState(0)
-  const [productImages, setProductImages] = React.useState([])
 
   const hasInitialized = React.useRef(false)
 
@@ -41,12 +40,13 @@ export default function ProductPage({ onNavigate, productId }) {
   }, [productId, dispatch])
 
   // Process images from Redux state into data URLs for this product
-  React.useEffect(() => {
-    if (!imagesState || !Array.isArray(imagesState) || imagesPending) {
-      return
+  // Images are already stored by productId, so we just need to format them
+  const productImages = React.useMemo(() => {
+    if (!imagesForProduct || !Array.isArray(imagesForProduct) || imagesPending) {
+      return []
     }
 
-    const processedImages = imagesState
+    return imagesForProduct
       .map((item) => {
         let base64Data = null
 
@@ -74,10 +74,14 @@ export default function ProductPage({ onNavigate, productId }) {
         return `data:image/png;base64,${cleanBase64}`
       })
       .filter(Boolean)
-
-    setProductImages(processedImages)
-    setSelectedImageIndex(0)
-  }, [imagesState, imagesPending])
+  }, [imagesForProduct, imagesPending])
+  
+  // Reset selected image index when images change
+  React.useEffect(() => {
+    if (productImages.length > 0) {
+      setSelectedImageIndex(0)
+    }
+  }, [productImages.length])
 
   const handleBack = () => {
     onNavigate && onNavigate('productos')
