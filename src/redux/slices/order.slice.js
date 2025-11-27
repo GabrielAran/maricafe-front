@@ -92,8 +92,6 @@ export const fetchInactiveOrders = createAsyncThunk(
   }
 )
 
-// GET /orders/admin/active + /orders/admin/inactive -> Obtener todas las órdenes (solo ADMIN)
-// Combines both active and inactive orders, replicating OrderService.loadOrders() behavior
 export const fetchAllOrders = createAsyncThunk(
   'order/fetchAllOrders',
   async (_, { getState }) => {
@@ -104,7 +102,7 @@ export const fetchAllOrders = createAsyncThunk(
     ])
     const activeOrders = Array.isArray(activeResponse.data) ? activeResponse.data : []
     const inactiveOrders = Array.isArray(inactiveResponse.data) ? inactiveResponse.data : []
-    // Combine and sort by date (newest first), matching OrderService behavior
+
     const allOrders = [...activeOrders, ...inactiveOrders].sort((a, b) => {
       const dateA = new Date(a.order_date || a.createdAt || 0)
       const dateB = new Date(b.order_date || b.createdAt || 0)
