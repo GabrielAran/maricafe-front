@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useMemo } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
+import { Search, X } from 'lucide-react'
 import { fetchCategories, selectCategoryCategories } from '../redux/slices/category.slice.js'
 import { fetchProducts, createProduct, updateProduct, deleteProduct, activateProduct } from '../redux/slices/product.slice.js'
 import { fetchProductImages, fetchProductImagesWithIds, createMultipleImages, deleteImage } from '../redux/slices/images.slice.js'
@@ -60,6 +61,10 @@ export default function AdminProductManagement() {
     action: 'delete',
     product: null
   })
+
+  // Filter state
+  const [searchTerm, setSearchTerm] = useState('')
+  const [categoryFilter, setCategoryFilter] = useState('all')
 
   const thumbnailsByProductId = useSelector(state => state.images.thumbnailsByProductId || {})
   const hasInitialized = useRef(false)
@@ -772,7 +777,21 @@ export default function AdminProductManagement() {
 
   // For admins, the backend already returns all products (including zero stock)
   // No need for frontend filtering since the backend handles role-based logic
-  const filteredProducts = products
+  // Filter products based on search term and category
+  const filteredProducts = useMemo(() => {
+    return products.filter(product => {
+      // Search filter
+      const matchesSearch = searchTerm === '' ||
+        (product.nombre || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (product.descripcion || '').toLowerCase().includes(searchTerm.toLowerCase())
+
+      // Category filter
+      const matchesCategory = categoryFilter === 'all' ||
+        String(product.categoriaId || product.category?.category_id) === String(categoryFilter)
+
+      return matchesSearch && matchesCategory
+    })
+  }, [products, searchTerm, categoryFilter])
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -786,6 +805,42 @@ export default function AdminProductManagement() {
         <p className="text-muted-foreground mb-4">
           Crea, edita y elimina productos.
         </p>
+
+        {/* Filters */}
+        <div className="flex flex-col md:flex-row gap-4 mb-6">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Buscar por nombre o descripción..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-10 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary/50"
+            />
+            {searchTerm && (
+              <button
+                onClick={() => setSearchTerm('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+          <div className="w-full md:w-64">
+            <select
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
+              className="w-full p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary/50"
+            >
+              <option value="all">Todas las categorías</option>
+              {categories.map((category) => (
+                <option key={category.id} value={category.id}>
+                  {category.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -1275,8 +1330,8 @@ export default function AdminProductManagement() {
           confirmationModal.action === 'deactivate'
             ? 'Desactivar'
             : confirmationModal.action === 'activate'
-            ? 'Activar'
-            : 'Confirmar'
+              ? 'Activar'
+              : 'Confirmar'
         }
         cancelText="Cancelar"
         onConfirm={handleConfirmDelete}
