@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
-import { fetchAllOrders, deleteOrder } from '../redux/slices/order.slice.js'
+import { fetchAllOrders, deleteOrder, finalizeOrder } from '../redux/slices/order.slice.js'
 import Button from './ui/Button.jsx'
 import { Badge } from './ui/Badge.jsx'
 import { Card } from './ui/Card.jsx'
@@ -23,6 +23,8 @@ export default function AdminOrdersManagement() {
   const [deleteOrderId, setDeleteOrderId] = useState(null)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [isCancelling, setIsCancelling] = useState(false)
+  const [finalizeOrderId, setFinalizeOrderId] = useState(null)
+  const [showFinalizeModal, setShowFinalizeModal] = useState(false)
   const [filteredOrders, setFilteredOrders] = useState([])
   const [startDateFilter, setStartDateFilter] = useState('')
   const [endDateFilter, setEndDateFilter] = useState('')
@@ -119,6 +121,11 @@ export default function AdminOrdersManagement() {
     setIsCancelling(false) // Reset cancelling state when opening modal
   }
 
+  const handleFinalizeOrder = (orderId) => {
+    setFinalizeOrderId(orderId)
+    setShowFinalizeModal(true)
+  }
+
   const [pendingDeleteOrderId, setPendingDeleteOrderId] = useState(null)
   const previousError = useRef(null)
   const previousLoading = useRef(false)
@@ -132,6 +139,21 @@ export default function AdminOrdersManagement() {
     setPendingDeleteOrderId(orderIdToDelete)
     
     dispatch(deleteOrder(orderIdToDelete))
+  }
+
+  const confirmFinalizeOrder = () => {
+    const orderIdToFinalize = finalizeOrderId
+    setShowFinalizeModal(false)
+    setFinalizeOrderId(null)
+
+    dispatch(finalizeOrder(orderIdToFinalize))
+      .unwrap()
+      .then(() => {
+        showSuccess(dispatch, '✅ Orden finalizada correctamente.')
+      })
+      .catch(() => {
+        showError(dispatch, '❌ Error al finalizar la orden. Inténtalo de nuevo.')
+      })
   }
   
   // Handle delete order success/error from Redux state
@@ -171,6 +193,11 @@ export default function AdminOrdersManagement() {
     setShowDeleteModal(false)
     setDeleteOrderId(null)
     setIsCancelling(false)
+  }
+
+  const closeFinalizeModal = () => {
+    setShowFinalizeModal(false)
+    setFinalizeOrderId(null)
   }
 
   const clearFilters = () => {
@@ -447,10 +474,18 @@ export default function AdminOrdersManagement() {
                     <td className="px-6 py-4 whitespace-nowrap">
                       {(() => {
                         const isCancelled = order.active === false
-                        const badgeClass = isCancelled
-                          ? '!bg-red-100 !text-red-800'
-                          : '!bg-green-100 !text-green-800'
-                        const label = isCancelled ? 'Cancelada' : 'Activa'
+                        const isFinalized = order.active !== false && order.status === 'finalized'
+                        let badgeClass = '!bg-green-100 !text-green-800'
+                        let label = 'Activa'
+
+                        if (isCancelled) {
+                          badgeClass = '!bg-red-100 !text-red-800'
+                          label = 'Cancelada'
+                        } else if (isFinalized) {
+                          badgeClass = '!bg-blue-100 !text-blue-800'
+                          label = 'Finalizada'
+                        }
+
                         return (
                           <Badge className={badgeClass}>
                             {label}
@@ -461,24 +496,35 @@ export default function AdminOrdersManagement() {
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {formatOrderDate(order.createdAt)}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                      <Button
-                        onClick={() => handleViewOrder(order)}
-                        variant="outline"
-                        size="sm"
-                      >
-                        Ver
-                      </Button>
-                      {order.active !== false && (
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <div className="flex justify-end space-x-2">
                         <Button
-                          onClick={() => handleDeleteOrder(order.id)}
+                          onClick={() => handleViewOrder(order)}
                           variant="outline"
                           size="sm"
-                          className="text-orange-600 hover:text-orange-700 hover:border-orange-300"
                         >
-                          Cancelar
+                          Ver detalles
                         </Button>
-                      )}
+                        {order.active !== false && order.status !== 'finalized' && (
+                          <Button
+                            onClick={() => handleFinalizeOrder(order.id)}
+                            variant="secondary"
+                            size="sm"
+                            className="bg-blue-600 hover:bg-blue-700 text-white border-blue-600"
+                          >
+                            Finalizar
+                          </Button>
+                        )}
+                        {order.active !== false && (
+                          <Button
+                            onClick={() => handleDeleteOrder(order.id)}
+                            variant="destructive"
+                            size="sm"
+                          >
+                            Cancelar
+                          </Button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -507,6 +553,19 @@ export default function AdminOrdersManagement() {
         cancelText="No cancelar"
         type="destructive"
         className="bg-pink-50 border-pink-200"
+      />
+
+      {/* Finalize Confirmation Modal */}
+      <ConfirmationModal
+        isVisible={showFinalizeModal}
+        onCancel={closeFinalizeModal}
+        onConfirm={confirmFinalizeOrder}
+        title="Finalizar Orden"
+        message={`¿Estás seguro de que deseas finalizar la orden #${finalizeOrderId}?`}
+        confirmText="Finalizar Orden"
+        cancelText="No finalizar"
+        type="secondary"
+        className="bg-blue-50 border-blue-200"
       />
     </div>
   )
@@ -549,10 +608,17 @@ function OrderDetailsModal({ order, onClose }) {
                     <span className="font-medium">Estado:</span>
                     {(() => {
                       const isCancelled = order.active === false
-                      const badgeClass = isCancelled
-                        ? '!bg-red-100 !text-red-800'
-                        : '!bg-green-100 !text-green-800'
-                      const label = isCancelled ? 'Cancelada' : 'Activa'
+                      const isFinalized = order.active !== false && order.status === 'finalized'
+                      let badgeClass = '!bg-green-100 !text-green-800'
+                      let label = 'Activa'
+
+                      if (isCancelled) {
+                        badgeClass = '!bg-red-100 !text-red-800'
+                        label = 'Cancelada'
+                      } else if (isFinalized) {
+                        badgeClass = '!bg-blue-100 !text-blue-800'
+                        label = 'Finalizada'
+                      }
                       return (
                         <Badge className={`ml-2 ${badgeClass}`}>
                           {label}

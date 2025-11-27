@@ -29,7 +29,7 @@ export function normalizeOrder(backendOrder) {
     userEmail: order.user_email || '',
     total: order.total_price || 0,
     total_price: order.total_price || 0,
-    status: order.active !== false ? 'pending' : 'cancelled',
+    status: ((order.status) || (order.active !== false ? 'pending' : 'cancelled'))?.toLowerCase(),
     active: order.active !== false,
     createdAt: order.order_date || order.createdAt,
     order_date: order.order_date || order.createdAt,
