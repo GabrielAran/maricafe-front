@@ -888,9 +888,19 @@ export default function AdminProductManagement() {
                   {product.descripcion}
                 </p>
                 <div className="flex items-center justify-between">
-                  <span className="text-lg font-semibold">
-                    {formatPrice(product.precio)}
-                  </span>
+                  <div className="flex flex-col">
+                    {product.descuento > 0 && product.precioOriginal > product.precio && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-muted-foreground line-through">
+                          {formatPrice(product.precioOriginal)}
+                        </span>
+                        <Badge variant="destructive">{product.descuento}% OFF</Badge>
+                      </div>
+                    )}
+                    <span className="text-lg font-semibold">
+                      {formatPrice(product.precio)}
+                    </span>
+                  </div>
                   <span className="text-sm text-muted-foreground">
                     Stock: {product.stock}
                   </span>
