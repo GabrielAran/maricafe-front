@@ -67,6 +67,8 @@ export default function AdminProductManagement() {
   const [categoryFilter, setCategoryFilter] = useState('all')
 
   const thumbnailsByProductId = useSelector(state => state.images.thumbnailsByProductId || {})
+  const imagesByProductId = useSelector(state => state.images.imagesByProductId || {})
+  const imagesPending = useSelector(state => state.images.pending)
   const hasInitialized = useRef(false)
 
   const [lastAction, setLastAction] = useState(null) // 'create' | 'update' | 'delete' | 'activate'
@@ -78,6 +80,9 @@ export default function AdminProductManagement() {
 
   const prevProductsPending = useRef(false)
   const prevImagesPending = useRef(false)
+  
+  // Track which product IDs have been requested to avoid duplicate requests
+  const [requestedProductIds, setRequestedProductIds] = useState(new Set())
 
   useEffect(() => {
     if (!hasInitialized.current && isAdminUser) {
@@ -97,16 +102,58 @@ export default function AdminProductManagement() {
   }, [categoryItems])
 
   // Load images for all products (cache per product to avoid refetching)
+  // Only fetch if we don't have images cached AND haven't already requested them
   useEffect(() => {
     if (products.length === 0) return
+    if (imagesPending) return // Don't fetch if images are currently being fetched
 
     products.forEach((product) => {
-      // Skip fetch if we already have a thumbnail cached for this product
-      if (thumbnailsByProductId[product.id]) return
+      const productId = product.id
+      if (!productId) return
 
-      dispatch(fetchProductImages(product.id))
+      // Skip if we already have images cached (either thumbnail or full images array)
+      const hasThumbnail = thumbnailsByProductId[productId]
+      const hasImages = imagesByProductId[productId] && Array.isArray(imagesByProductId[productId]) && imagesByProductId[productId].length > 0
+      
+      if (hasThumbnail || hasImages) {
+        return
+      }
+
+      // Skip if we've already requested this product's images
+      if (requestedProductIds.has(productId)) return
+
+      // Mark as requested and fetch
+      setRequestedProductIds(prev => new Set(prev).add(productId))
+      dispatch(fetchProductImages(productId))
     })
-  }, [products, dispatch, thumbnailsByProductId])
+  }, [products, dispatch, imagesPending]) // Removed thumbnailsByProductId and imagesByProductId from deps to prevent re-runs
+
+  // Clean up requestedProductIds when images are successfully loaded
+  // This effect runs when images state changes (images loaded or updated)
+  useEffect(() => {
+    if (products.length === 0) return
+    
+    setRequestedProductIds(prev => {
+      const next = new Set(prev)
+      let changed = false
+      
+      products.forEach((product) => {
+        const productId = product.id
+        if (!productId) return
+
+        const hasThumbnail = thumbnailsByProductId[productId]
+        const hasImages = imagesByProductId[productId] && Array.isArray(imagesByProductId[productId]) && imagesByProductId[productId].length > 0
+        
+        // If we have images now, remove from requested set
+        if ((hasThumbnail || hasImages) && next.has(productId)) {
+          next.delete(productId)
+          changed = true
+        }
+      })
+      
+      return changed ? next : prev
+    })
+  }, [thumbnailsByProductId, imagesByProductId, products])
 
 
   const handleAddProduct = () => {
@@ -592,8 +639,8 @@ export default function AdminProductManagement() {
         if (imagesError) {
           showNotification('Error al subir las nuevas imágenes: ' + imagesError, 'error')
         } else {
+          // Only fetch with IDs since we need them for the edit modal
           dispatch(fetchProductImagesWithIds(lastImageProductId))
-          dispatch(fetchProductImages(lastImageProductId))
         }
         setLastImageAction(null)
         setLastImageProductId(null)
@@ -605,6 +652,13 @@ export default function AdminProductManagement() {
         if (imagesError) {
           showNotification('Producto creado pero error al subir imágenes: ' + imagesError, 'error')
         } else {
+          // Fetch images to update the cache and display thumbnails
+          // Remove from requestedProductIds so it can be fetched fresh
+          setRequestedProductIds(prev => {
+            const next = new Set(prev)
+            next.delete(lastImageProductId)
+            return next
+          })
           dispatch(fetchProductImages(lastImageProductId))
         }
         setLastImageAction(null)
@@ -615,7 +669,10 @@ export default function AdminProductManagement() {
 
       if (lastImageAction === 'deleteImage' && lastImageProductId) {
         if (!imagesError) {
+          // Refetch with IDs to update the edit modal, and also fetch regular images to update thumbnails
           dispatch(fetchProductImagesWithIds(lastImageProductId))
+          // Also update the thumbnail cache
+          dispatch(fetchProductImages(lastImageProductId))
           showNotification('Imagen eliminada exitosamente', 'success')
         } else {
           showNotification('Error al eliminar la imagen: ' + imagesError, 'error')
