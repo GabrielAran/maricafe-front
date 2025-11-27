@@ -202,8 +202,31 @@ export default function OrderDetailsPage({ onNavigate, orderId }) {
                     Estado
                   </label>
                   <div className="flex items-center gap-2">
-                    <CheckCircle className="h-4 w-4 text-green-500" />
-                    <span className="text-green-600 font-medium">Exitosa</span>
+                    {(() => {
+                      const isCancelled = order.active === false
+                      const isFinalized = order.active !== false && order.status === 'finalized'
+
+                      let colorClass = 'text-green-500'
+                      let textClass = 'text-green-600'
+                      let label = 'Activa'
+
+                      if (isCancelled) {
+                        colorClass = 'text-red-500'
+                        textClass = 'text-red-600'
+                        label = 'Cancelada'
+                      } else if (isFinalized) {
+                        colorClass = 'text-blue-500'
+                        textClass = 'text-blue-600'
+                        label = 'Finalizada'
+                      }
+
+                      return (
+                        <>
+                          <CheckCircle className={`h-4 w-4 ${colorClass}`} />
+                          <span className={`${textClass} font-medium`}>{label}</span>
+                        </>
+                      )
+                    })()}
                   </div>
                 </div>
                 

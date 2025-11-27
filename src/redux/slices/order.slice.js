@@ -15,6 +15,17 @@ export const createOrder = createAsyncThunk(
   }
 )
 
+// PUT /orders/{id}/finalize -> Finalizar orden
+export const finalizeOrder = createAsyncThunk(
+  'order/finalizeOrder',
+  async (orderId, { getState }) => {
+    const response = await api.put(`/orders/${orderId}/finalize`, null, {
+      headers: buildAuthHeaders(getState()),
+    })
+    return response.data
+  }
+)
+
 // 4.2 GET /orders/user -> Listar órdenes del usuario autenticado
 export const fetchUserOrders = createAsyncThunk(
   'order/fetchUserOrders',
@@ -231,6 +242,32 @@ const orderSlice = createSlice({
         }
       })
       .addCase(deleteOrder.rejected, (state, action) => {
+        state.pending = false
+        state.error = action.error.message || null
+      })
+
+    // Finalize order
+    builder
+      .addCase(finalizeOrder.pending, (state) => {
+        state.pending = true
+        state.error = null
+      })
+      .addCase(finalizeOrder.fulfilled, (state, action) => {
+        state.pending = false
+        const normalized = normalizeOrder(action.payload)
+        if (normalized && normalized.order_id != null) {
+          const index = state.orders.findIndex((o) => o.order_id === normalized.order_id)
+          if (index !== -1) {
+            state.orders[index] = normalized
+          } else {
+            state.orders.push(normalized)
+          }
+        }
+        if (state.currentItem && state.currentItem.order_id === normalized.order_id) {
+          state.currentItem = normalized
+        }
+      })
+      .addCase(finalizeOrder.rejected, (state, action) => {
         state.pending = false
         state.error = action.error.message || null
       })
