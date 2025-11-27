@@ -126,64 +126,107 @@ export default function ProductViewNew({
     }
   }, [dispatch])
   
-  // Load products on mount and when filters change
+  // Load products on mount and when filters change (excluding attribute filters - those are client-side)
   // This consolidates initial load and filter changes into a single effect
   React.useEffect(() => {
     const sortParam = priceSort === 'price-asc' ? 'price,asc' : 
                     priceSort === 'price-desc' ? 'price,desc' : undefined
-    const hasAttributeFilters = attributeFilters && Object.keys(attributeFilters).length > 0
     const categoryId = categoryFilter !== 'all' ? categoryFilter : null
     
-    // Create a filter key to compare with previous state
+    // Create a filter key to compare with previous state (only for backend filters)
     const currentFilterKey = JSON.stringify({
       sort: sortParam,
-      categoryId,
-      attributeFilters: hasAttributeFilters ? Object.entries(attributeFilters)
-        .filter(([_, value]) => value && value !== '')
-        .sort(([a], [b]) => a.localeCompare(b))
-        .reduce((acc, [key, value]) => ({ ...acc, [key]: value }), {}) : null
+      categoryId
     })
     
-    // Only dispatch if filters actually changed
+    // Only dispatch if backend filters actually changed (attribute filters don't trigger fetches)
     if (previousFiltersRef.current === currentFilterKey) {
       return
     }
     
     previousFiltersRef.current = currentFilterKey
     
-    // Determine which thunk to dispatch based on filters
-    if (hasAttributeFilters) {
-      // Build attribute filters string
-      const filterPairs = Object.entries(attributeFilters)
-        .filter(([attributeId, value]) => value && value !== '')
-        .map(([attributeId, value]) => `${attributeId}:${value}`)
-      const attributeFiltersString = filterPairs.length > 0 ? filterPairs.join(',') : null
-      
-      dispatch(fetchProductsFilteredByAttributes({ 
-        sort: sortParam, 
-        categoryId, 
-        attributeFilters: attributeFiltersString 
-      }))
-    } else if (categoryId) {
+    // Always fetch by category (or all products) - attribute filtering is done client-side
+    if (categoryId) {
       dispatch(fetchProductsByCategory({ categoryId, sort: sortParam }))
     } else {
       dispatch(fetchProducts(sortParam))
     }
-  }, [dispatch, priceSort, categoryFilter, attributeFilters])
+  }, [dispatch, priceSort, categoryFilter])
 
-  // Client-side search filtering (UI-only, filters already-loaded products)
-  const filteredProducts = React.useMemo(() => {
-    if (!debouncedSearch) return products
+  // Client-side filtering: search + attribute filters with OR logic for same attribute
+  let filteredProducts = products
 
+  // Apply attribute filters with OR logic within same attribute, AND logic between different attributes
+  const hasAttributeFilters = attributeFilters && Object.keys(attributeFilters).length > 0
+  if (hasAttributeFilters) {
+    filteredProducts = filteredProducts.filter(product => {
+      // Check each attribute filter
+      for (const [attributeId, filterValue] of Object.entries(attributeFilters)) {
+        if (!filterValue || filterValue === '') continue
+        
+        const attributeIdNum = parseInt(attributeId)
+        if (isNaN(attributeIdNum)) continue
+        
+        // Get product's attribute values for this attribute
+        const productAttribute = product.attributes?.[attributeIdNum]
+        const productAttributeList = product.attributesList || []
+        
+        // Find all values for this attribute from the product
+        const productValues = []
+        if (productAttribute) {
+          // Single value from attributes object
+          productValues.push(productAttribute.value)
+        }
+        // Also check attributesList for multiple values of same attribute
+        productAttributeList.forEach(attr => {
+          if (attr.attribute?.attribute_id === attributeIdNum && attr.value) {
+            if (!productValues.includes(attr.value)) {
+              productValues.push(attr.value)
+            }
+          }
+        })
+        
+        if (productValues.length === 0) {
+          // Product doesn't have this attribute, doesn't match
+          return false
+        }
+        
+        // Check if product matches filter (OR logic for arrays, partial match for text values)
+        // Normalize values to lowercase for case-insensitive comparison
+        const normalizedProductValues = productValues.map(v => String(v).toLowerCase().trim())
+        
+        if (Array.isArray(filterValue)) {
+          // Multi-select: product must have at least one of the selected values (partial match)
+          const matches = filterValue.some(fv => {
+            const normalizedFilterValue = String(fv).toLowerCase().trim()
+            // Check if any product value contains the filter value (partial match)
+            return normalizedProductValues.some(pv => pv.includes(normalizedFilterValue))
+          })
+          if (!matches) return false
+        } else {
+          // Single value: product must contain this value (partial match, case-insensitive)
+          const normalizedFilterValue = String(filterValue).toLowerCase().trim()
+          // Check if any product value contains the filter value (partial match)
+          if (!normalizedProductValues.some(pv => pv.includes(normalizedFilterValue))) return false
+        }
+      }
+      // Product matches all attribute filters
+      return true
+    })
+  }
+
+  // Apply search filter
+  if (debouncedSearch) {
     const q = debouncedSearch.toLowerCase()
-    return products.filter(product => {
+    filteredProducts = filteredProducts.filter(product => {
       return (
         (product.nombre || '').toLowerCase().includes(q) ||
         (product.descripcion || '').toLowerCase().includes(q) ||
         (product.categoria || '').toLowerCase().includes(q)
       )
     })
-  }, [products, debouncedSearch])
+  }
 
   // Handle category filter change
   const handleCategoryChange = (categoryId) => {
