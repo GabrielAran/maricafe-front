@@ -87,7 +87,16 @@ const initialState = {
 const imagesSlice = createSlice({
   name: 'images',
   initialState,
-  reducers: {},
+  reducers: {
+    // Permite que componentes actualicen directamente la cache de imágenes
+    // para un producto específico (por ejemplo, usando previews locales)
+    setProductImages: (state, action) => {
+      const { productId, images } = action.payload || {}
+      if (productId == null) return
+      if (!Array.isArray(images)) return
+      state.imagesByProductId[productId] = images
+    },
+  },
   extraReducers: (builder) => {
     // fetchProductImages
     builder
@@ -207,6 +216,8 @@ const imagesSlice = createSlice({
       })
   }
 })
+
+export const { setProductImages } = imagesSlice.actions
 
 export default imagesSlice.reducer
 

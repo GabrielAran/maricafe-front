@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from 'react-redux'
 import { Search, X } from 'lucide-react'
 import { fetchCategories, selectCategoryCategories } from '../redux/slices/category.slice.js'
 import { fetchProducts, createProduct, updateProduct, deleteProduct, activateProduct } from '../redux/slices/product.slice.js'
-import { fetchProductImages, fetchProductImagesWithIds, createMultipleImages, deleteImage } from '../redux/slices/images.slice.js'
+import { fetchProductImages, fetchProductImagesWithIds, createMultipleImages, deleteImage, setProductImages } from '../redux/slices/images.slice.js'
 import { selectIsAdmin } from '../redux/slices/user.slice.js'
 import { formatPrice } from '../utils/priceHelpers.js'
 import { extractThumbnailUrl } from '../utils/imageHelpers.js'
@@ -129,13 +129,13 @@ export default function AdminProductManagement() {
     // Only initialize if user is admin and we haven't initialized yet
     // Also check that isAdminUser is not undefined (wait for auth state to be ready)
     if (isAdminUser === undefined) return // Wait for auth state
-    
+
     if (!hasInitialized.current) {
       if (isAdminUser) {
         hasInitialized.current = true
         try {
-          // Fetch products sorted by effective price (discounted when available)
-          dispatch(fetchProducts('price,asc'))
+          // Fetch products with backend default order
+          dispatch(fetchProducts())
           dispatch(fetchCategories())
         } catch (error) {
           console.error('Error initializing product management:', error)
@@ -190,6 +190,11 @@ export default function AdminProductManagement() {
   useEffect(() => {
     if (!isAdminUser) return
     if (!Array.isArray(products) || products.length === 0) return
+
+    // Solo hacer el fetch inicial una vez al cargar la pantalla.
+    // Después de eso, las actualizaciones se manejan de forma reactiva
+    // vía imágenes locales y el images slice.
+    if (fetchedImageIdsRef.current.size > 0) return
 
     const idsToFetch = products
       .map(product => {
@@ -620,6 +625,15 @@ export default function AdminProductManagement() {
           setSaving(false)
 
           if (createdProduct && selectedImages.length > 0) {
+            // Marcar este productId como ya manejado para que el efecto
+            // general de imágenes no dispare un fetch extra después del create
+            fetchedImageIdsRef.current.add(String(createdProduct.id))
+
+            // Actualizar inmediatamente la cache de imágenes usando los previews locales
+            if (imagePreviews && imagePreviews.length > 0) {
+              dispatch(setProductImages({ productId: createdProduct.id, images: imagePreviews }))
+            }
+
             setLastImageAction('uploadForCreated')
             setLastImageProductId(createdProduct.id)
             dispatch(createMultipleImages({ files: selectedImages, productId: createdProduct.id }))
@@ -673,8 +687,15 @@ export default function AdminProductManagement() {
         if (imagesError) {
           showNotification('Error al subir las nuevas imágenes: ' + imagesError, 'error')
         } else {
-          // Only fetch with IDs since we need them for the edit modal
-          dispatch(fetchProductImagesWithIds(lastImageProductId))
+          // Actualizar inmediatamente la cache de imágenes combinando
+          // las imágenes actuales con las nuevas previews
+          const combined = [
+            ...currentImages.map(img => img.url).filter(Boolean),
+            ...newImagePreviews,
+          ]
+          if (combined.length > 0) {
+            dispatch(setProductImages({ productId: lastImageProductId, images: combined }))
+          }
         }
         setLastImageAction(null)
         setLastImageProductId(null)
@@ -685,9 +706,6 @@ export default function AdminProductManagement() {
       if (lastImageAction === 'uploadForCreated' && lastImageProductId) {
         if (imagesError) {
           showNotification('Producto creado pero error al subir imágenes: ' + imagesError, 'error')
-        } else {
-          // Fetch images to update the cache and display thumbnails
-          dispatch(fetchProductImages(lastImageProductId))
         }
         setLastImageAction(null)
         setLastImageProductId(null)
@@ -697,10 +715,36 @@ export default function AdminProductManagement() {
 
       if (lastImageAction === 'deleteImage' && lastImageProductId) {
         if (!imagesError) {
-          // Refetch with IDs to update the edit modal, and also fetch regular images to update thumbnails
-          dispatch(fetchProductImagesWithIds(lastImageProductId))
-          // Also update the thumbnail cache
-          dispatch(fetchProductImages(lastImageProductId))
+          // Las imágenes en cache ya fueron actualizadas por deleteImage.fulfilled
+          // Solo necesitamos volver a mapearlas al formato del modal de edición
+          const productImages =
+            lastImageProductId != null && imagesByProductId
+              ? imagesByProductId[lastImageProductId] || []
+              : []
+
+          if (Array.isArray(productImages)) {
+            const mapped = productImages.map(imageResponse => {
+              if (!imageResponse) return null
+
+              // Soportar tanto base64 plano como objetos con {id, file}
+              if (typeof imageResponse === 'string') {
+                return { id: null, url: imageResponse }
+              }
+
+              if (!imageResponse.file) return null
+              const cleanBase64 = imageResponse.file.toString()
+                .replace(/\s/g, '')
+                .replace(/^data:image\/[a-z]+;base64,/, '')
+
+              return {
+                id: imageResponse.id || null,
+                url: `data:image/png;base64,${cleanBase64}`,
+              }
+            }).filter(Boolean)
+
+            setCurrentImages(mapped || [])
+          }
+
           showNotification('Imagen eliminada exitosamente', 'success')
         } else {
           showNotification('Error al eliminar la imagen: ' + imagesError, 'error')
@@ -835,7 +879,14 @@ export default function AdminProductManagement() {
       return []
     }
     try {
-      return products.filter(product => {
+      // Ordenar por id DESC (productos más nuevos primero)
+      const sorted = [...products].sort((a, b) => {
+        const idA = typeof a.id === 'number' ? a.id : 0
+        const idB = typeof b.id === 'number' ? b.id : 0
+        return idB - idA
+      })
+
+      return sorted.filter(product => {
         if (!product || typeof product !== 'object') return false
 
         const matchesSearch = searchTerm === '' ||
