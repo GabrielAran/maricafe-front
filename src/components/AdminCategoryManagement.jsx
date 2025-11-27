@@ -1,10 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
-import { fetchCategories, createCategory, updateCategory, deleteCategory, selectCategoryCategories, selectCategoryPending } from '../redux/slices/category.slice.js'
+import { fetchCategories, createCategory, updateCategory, deleteCategory, selectCategoryCategories, selectCategoryPending, selectCategoryError } from '../redux/slices/category.slice.js'
 import { selectIsAdmin, selectCurrentUser } from '../redux/slices/user.slice.js'
 import { Card, CardContent, CardHeader, CardTitle } from './ui/Card.jsx'
 import Button from './ui/Button.jsx'
-import Badge from './ui/Badge.jsx'
 import Notification from './ui/Notification.jsx'
 import ConfirmationModal from './ui/ConfirmationModal.jsx'
 
@@ -14,7 +13,9 @@ export default function AdminCategoryManagement() {
   const user = useSelector(selectCurrentUser)
   const categories = useSelector(selectCategoryCategories)
   const loading = useSelector(selectCategoryPending)
+  const categoryError = useSelector(selectCategoryError)
   const hasLoadedCategories = useRef(false)
+  const prevPendingRef = useRef(loading)
   const [editingCategory, setEditingCategory] = useState(null)
   const [showEditModal, setShowEditModal] = useState(false)
   const [showAddModal, setShowAddModal] = useState(false)
@@ -22,6 +23,7 @@ export default function AdminCategoryManagement() {
     name: ''
   })
   const [saving, setSaving] = useState(false)
+  const [lastAction, setLastAction] = useState(null) // 'create' | 'update' | 'delete' | null
   const [notification, setNotification] = useState({
     isVisible: false,
     message: '',
@@ -68,29 +70,15 @@ export default function AdminCategoryManagement() {
     })
   }
 
-  const confirmDelete = async () => {
-    try {
-      console.log("id:", confirmationModal);
-      setSaving(true)
-      await dispatch(deleteCategory(confirmationModal.categoryId)).unwrap()
-      showNotification('Categoría eliminada con éxito', 'success')
-      setConfirmationModal({ isVisible: false, title: '', message: '', categoryId: null })
-    } catch (error) {
-      console.error('Error deleting category:', error)
-      const msg = error?.message || ''
-      if (msg.includes('No se puede eliminar una categoria con Producto')) {
-        showNotification('No se puede eliminar esta categoría porque contiene productos. Primero elimina o mueve todos los productos de esta categoría.', 'error')
-      } else {
-        showNotification('Error al eliminar la categoría', 'error')
-      }
-      // Close the confirmation modal when deletion fails
-      setConfirmationModal({ isVisible: false, title: '', message: '', categoryId: null })
-    } finally {
-      setSaving(false)
-    }
+  const confirmDelete = () => {
+    if (!confirmationModal.categoryId) return
+    console.log('id:', confirmationModal)
+    setSaving(true)
+    setLastAction('delete')
+    dispatch(deleteCategory(confirmationModal.categoryId))
   }
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault()
     if (!formData.name.trim()) {
       showNotification('El nombre de la categoría es requerido', 'error')
@@ -100,29 +88,66 @@ export default function AdminCategoryManagement() {
       showNotification('El nombre de la categoría no puede superar los 30 caracteres', 'error')
       return
     }
+    setSaving(true)
 
-    try {
-      setSaving(true)
-
-      if (editingCategory) {
-        await dispatch(updateCategory({ categoryId: editingCategory.category_id ?? editingCategory.id, data: formData })).unwrap()
-        showNotification('Categoría actualizada con éxito', 'success')
-        setShowEditModal(false)
-      } else {
-        await dispatch(createCategory(formData)).unwrap()
-        showNotification('Categoría creada con éxito', 'success')
-        setShowAddModal(false)
-      }
-
-      setEditingCategory(null)
-      setFormData({ name: '' })
-    } catch (error) {
-      console.error('Error saving category:', error)
-      showNotification(error.message || 'Error al guardar la categoría', 'error')
-    } finally {
-      setSaving(false)
+    if (editingCategory) {
+      setLastAction('update')
+      dispatch(updateCategory({ categoryId: editingCategory.category_id ?? editingCategory.id, data: formData }))
+    } else {
+      setLastAction('create')
+      dispatch(createCategory(formData))
     }
   }
+
+  // React to category async operation results
+  useEffect(() => {
+    const prevPending = prevPendingRef.current
+
+    // Detect transition from pending -> not pending for a tracked action
+    if (prevPending && !loading && lastAction) {
+      const hasError = !!categoryError
+
+      if (!hasError) {
+        // Success paths
+        if (lastAction === 'delete') {
+          showNotification('Categoría eliminada con éxito', 'success')
+          setConfirmationModal({ isVisible: false, title: '', message: '', categoryId: null })
+        } else if (lastAction === 'update') {
+          showNotification('Categoría actualizada con éxito', 'success')
+          setShowEditModal(false)
+        } else if (lastAction === 'create') {
+          showNotification('Categoría creada con éxito', 'success')
+          setShowAddModal(false)
+        }
+
+        // Reset form after successful create/update
+        setEditingCategory(null)
+        setFormData({ name: '' })
+      } else {
+        // Error paths
+        if (lastAction === 'delete') {
+          const msg = categoryError || ''
+          if (msg.includes('No se puede eliminar una categoria con Producto')) {
+            showNotification(
+              'No se puede eliminar esta categoría porque contiene productos. Primero elimina o mueve todos los productos de esta categoría.',
+              'error'
+            )
+          } else {
+            showNotification('Error al eliminar la categoría', 'error')
+          }
+          // Close the confirmation modal when deletion fails
+          setConfirmationModal({ isVisible: false, title: '', message: '', categoryId: null })
+        } else if (lastAction === 'create' || lastAction === 'update') {
+          showNotification(categoryError || 'Error al guardar la categoría', 'error')
+        }
+      }
+
+      setSaving(false)
+      setLastAction(null)
+    }
+
+    prevPendingRef.current = loading
+  }, [loading, categoryError, lastAction])
 
   const showNotification = (message, type = 'success') => {
     setNotification({
