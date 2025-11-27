@@ -42,6 +42,14 @@ export default function AdminProductManagement() {
     type: 'success'
   })
   const [descriptionError, setDescriptionError] = useState('')
+  const [formErrors, setFormErrors] = useState({
+    title: '',
+    description: '',
+    price: '',
+    stock: '',
+    category_id: '',
+    images: ''
+  })
   const [confirmationModal, setConfirmationModal] = useState({
     isVisible: false,
     title: '',
@@ -110,6 +118,14 @@ export default function AdminProductManagement() {
     })
     setSelectedImages([])
     setImagePreviews([])
+    setFormErrors({
+      title: '',
+      description: '',
+      price: '',
+      stock: '',
+      category_id: '',
+      images: ''
+    })
     setShowAddModal(true)
   }
 
@@ -319,6 +335,14 @@ export default function AdminProductManagement() {
     })
     setSelectedImages([])
     setImagePreviews([])
+    setFormErrors({
+      title: '',
+      description: '',
+      price: '',
+      stock: '',
+      category_id: '',
+      images: ''
+    })
   }
 
   const handleSaveProduct = () => {
@@ -535,28 +559,68 @@ export default function AdminProductManagement() {
   }
 
   const handleCreateProduct = () => {
-    if (!formData.title.trim()) {
-      showNotification('El título es obligatorio', 'error')
-      return
+    const errors = {
+      title: '',
+      description: '',
+      price: '',
+      stock: '',
+      category_id: '',
+      images: ''
     }
+
+    // Validaciones de campos obligatorios
+    if (!formData.title.trim()) {
+      errors.title = 'El nombre es obligatorio'
+    }
+
+    if (!formData.description || !formData.description.trim()) {
+      errors.description = 'La descripción es obligatoria'
+    }
+
     // Truncar descripción a 120 chars si es necesario
     if ((formData.description || '').length > 120) {
       const trimmed = (formData.description || '').slice(0, 120)
       setFormData(prev => ({ ...prev, description: trimmed }))
       // mostrar validación inline en el campo (no notificación)
     }
+
     if (!formData.category_id) {
-      showNotification('Debe seleccionar una categoría', 'error')
+      errors.category_id = 'Debe seleccionar una categoría'
+    }
+
+    const numericPrice = parseFloat(formData.price)
+    if (Number.isNaN(numericPrice) || numericPrice <= 0) {
+      errors.price = 'El precio es obligatorio y debe ser mayor a 0'
+    }
+
+    const numericStock = parseInt(formData.stock)
+    if (Number.isNaN(numericStock) || numericStock <= 0) {
+      errors.stock = 'El stock es obligatorio y debe ser mayor a 0'
+    }
+
+    if (selectedImages.length === 0) {
+      errors.images = 'Debe cargar al menos una imagen para el producto'
+    }
+
+    // Si hay al menos un error, mostrar notificación y no continuar
+    const hasErrors = Object.values(errors).some(msg => msg)
+    if (hasErrors) {
+      setFormErrors(errors)
+
+      // Mantener también el cartel general (toast) para feedback rápido
+      showNotification('Por favor complete los campos obligatorios marcados en rojo', 'error')
       return
     }
-    if (formData.price < 0) {
-      showNotification('El precio no puede ser negativo', 'error')
-      return
-    }
-    if (formData.stock < 0) {
-      showNotification('El stock no puede ser negativo', 'error')
-      return
-    }
+
+    // Limpiar errores si todo está OK
+    setFormErrors({
+      title: '',
+      description: '',
+      price: '',
+      stock: '',
+      category_id: '',
+      images: ''
+    })
 
     setSaving(true)
 
@@ -564,8 +628,8 @@ export default function AdminProductManagement() {
     const productData = {
       title: formData.title,
       description: (formData.description || '').slice(0, 120),
-      price: parseFloat(formData.price),
-      stock: parseInt(formData.stock),
+      price: numericPrice,
+      stock: numericStock,
       category_id: parseInt(formData.category_id)
     }
 
@@ -643,12 +707,20 @@ export default function AdminProductManagement() {
       } else {
         setDescriptionError('')
       }
+      // Limpiar error de descripción si el usuario empieza a escribir
+      setFormErrors(prev => ({ ...prev, description: '' }))
       return
     }
 
     setFormData(prev => ({
       ...prev,
       [field]: value
+    }))
+
+    // Limpiar error específico del campo cuando el usuario lo modifica
+    setFormErrors(prev => ({
+      ...prev,
+      [field]: ''
     }))
   }
 
@@ -880,7 +952,7 @@ export default function AdminProductManagement() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Descripción</label>
+                <label className="block text-sm font-medium mb-1">Descripción *</label>
                 <textarea
                   className="w-full border rounded px-3 py-2"
                   value={formData.description}
@@ -935,7 +1007,7 @@ export default function AdminProductManagement() {
               {/* Images Section */}
               <div>
                 <label className="block text-sm font-medium mb-2">
-                  Imágenes del Producto ({currentImages.length + newImages.length}/10)
+                  Imágenes del Producto * ({currentImages.length + newImages.length}/10)
                 </label>
 
                 {/* Current Images */}
@@ -1060,16 +1132,19 @@ export default function AdminProductManagement() {
                 <label className="block text-sm font-medium mb-1">Nombre *</label>
                 <input
                   type="text"
-                  className="w-full border rounded px-3 py-2"
+                  className={`w-full border rounded px-3 py-2 ${formErrors.title ? 'border-red-500' : ''}`}
                   value={formData.title}
                   onChange={(e) => handleInputChange('title', e.target.value)}
                   placeholder="Ingrese el nombre del producto"
                 />
+                {formErrors.title && (
+                  <p className="mt-1 text-xs text-red-600">{formErrors.title}</p>
+                )}
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Descripción</label>
+                <label className="block text-sm font-medium mb-1">Descripción *</label>
                 <textarea
-                  className="w-full border rounded px-3 py-2"
+                  className={`w-full border rounded px-3 py-2 ${formErrors.description ? 'border-red-500' : ''}`}
                   value={formData.description}
                   onChange={(e) => handleInputChange('description', e.target.value.slice(0, 120))}
                   rows="3"
@@ -1082,11 +1157,14 @@ export default function AdminProductManagement() {
                     <div className="text-xs text-red-600 ml-2">{descriptionError}</div>
                   )}
                 </div>
+                {formErrors.description && (
+                  <p className="mt-1 text-xs text-red-600">{formErrors.description}</p>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Categoría *</label>
                 <select
-                  className="w-full border rounded px-3 py-2"
+                  className={`w-full border rounded px-3 py-2 ${formErrors.category_id ? 'border-red-500' : ''}`}
                   value={formData.category_id}
                   onChange={(e) => handleInputChange('category_id', e.target.value)}
                 >
@@ -1097,6 +1175,9 @@ export default function AdminProductManagement() {
                     </option>
                   ))}
                 </select>
+                {formErrors.category_id && (
+                  <p className="mt-1 text-xs text-red-600">{formErrors.category_id}</p>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Precio *</label>
@@ -1104,26 +1185,32 @@ export default function AdminProductManagement() {
                   type="number"
                   step="0.01"
                   min="0"
-                  className="w-full border rounded px-3 py-2"
+                  className={`w-full border rounded px-3 py-2 ${formErrors.price ? 'border-red-500' : ''}`}
                   value={formData.price}
                   onChange={(e) => handleInputChange('price', e.target.value)}
                   placeholder="0.00"
                 />
+                {formErrors.price && (
+                  <p className="mt-1 text-xs text-red-600">{formErrors.price}</p>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Stock *</label>
                 <input
                   type="number"
                   min="0"
-                  className="w-full border rounded px-3 py-2"
+                  className={`w-full border rounded px-3 py-2 ${formErrors.stock ? 'border-red-500' : ''}`}
                   value={formData.stock}
                   onChange={(e) => handleInputChange('stock', e.target.value)}
                   placeholder="0"
                 />
+                {formErrors.stock && (
+                  <p className="mt-1 text-xs text-red-600">{formErrors.stock}</p>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">
-                  Imágenes del Producto ({selectedImages.length}/10)
+                  Imágenes del Producto * ({selectedImages.length}/10)
                 </label>
                 <div className="space-y-2">
                   {imagePreviews.length === 0 ? (
@@ -1194,6 +1281,9 @@ export default function AdminProductManagement() {
                     </div>
                   )}
                 </div>
+                {formErrors.images && (
+                  <p className="mt-1 text-xs text-red-600">{formErrors.images}</p>
+                )}
               </div>
             </div>
             <div className="flex gap-2 mt-6">
