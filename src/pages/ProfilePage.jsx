@@ -542,7 +542,10 @@ export default function ProfilePage({ onNavigate }) {
               ) : (
                 <div className="max-h-96 overflow-y-auto pr-1">
                   <div className="space-y-4">
-                  {orders.map((order) => (
+                  {orders
+                    .slice()
+                    .sort((a, b) => (b.order_id || 0) - (a.order_id || 0))
+                    .map((order) => (
                     <div 
                       key={order.order_id} 
                       className="border rounded-lg p-4 hover:bg-muted/50 transition-colors cursor-pointer"

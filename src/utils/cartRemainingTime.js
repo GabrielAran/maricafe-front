@@ -1,8 +1,8 @@
 // Cart remaining time utilities
-// Handles 15-minute session expiry logic for cart operations
+// Handles30-minute session expiry logic for cart operations
 // All data comes from Redux state - no localStorage
 
-const CART_EXPIRY_MINUTES = 15 // 15 minutes from login
+const CART_EXPIRY_MINUTES = 30 //30 minutes from login
 
 /**
  * Get remaining time since login in minutes

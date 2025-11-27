@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { ShoppingCart, Check } from 'lucide-react'
 import { useDispatch, useSelector } from 'react-redux'
-import { showError } from '../utils/toastHelper.js'
+import { showError, showWarning } from '../utils/toastHelper.js'
 import { getLoginRemainingTime } from '../utils/cartRemainingTime.js'
 import { addItem, clearCart, setCartOwner, selectCartOwnerUserId } from '../redux/slices/cartSlice.js'
 import {
@@ -9,6 +9,7 @@ import {
   selectCurrentUser,
   selectIsAuthenticated,
   selectLoginTimestamp,
+  refreshLoginTimestamp,
 } from '../redux/slices/user.slice.js'
 import { decrementStock } from '../redux/slices/product.slice.js'
 import Button from './ui/Button.jsx'
@@ -57,10 +58,19 @@ export default function AddToCartButton({
       return
     }
 
-    // Check if login session has expired (15 minutes)
+    // Check remaining time for cart session (based on login time)
     const remainingTime = getLoginRemainingTime(loginTimestamp)
+
     if (remainingTime <= 0) {
-      showError(dispatch, 'Tu sesión ha expirado. Por favor, inicia sesión nuevamente para continuar comprando.')
+      // Expiró la "sesión de carrito": vaciamos carrito pero el usuario sigue logueado
+      dispatch(clearCart())
+      dispatch(setCartOwner(null))
+      dispatch(refreshLoginTimestamp())
+      showWarning(
+        dispatch,
+        'Tu carrito ha expirado por inactividad. Lo hemos vaciado, pero podés seguir agregando productos.'
+      )
+      // Importante: cortamos acá. El siguiente click ya será con carrito limpio y tiempo renovado.
       return
     }
 
