@@ -244,7 +244,7 @@ export default function AdminCategoryManagement() {
                   variant={category.active === false ? 'default' : 'outline'}
                   size="sm"
                   onClick={() => handleDeleteCategory(category)}
-                  className="flex-1"
+                  className={`flex-1 ${category.active !== false ? 'bg-red-500 hover:bg-red-600 text-white border-red-500' : ''}`}
                 >
                   {category.active === false ? 'Activar' : 'Desactivar'}
                 </Button>
