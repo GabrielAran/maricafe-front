@@ -7,7 +7,7 @@ import { Card } from './ui/Card.jsx'
 import ConfirmationModal from './ui/ConfirmationModal.jsx'
 import { showSuccess, showError } from '../utils/toastHelper.js'
 import { formatPrice } from '../utils/priceHelpers.js'
-import { formatOrderDate, getStatusBadgeClass, getStatusDisplayName } from '../utils/orderHelper.js'
+import { formatOrderDate } from '../utils/orderHelper.js'
 
 export default function AdminOrdersManagement() {
   const dispatch = useDispatch()
@@ -137,18 +137,18 @@ export default function AdminOrdersManagement() {
   // Handle delete order success/error from Redux state
   useEffect(() => {
     if (pendingDeleteOrderId) {
-      // Check if order was successfully removed (no longer in orders array)
-      const orderStillExists = orders.some(o => (o.id === pendingDeleteOrderId || o.order_id === pendingDeleteOrderId))
-      
-      if (!loading && !orderStillExists && !error) {
-        // Success: order was removed
-        showSuccess(dispatch, '✅ Orden cancelada correctamente. El stock ha sido restaurado automáticamente.')
+      // Find the order in current Redux state
+      const targetOrder = orders.find(o => (o.id === pendingDeleteOrderId || o.order_id === pendingDeleteOrderId))
+
+      // Success: request finished, no error, and order is now inactive
+      if (!loading && !error && targetOrder && targetOrder.active === false) {
+        showSuccess(dispatch, '\u2705 Orden cancelada correctamente. El stock ha sido restaurado autom\u00e1ticamente.')
         setPendingDeleteOrderId(null)
         previousError.current = null
       } else if (!loading && error && error !== previousError.current) {
         // Error occurred
         previousError.current = error
-        showError(dispatch, `❌ Error al cancelar la orden. Inténtalo de nuevo.`)
+        showError(dispatch, `\u274c Error al cancelar la orden. Int\u00e9ntalo de nuevo.`)
         setPendingDeleteOrderId(null)
       }
     }
@@ -289,29 +289,6 @@ export default function AdminOrdersManagement() {
             Administra todas las órdenes del sistema
           </p>
         </div>
-        <Button 
-          onClick={loadOrders} 
-          variant="outline" 
-          disabled={loading || isRefreshing}
-          className="flex items-center gap-2"
-        >
-          <svg
-            className={`w-4 h-4 ${isRefreshing ? 'animate-spin-once' : ''} ${loading ? 'animate-spin' : ''}`}
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-            />
-          </svg>
-          <span>
-            {loading ? 'Actualizando...' : 'Actualizar'}
-          </span>
-        </Button>
       </div>
 
       {/* Filters */}
@@ -468,9 +445,18 @@ export default function AdminOrdersManagement() {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <Badge className={getStatusBadgeClass(order.status)}>
-                        {getStatusDisplayName(order.status)}
-                      </Badge>
+                      {(() => {
+                        const isCancelled = order.active === false
+                        const badgeClass = isCancelled
+                          ? '!bg-red-100 !text-red-800'
+                          : '!bg-green-100 !text-green-800'
+                        const label = isCancelled ? 'Cancelada' : 'Activa'
+                        return (
+                          <Badge className={badgeClass}>
+                            {label}
+                          </Badge>
+                        )
+                      })()}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {formatOrderDate(order.createdAt)}
@@ -483,7 +469,7 @@ export default function AdminOrdersManagement() {
                       >
                         Ver
                       </Button>
-                      {order.status !== 'cancelled' && (
+                      {order.active !== false && (
                         <Button
                           onClick={() => handleDeleteOrder(order.id)}
                           variant="outline"
@@ -559,10 +545,20 @@ function OrderDetailsModal({ order, onClose }) {
               <div>
                 <h4 className="font-medium text-gray-900 mb-2">Información de la Orden</h4>
                 <div className="space-y-1 text-sm">
-                  <p><span className="font-medium">Estado:</span> 
-                    <Badge className={`ml-2 ${getStatusBadgeClass(order.status)}`}>
-                      {getStatusDisplayName(order.status)}
-                    </Badge>
+                  <p>
+                    <span className="font-medium">Estado:</span>
+                    {(() => {
+                      const isCancelled = order.active === false
+                      const badgeClass = isCancelled
+                        ? '!bg-red-100 !text-red-800'
+                        : '!bg-green-100 !text-green-800'
+                      const label = isCancelled ? 'Cancelada' : 'Activa'
+                      return (
+                        <Badge className={`ml-2 ${badgeClass}`}>
+                          {label}
+                        </Badge>
+                      )
+                    })()}
                   </p>
                   <p><span className="font-medium">Fecha:</span> {formatOrderDate(order.createdAt)}</p>
                   <p><span className="font-medium">Total:</span> {formatPrice(order.total)}</p>

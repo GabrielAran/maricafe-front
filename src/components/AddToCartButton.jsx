@@ -96,7 +96,7 @@ export default function AddToCartButton({
     // Reset the "added" state after 2 seconds
     setTimeout(() => {
       setAdded(false)
-    }, 2000)
+    }, 1000)
   }
 
   return (
