@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
-import { fetchCategories, createCategory, updateCategory, deleteCategory, selectCategoryCategories, selectCategoryPending, selectCategoryError } from '../redux/slices/category.slice.js'
+import { fetchCategories, createCategory, updateCategory, deleteCategory, activateCategory, selectCategoryCategories, selectCategoryPending, selectCategoryError } from '../redux/slices/category.slice.js'
 import { selectIsAdmin, selectCurrentUser } from '../redux/slices/user.slice.js'
 import { Card, CardContent, CardHeader, CardTitle } from './ui/Card.jsx'
 import Button from './ui/Button.jsx'
@@ -33,7 +33,8 @@ export default function AdminCategoryManagement() {
     isVisible: false,
     title: '',
     message: '',
-    categoryId: null
+    categoryId: null,
+    action: 'deactivate'
   })
 
   useEffect(() => {
@@ -61,21 +62,33 @@ export default function AdminCategoryManagement() {
   }
 
   const handleDeleteCategory = (category) => {
-    console.log(category)
+    const isCurrentlyActive = category.active !== false
+    const action = isCurrentlyActive ? 'deactivate' : 'activate'
+    const actionTitle = isCurrentlyActive ? 'Desactivar Categoría' : 'Activar Categoría'
+    const actionMessage = isCurrentlyActive
+      ? `La categoría "${category.name}" se desactivará y dejará de estar disponible para nuevos productos, pero se mantendrá para fines administrativos.`
+      : `La categoría "${category.name}" se activará y volverá a estar disponible para nuevos productos.`
+
     setConfirmationModal({
       isVisible: true,
-      title: 'Eliminar Categoría',
-      message: `¿Estás seguro de que quieres eliminar la categoría "${category.name}"? Esta acción no se puede deshacer.`,
-      categoryId: category.category_id
+      title: actionTitle,
+      message: actionMessage,
+      categoryId: category.category_id,
+      action,
     })
   }
 
   const confirmDelete = () => {
     if (!confirmationModal.categoryId) return
-    console.log('id:', confirmationModal)
     setSaving(true)
-    setLastAction('delete')
-    dispatch(deleteCategory(confirmationModal.categoryId))
+
+    if (confirmationModal.action === 'deactivate') {
+      setLastAction('deactivate')
+      dispatch(deleteCategory(confirmationModal.categoryId))
+    } else if (confirmationModal.action === 'activate') {
+      setLastAction('activate')
+      dispatch(activateCategory(confirmationModal.categoryId))
+    }
   }
 
   const handleSubmit = (e) => {
@@ -109,9 +122,12 @@ export default function AdminCategoryManagement() {
 
       if (!hasError) {
         // Success paths
-        if (lastAction === 'delete') {
-          showNotification('Categoría eliminada con éxito', 'success')
-          setConfirmationModal({ isVisible: false, title: '', message: '', categoryId: null })
+        if (lastAction === 'deactivate') {
+          showNotification('Categoría desactivada con éxito', 'success')
+          setConfirmationModal({ isVisible: false, title: '', message: '', categoryId: null, action: 'deactivate' })
+        } else if (lastAction === 'activate') {
+          showNotification('Categoría activada con éxito', 'success')
+          setConfirmationModal({ isVisible: false, title: '', message: '', categoryId: null, action: 'deactivate' })
         } else if (lastAction === 'update') {
           showNotification('Categoría actualizada con éxito', 'success')
           setShowEditModal(false)
@@ -125,7 +141,7 @@ export default function AdminCategoryManagement() {
         setFormData({ name: '' })
       } else {
         // Error paths
-        if (lastAction === 'delete') {
+        if (lastAction === 'deactivate') {
           const msg = categoryError || ''
           if (msg.includes('No se puede eliminar una categoria con Producto')) {
             showNotification(
@@ -136,7 +152,10 @@ export default function AdminCategoryManagement() {
             showNotification('Error al eliminar la categoría', 'error')
           }
           // Close the confirmation modal when deletion fails
-          setConfirmationModal({ isVisible: false, title: '', message: '', categoryId: null })
+          setConfirmationModal({ isVisible: false, title: '', message: '', categoryId: null, action: 'deactivate' })
+        } else if (lastAction === 'activate') {
+          showNotification(categoryError || 'Error al activar la categoría', 'error')
+          setConfirmationModal({ isVisible: false, title: '', message: '', categoryId: null, action: 'deactivate' })
         } else if (lastAction === 'create' || lastAction === 'update') {
           showNotification(categoryError || 'Error al guardar la categoría', 'error')
         }
@@ -202,9 +221,14 @@ export default function AdminCategoryManagement() {
       {/* Categories List */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {categories.map((category) => (
-          <Card key={category.id} className="hover:shadow-md transition-shadow">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg">{category.name}</CardTitle>
+          <Card key={category.category_id ?? category.id} className="hover:shadow-md transition-shadow">
+            <CardHeader className="pb-3 flex flex-row items-center justify-between gap-2">
+              <CardTitle className="text-lg flex-1">{category.name}</CardTitle>
+              {category.active === false && (
+                <span className="text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-600 border border-gray-200">
+                  Inactiva
+                </span>
+              )}
             </CardHeader>
             <CardContent className="pt-0">
               <div className="flex space-x-2">
@@ -217,12 +241,12 @@ export default function AdminCategoryManagement() {
                   Editar
                 </Button>
                 <Button
-                  variant="outline"
+                  variant={category.active === false ? 'default' : 'outline'}
                   size="sm"
                   onClick={() => handleDeleteCategory(category)}
-                  className="flex-1 text-red-600 hover:text-red-700 hover:border-red-300"
+                  className="flex-1"
                 >
-                  Eliminar
+                  {category.active === false ? 'Activar' : 'Desactivar'}
                 </Button>
               </div>
             </CardContent>
@@ -335,8 +359,8 @@ export default function AdminCategoryManagement() {
         title={confirmationModal.title}
         message={confirmationModal.message}
         onConfirm={confirmDelete}
-        onCancel={() => setConfirmationModal({ isVisible: false, title: '', message: '', categoryId: null })}
-        confirmText="Eliminar"
+        onCancel={() => setConfirmationModal({ isVisible: false, title: '', message: '', categoryId: null, action: 'deactivate' })}
+        confirmText={confirmationModal.action === 'activate' ? 'Activar' : 'Desactivar'}
         cancelText="Cancelar"
         isLoading={saving}
       />

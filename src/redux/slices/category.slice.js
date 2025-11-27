@@ -43,6 +43,16 @@ export const deleteCategory = createAsyncThunk(
   }
 )
 
+export const activateCategory = createAsyncThunk(
+  'category/activateCategory',
+  async (categoryId, { getState }) => {
+    const response = await api.patch(`/categories/${categoryId}/activate`, null, {
+      headers: buildAuthHeaders(getState(), true),
+    })
+    return response.data
+  }
+)
+
 const initialState = {
   categories: [],
   pending: false,
@@ -121,9 +131,33 @@ const categorySlice = createSlice({
       .addCase(deleteCategory.fulfilled, (state, action) => {
         state.pending = false
         const categoryId = action.meta.arg
-        state.categories = state.categories.filter((c) => c.category_id !== categoryId)
+        const category = state.categories.find((c) => c.category_id === categoryId)
+        if (category) {
+          category.active = false
+        }
       })
       .addCase(deleteCategory.rejected, (state, action) => {
+        state.pending = false
+        state.error = action.error.message || null
+      })
+
+    builder
+      .addCase(activateCategory.pending, (state) => {
+        state.pending = true
+        state.error = null
+      })
+      .addCase(activateCategory.fulfilled, (state, action) => {
+        state.pending = false
+        const apiResponse = action.payload
+        if (apiResponse && apiResponse.data && apiResponse.data.category_id != null) {
+          const updated = apiResponse.data
+          const index = state.categories.findIndex((c) => c.category_id === updated.category_id)
+          if (index !== -1) {
+            state.categories[index] = updated
+          }
+        }
+      })
+      .addCase(activateCategory.rejected, (state, action) => {
         state.pending = false
         state.error = action.error.message || null
       })
