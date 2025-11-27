@@ -174,6 +174,17 @@ export const deleteProduct = createAsyncThunk(
   }
 )
 
+// 4.x PATCH /products/{id}/activate
+export const activateProduct = createAsyncThunk(
+  'products/activateProduct',
+  async (productId, { getState }) => {
+    const response = await api.patch(`/products/${productId}/activate`, null, {
+      headers: buildAuthHeaders(getState(), true),
+    })
+    return response.data
+  }
+)
+
 const initialState = {
   products: [],
   pending: false,
@@ -392,6 +403,31 @@ const productSlice = createSlice({
         }
       })
       .addCase(deleteProduct.rejected, (state, action) => {
+        state.pending = false
+        state.error = action.error.message || null
+      })
+
+    // Activate
+    builder
+      .addCase(activateProduct.pending, (state) => {
+        state.pending = true
+        state.error = null
+      })
+      .addCase(activateProduct.fulfilled, (state, action) => {
+        state.pending = false
+        const apiResponse = action.payload
+        if (apiResponse && apiResponse.data && apiResponse.data.product_id != null) {
+          const normalized = normalizeProduct(apiResponse.data)
+          const index = state.products.findIndex((p) => p.id === normalized.id)
+          if (index !== -1) {
+            state.products[index] = normalized
+          }
+          if (state.currentItem && state.currentItem.id === normalized.id) {
+            state.currentItem = normalized
+          }
+        }
+      })
+      .addCase(activateProduct.rejected, (state, action) => {
         state.pending = false
         state.error = action.error.message || null
       })

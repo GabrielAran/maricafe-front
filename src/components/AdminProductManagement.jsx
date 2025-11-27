@@ -1,9 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { fetchCategories, selectCategoryCategories } from '../redux/slices/category.slice.js'
-import { fetchProducts, createProduct, updateProduct, deleteProduct } from '../redux/slices/product.slice.js'
+import { fetchProducts, createProduct, updateProduct, deleteProduct, activateProduct } from '../redux/slices/product.slice.js'
 import { fetchProductImages, fetchProductImagesWithIds, createMultipleImages, deleteImage } from '../redux/slices/images.slice.js'
-import { selectThumbnailByProductId } from '../redux/slices/images.slice.js'
 import { selectIsAdmin } from '../redux/slices/user.slice.js'
 import { formatPrice } from '../utils/priceHelpers.js'
 import { Card, CardContent, CardHeader, CardTitle } from './ui/Card.jsx'
@@ -65,7 +64,7 @@ export default function AdminProductManagement() {
   const thumbnailsByProductId = useSelector(state => state.images.thumbnailsByProductId || {})
   const hasInitialized = useRef(false)
 
-  const [lastAction, setLastAction] = useState(null) // 'create' | 'update' | 'delete'
+  const [lastAction, setLastAction] = useState(null) // 'create' | 'update' | 'delete' | 'activate'
   const [lastProductId, setLastProductId] = useState(null)
   const [createDraft, setCreateDraft] = useState(null)
 
@@ -159,9 +158,12 @@ export default function AdminProductManagement() {
       return
     }
 
-    const action = 'deactivate'
-    const actionTitle = 'Desactivar Producto'
-    const actionMessage = `El producto "${product?.nombre || 'sin nombre'}" se desactivará y dejará de mostrarse en la tienda, pero se mantendrá para fines administrativos.`
+    const isCurrentlyActive = product.active !== false
+    const action = isCurrentlyActive ? 'deactivate' : 'activate'
+    const actionTitle = isCurrentlyActive ? 'Desactivar Producto' : 'Activar Producto'
+    const actionMessage = isCurrentlyActive
+      ? `El producto "${product?.nombre || 'sin nombre'}" se desactivará y dejará de mostrarse en la tienda, pero se mantendrá para fines administrativos.`
+      : `El producto "${product?.nombre || 'sin nombre'}" se activará y volverá a mostrarse en la tienda para los usuarios.`
 
     setConfirmationModal({
       isVisible: true,
@@ -177,16 +179,26 @@ export default function AdminProductManagement() {
     console.log('handleConfirmDelete called')
     console.log('confirmationModal:', confirmationModal)
 
-    if (!confirmationModal.productId) {
+    if (!confirmationModal.productId || !confirmationModal.product) {
       console.log('No productId in confirmationModal, returning')
       return
     }
 
-    console.log('Sending soft delete (deactivate) request for product ID:', confirmationModal.productId)
+    const { action, product } = confirmationModal
 
-    setLastAction('delete')
-    setLastProductId(confirmationModal.productId)
-    dispatch(deleteProduct(confirmationModal.productId))
+    if (action === 'deactivate') {
+      console.log('Sending soft delete (deactivate) request for product ID:', confirmationModal.productId)
+
+      setLastAction('delete')
+      setLastProductId(confirmationModal.productId)
+      dispatch(deleteProduct(confirmationModal.productId))
+    } else if (action === 'activate') {
+      console.log('Sending activate request for product ID:', confirmationModal.productId)
+
+      setLastAction('activate')
+      setLastProductId(confirmationModal.productId)
+      dispatch(activateProduct(confirmationModal.productId))
+    }
   }
 
   const handleCancelDelete = () => {
@@ -465,6 +477,24 @@ export default function AdminProductManagement() {
         setLastProductId(null)
       }
 
+      if (lastAction === 'activate') {
+        if (!productsError) {
+          showNotification('Producto activado exitosamente', 'success')
+        } else {
+          showNotification('Error al activar el producto: ' + productsError, 'error')
+        }
+        setConfirmationModal({
+          isVisible: false,
+          title: '',
+          message: '',
+          productId: null,
+          action: 'delete',
+          product: null
+        })
+        setLastAction(null)
+        setLastProductId(null)
+      }
+
       if (lastAction === 'update') {
         if (!productsError) {
           showNotification('Producto actualizado exitosamente', 'success')
@@ -479,6 +509,15 @@ export default function AdminProductManagement() {
           showNotification('Error al actualizar el producto: ' + productsError, 'error')
           setSaving(false)
         }
+        // Always clear confirmation modal after update (covers activate flow)
+        setConfirmationModal({
+          isVisible: false,
+          title: '',
+          message: '',
+          productId: null,
+          action: 'delete',
+          product: null
+        })
         setLastAction(null)
         setLastProductId(null)
       }
@@ -822,14 +861,13 @@ export default function AdminProductManagement() {
                     </Button>
                     <Button
                       size="sm"
-                      variant="destructive"
+                      variant={product.active === false ? 'default' : 'destructive'}
                       onClick={(e) => {
                         e.stopPropagation()
-                        console.log('Delete button clicked for product ID:', product.id)
                         handleDeleteProduct(product)
                       }}
                     >
-                      Desactivar
+                      {product.active === false ? 'Activar' : 'Desactivar'}
                     </Button>
                   </div>
                 </div>
@@ -1233,7 +1271,13 @@ export default function AdminProductManagement() {
         isVisible={confirmationModal.isVisible}
         title={confirmationModal.title}
         message={confirmationModal.message}
-        confirmText={confirmationModal.action === 'deactivate' ? 'Desactivar' : 'Eliminar'}
+        confirmText={
+          confirmationModal.action === 'deactivate'
+            ? 'Desactivar'
+            : confirmationModal.action === 'activate'
+            ? 'Activar'
+            : 'Confirmar'
+        }
         cancelText="Cancelar"
         onConfirm={handleConfirmDelete}
         onCancel={handleCancelDelete}
