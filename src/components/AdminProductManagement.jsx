@@ -956,9 +956,9 @@ export default function AdminProductManagement() {
       {/* Edit Product Modal */}
       {showEditModal && editingProduct && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 max-h-[90vh] flex flex-col">
             <h3 className="text-lg font-semibold mb-4">Editar Producto</h3>
-            <div className="space-y-4">
+            <div className="space-y-4 flex-1 overflow-y-auto pr-1">
               <div>
                 <label className="block text-sm font-medium mb-1">Nombre *</label>
                 <input
@@ -1119,7 +1119,7 @@ export default function AdminProductManagement() {
               </div>
             </div>
 
-            <div className="flex gap-2 mt-6">
+            <div className="flex gap-2 mt-6 pt-2 border-t border-gray-100">
               <Button
                 onClick={handleCloseEditModal}
                 variant="outline"
@@ -1142,9 +1142,9 @@ export default function AdminProductManagement() {
       {/* Add Product Modal */}
       {showAddModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 max-h-[90vh] flex flex-col">
             <h3 className="text-lg font-semibold mb-4">Agregar Producto</h3>
-            <div className="space-y-4">
+            <div className="space-y-4 flex-1 overflow-y-auto pr-1">
               <div>
                 <label className="block text-sm font-medium mb-1">Nombre *</label>
                 <input
@@ -1303,7 +1303,7 @@ export default function AdminProductManagement() {
                 )}
               </div>
             </div>
-            <div className="flex gap-2 mt-6">
+            <div className="flex gap-2 mt-6 pt-2 border-t border-gray-100">
               <Button
                 onClick={handleCloseAddModal}
                 variant="outline"
