@@ -128,7 +128,8 @@ export default function AdminProductManagement() {
       if (isAdminUser) {
         hasInitialized.current = true
         try {
-          dispatch(fetchProducts())
+          // Fetch products sorted by effective price (discounted when available)
+          dispatch(fetchProducts('price,asc'))
           dispatch(fetchCategories())
         } catch (error) {
           console.error('Error initializing product management:', error)
