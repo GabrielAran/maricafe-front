@@ -20,7 +20,7 @@ import {
   fetchAllAttributes, 
   fetchAttributesByCategory 
 } from '../redux/slices/attribute.slice.js'
-import { fetchProductImages } from '../redux/slices/images.slice.js'
+import { fetchProductImages, selectThumbnailByProductId } from '../redux/slices/images.slice.js'
 import { formatPrice } from '../utils/priceHelpers.js'
 import { isProductAvailable } from '../utils/productHelpers.js'
 import { selectActiveProducts } from '../redux/selectors/productSelectors.js'
@@ -63,61 +63,46 @@ export default function ProductViewNew({
     return () => clearTimeout(t)
   }, [searchTerm])
   
-  // State for managing product quantities and images
+  // State for managing product quantities
   const [productQuantities, setProductQuantities] = React.useState({})
-  const [productImages, setProductImages] = React.useState({})
-  const [currentImageProductId, setCurrentImageProductId] = React.useState(null)
-  const [processedImageProducts, setProcessedImageProducts] = React.useState(new Set())
-
-  // Load images for products using Redux thunk (one at a time to track which product)
-  React.useEffect(() => {
-    if (products && products.length > 0 && !currentImageProductId) {
-      // Find first product that needs images
-      const productNeedingImage = products.find(
-        product => !productImages[product.id] && !processedImageProducts.has(product.id)
-      )
-      
-      if (productNeedingImage) {
-        setCurrentImageProductId(productNeedingImage.id)
-        setProcessedImageProducts(prev => new Set(prev).add(productNeedingImage.id))
-        dispatch(fetchProductImages(productNeedingImage.id))
-      }
-    }
-  }, [products, dispatch, productImages, currentImageProductId, processedImageProducts])
   
-  // Process images from Redux state when they arrive
-  const imagesState = useSelector(state => state.images.images)
+  // Get thumbnails from Redux state (organized by productId)
+  const thumbnailsByProductId = useSelector(state => state.images.thumbnailsByProductId)
   const imagesPending = useSelector(state => state.images.pending)
+  const imagesByProductId = useSelector(state => state.images.imagesByProductId)
+  
+  // Track which products we've already requested images for
+  const [requestedProductIds, setRequestedProductIds] = React.useState(new Set())
+
+  // Load images for products that don't have them yet
   React.useEffect(() => {
-    if (currentImageProductId && !imagesPending && imagesState && Array.isArray(imagesState) && imagesState.length > 0) {
-      // Process base64 images similar to ProductApiService
-      const base64Data = imagesState[0]
-      let finalData = null
-      
-      if (typeof base64Data === 'string') {
-        finalData = base64Data
-      } else if (base64Data && typeof base64Data === 'object') {
-        if (base64Data.data) {
-          finalData = base64Data.data
-        } else if (base64Data.imagen) {
-          finalData = base64Data.imagen
-        } else if (base64Data.base64) {
-          finalData = base64Data.base64
-        }
-      }
-      
-      if (finalData) {
-        const cleanBase64 = finalData.toString()
-          .replace(/\s/g, '')
-          .replace(/^data:image\/[a-z]+;base64,/, '')
-        const imageUrl = `data:image/png;base64,${cleanBase64}`
-        setProductImages(prev => ({ ...prev, [currentImageProductId]: imageUrl }))
-      }
-      
-      // Move to next product
-      setCurrentImageProductId(null)
+    if (!products || products.length === 0) return
+    
+    // Find products that need images (don't have thumbnail and haven't been requested)
+    const productsNeedingImages = products.filter(product => {
+      const productId = product.id
+      return (
+        !thumbnailsByProductId[productId] && 
+        !imagesByProductId[productId] &&
+        !requestedProductIds.has(productId) &&
+        !imagesPending
+      )
+    })
+    
+    // Fetch images for products that need them (batch requests)
+    if (productsNeedingImages.length > 0) {
+      productsNeedingImages.forEach(product => {
+        setRequestedProductIds(prev => new Set(prev).add(product.id))
+        dispatch(fetchProductImages(product.id))
+      })
     }
-  }, [imagesState, imagesPending, currentImageProductId])
+  }, [products, thumbnailsByProductId, imagesByProductId, requestedProductIds, imagesPending, dispatch])
+  
+  // Helper function to get image URL for a product
+  const getProductImageUrl = (productId) => {
+    // Use thumbnail from Redux state (already formatted as data URL)
+    return thumbnailsByProductId[productId] || null
+  }
   
   const hasLoadedCategories = React.useRef(false)
   const hasLoadedAttributes = React.useRef(false)
@@ -458,9 +443,9 @@ export default function ProductViewNew({
           >
             <CardContent className="p-4 flex-1 flex flex-col">
               <div className="aspect-square bg-white rounded-lg mb-4 flex items-center justify-center p-4">
-                {productImages[product.id] ? (
+                {getProductImageUrl(product.id) ? (
                   <img
-                    src={productImages[product.id]}
+                    src={getProductImageUrl(product.id)}
                     alt={product.nombre}
                     className="w-full h-full object-cover rounded-lg"
                     onError={(e) => {
@@ -470,9 +455,13 @@ export default function ProductViewNew({
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-                    <svg className="w-12 h-12 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                    </svg>
+                    {imagesPending && requestedProductIds.has(product.id) ? (
+                      <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
+                    ) : (
+                      <svg className="w-12 h-12 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                    )}
                   </div>
                 )}
               </div>
@@ -574,7 +563,7 @@ export default function ProductViewNew({
                       disabled={!isProductAvailable(product, false)}
                       className="w-full"
                       onNavigate={onNavigate}
-                      image={productImages[product.id]}
+                      image={getProductImageUrl(product.id)}
                     />
                   </div>
                 </div>
