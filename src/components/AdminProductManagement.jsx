@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { Search, X } from 'lucide-react'
 import { fetchCategories, selectCategoryCategories } from '../redux/slices/category.slice.js'
@@ -69,6 +69,7 @@ export default function AdminProductManagement() {
   const [currentImages, setCurrentImages] = useState([])
   const [newImages, setNewImages] = useState([])
   const [newImagePreviews, setNewImagePreviews] = useState([])
+  const fetchedImageIdsRef = useRef(new Set())
   const [notification, setNotification] = useState({
     isVisible: false,
     message: '',
@@ -99,7 +100,8 @@ export default function AdminProductManagement() {
   // Safely get imagesByProductId with proper null checks
   const imagesByProductId = useSelector(state => {
     try {
-      return state?.images?.imagesByProductId || {}
+      if (!state || !state.images) return {}
+      return state.images.imagesByProductId || {}
     } catch (error) {
       console.error('Error accessing images state:', error)
       return {}
@@ -116,17 +118,13 @@ export default function AdminProductManagement() {
 
   const prevProductsPending = useRef(false)
   const prevImagesPending = useRef(false)
-  
-  // Simple tracking: which product IDs we've already requested images for
-  const requestedProductIdsRef = useRef(new Set())
-  
-  // Track which products have images (to detect when new images are loaded)
-  const productsWithImagesRef = useRef(new Set())
 
   useEffect(() => {
     // Only initialize if user is admin and we haven't initialized yet
     // Also check that isAdminUser is not undefined (wait for auth state to be ready)
-    if (!hasInitialized.current && isAdminUser !== undefined) {
+    if (isAdminUser === undefined) return // Wait for auth state
+    
+    if (!hasInitialized.current) {
       if (isAdminUser) {
         hasInitialized.current = true
         try {
@@ -137,6 +135,9 @@ export default function AdminProductManagement() {
           // Reset initialization flag so we can retry
           hasInitialized.current = false
         }
+      } else {
+        // User is not admin, mark as initialized to prevent further attempts
+        hasInitialized.current = true
       }
     }
   }, [isAdminUser, dispatch])
@@ -150,62 +151,26 @@ export default function AdminProductManagement() {
     )
   }, [categoryItems])
 
-  // Simple image fetching: fetch images for products that don't have them yet
-  // Each product's images are fetched once and cached in Redux
-  // Only depends on products array - checks images state inside effect
   useEffect(() => {
-    // Guard against undefined/null products or empty array
-    if (!products || !Array.isArray(products) || products.length === 0) return
+    if (!isAdminUser) return
+    if (!Array.isArray(products) || products.length === 0) return
 
-    // Ensure imagesByProductId is a valid object
-    const currentImages = imagesByProductId && typeof imagesByProductId === 'object' ? imagesByProductId : {}
-    
-    try {
-      products.forEach((product) => {
-        // Validate product structure
-        if (!product || typeof product !== 'object') return
-        
-        const productId = product?.id
-        if (!productId || (typeof productId !== 'number' && typeof productId !== 'string')) {
-          return
-        }
-
-        // Check if we already have images for this product
-        // First image (index 0) is the thumbnail
-        const productImages = currentImages[productId]
-        const hasImages = productImages && Array.isArray(productImages) && productImages.length > 0
-        
-        // Update our tracking
-        if (hasImages) {
-          productsWithImagesRef.current.add(productId)
-          requestedProductIdsRef.current.delete(productId)
-          return
-        }
-
-        // If we've already requested images for this product, skip
-        if (requestedProductIdsRef.current.has(productId)) return
-        
-        // If we previously had images but don't now, remove from tracking
-        if (productsWithImagesRef.current.has(productId)) {
-          productsWithImagesRef.current.delete(productId)
-        }
-
-        // Mark as requested and fetch
-        requestedProductIdsRef.current.add(productId)
-        try {
-          dispatch(fetchProductImages(productId))
-        } catch (error) {
-          console.error(`Error fetching images for product ${productId}:`, error)
-          // Remove from requested set so we can retry later
-          requestedProductIdsRef.current.delete(productId)
-        }
+    const idsToFetch = products
+      .map(product => {
+        const id = product?.id
+        if (id === null || id === undefined) return null
+        return id.toString()
       })
-    } catch (error) {
-      console.error('Error in image fetching effect:', error)
-    }
-    // Include imagesByProductId in dependencies to react to image state changes
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [products, imagesByProductId, dispatch])
+      .filter(id => id && !fetchedImageIdsRef.current.has(id))
+
+    if (idsToFetch.length === 0) return
+
+    idsToFetch.forEach(stringId => {
+      fetchedImageIdsRef.current.add(stringId)
+      const requestId = Number.isNaN(Number(stringId)) ? stringId : Number(stringId)
+      dispatch(fetchProductImages(requestId))
+    })
+  }, [products, isAdminUser, dispatch])
 
 
   const handleAddProduct = () => {
@@ -231,9 +196,7 @@ export default function AdminProductManagement() {
   }
 
   const handleEditProduct = (product) => {
-    console.log('handleEditProduct called with product:', product)
     if (!product || !product.id) {
-      console.error('Invalid product data:', product)
       showNotification('Error: Datos del producto inválidos', 'error')
       return
     }
@@ -258,7 +221,6 @@ export default function AdminProductManagement() {
   }
 
   const handleDeleteProduct = (product) => {
-    console.log('handleDeleteProduct called with product:', product)
     if (!product) {
       return
     }
@@ -281,25 +243,17 @@ export default function AdminProductManagement() {
   }
 
   const handleConfirmDelete = () => {
-    console.log('handleConfirmDelete called')
-    console.log('confirmationModal:', confirmationModal)
-
     if (!confirmationModal.productId || !confirmationModal.product) {
-      console.log('No productId in confirmationModal, returning')
       return
     }
 
-    const { action, product } = confirmationModal
+    const { action } = confirmationModal
 
     if (action === 'deactivate') {
-      console.log('Sending soft delete (deactivate) request for product ID:', confirmationModal.productId)
-
       setLastAction('delete')
       setLastProductId(confirmationModal.productId)
       dispatch(deleteProduct(confirmationModal.productId))
     } else if (action === 'activate') {
-      console.log('Sending activate request for product ID:', confirmationModal.productId)
-
       setLastAction('activate')
       setLastProductId(confirmationModal.productId)
       dispatch(activateProduct(confirmationModal.productId))
@@ -354,12 +308,7 @@ export default function AdminProductManagement() {
   }
 
   const handleSaveProduct = () => {
-    console.log('handleSaveProduct called')
-    console.log('editingProduct:', editingProduct)
-    console.log('formData:', formData)
-
     if (!editingProduct) {
-      console.log('No editing product, returning')
       return
     }
 
@@ -393,9 +342,6 @@ export default function AdminProductManagement() {
       category_id: formData.category_id || editingProduct.categoriaId || editingProduct.category?.category_id,
       images: currentImages.map(img => img.url)
     }
-
-    console.log('Sending update request with data:', productData)
-    console.log('Product ID:', editingProduct.id)
 
     setLastAction('update')
     setLastProductId(editingProduct.id)
@@ -705,8 +651,6 @@ export default function AdminProductManagement() {
           showNotification('Producto creado pero error al subir imágenes: ' + imagesError, 'error')
         } else {
           // Fetch images to update the cache and display thumbnails
-          // Remove from tracking so it can be fetched fresh
-          requestedProductIdsRef.current.delete(lastImageProductId)
           dispatch(fetchProductImages(lastImageProductId))
         }
         setLastImageAction(null)
@@ -847,6 +791,32 @@ export default function AdminProductManagement() {
     }))
   }
 
+  // For admins, the backend already returns all products (including zero stock)
+  // No need for frontend filtering since the backend handles role-based logic
+  // Filter products based on search term and category
+  const filteredProducts = (() => {
+    if (!Array.isArray(products)) {
+      return []
+    }
+    try {
+      return products.filter(product => {
+        if (!product || typeof product !== 'object') return false
+
+        const matchesSearch = searchTerm === '' ||
+          (product.nombre || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+          (product.descripcion || '').toLowerCase().includes(searchTerm.toLowerCase())
+
+        const matchesCategory = categoryFilter === 'all' ||
+          String(product.categoriaId || product.category?.category_id) === String(categoryFilter)
+
+        return matchesSearch && matchesCategory
+      })
+    } catch (error) {
+      console.error('Error filtering products:', error)
+      return []
+    }
+  })()
+
   // Wait for auth state to be determined before showing access denied
   // If isAdminUser is undefined, it means auth state is still loading
   if (isAdminUser === false) {
@@ -895,36 +865,6 @@ export default function AdminProductManagement() {
       </div>
     )
   }
-
-  // For admins, the backend already returns all products (including zero stock)
-  // No need for frontend filtering since the backend handles role-based logic
-  // Filter products based on search term and category
-  const filteredProducts = useMemo(() => {
-    // Ensure products is an array before filtering
-    if (!Array.isArray(products)) {
-      return []
-    }
-    try {
-      return products.filter(product => {
-        // Validate product structure
-        if (!product || typeof product !== 'object') return false
-        
-        // Search filter
-        const matchesSearch = searchTerm === '' ||
-          (product.nombre || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-          (product.descripcion || '').toLowerCase().includes(searchTerm.toLowerCase())
-
-        // Category filter
-        const matchesCategory = categoryFilter === 'all' ||
-          String(product.categoriaId || product.category?.category_id) === String(categoryFilter)
-
-        return matchesSearch && matchesCategory
-      })
-    } catch (error) {
-      console.error('Error filtering products:', error)
-      return []
-    }
-  }, [products, searchTerm, categoryFilter])
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -983,9 +923,20 @@ export default function AdminProductManagement() {
               <div className="relative w-full h-48 mb-4 bg-gray-100 rounded-t-lg overflow-hidden">
                 {(() => {
                   try {
-                    const productImages = imagesByProductId && imagesByProductId[product?.id]
-                    if (productImages && Array.isArray(productImages) && productImages.length > 0 && productImages[0]) {
-                      const thumbnailUrl = extractThumbnailUrl([productImages[0]])
+                    if (!product?.id) {
+                      return (
+                        <div className="flex items-center justify-center w-full h-full">
+                          <svg className="w-12 h-12 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                          </svg>
+                        </div>
+                      )
+                    }
+
+                    const productImages = imagesByProductId?.[product.id]
+
+                    if (Array.isArray(productImages) && productImages.length > 0) {
+                      const thumbnailUrl = extractThumbnailUrl(productImages)
                       if (thumbnailUrl) {
                         return (
                           <img
@@ -1064,7 +1015,6 @@ export default function AdminProductManagement() {
                       variant="outline"
                       onClick={(e) => {
                         e.stopPropagation()
-                        console.log('Edit button clicked for product:', product)
                         handleEditProduct(product)
                       }}
                     >
@@ -1177,9 +1127,7 @@ export default function AdminProductManagement() {
                   <p className="text-sm text-gray-500 mb-2">Imágenes actuales:</p>
                   {currentImages.length > 0 ? (
                     <div className="grid grid-cols-2 gap-2">
-                      {currentImages.map((image, index) => {
-                        console.log('Rendering image:', image)
-                        return (
+                      {currentImages.map((image, index) => (
                           <div key={index} className="relative group">
                             <img
                               src={image.url}
@@ -1201,8 +1149,7 @@ export default function AdminProductManagement() {
                               </button>
                             </div>
                           </div>
-                        )
-                      })}
+                        ))}
                     </div>
                   ) : (
                     <div className="text-sm text-gray-500 italic text-center p-4 border-2 border-dashed border-gray-200 rounded-lg">
