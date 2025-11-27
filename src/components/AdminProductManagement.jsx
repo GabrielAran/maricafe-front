@@ -138,7 +138,8 @@ export default function AdminProductManagement() {
     setFormData({
       title: product.nombre,
       description: product.descripcion,
-      price: product.precio,
+      // Usar siempre el precio original como base de edición para evitar doble descuento
+      price: product.precioOriginal ?? product.precio,
       stock: product.stock,
       category_id: product.categoriaId || product.category?.category_id
     })
