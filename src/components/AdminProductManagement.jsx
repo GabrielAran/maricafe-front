@@ -82,6 +82,9 @@ export default function AdminProductManagement() {
   
   // Simple tracking: which product IDs we've already requested images for
   const requestedProductIdsRef = useRef(new Set())
+  
+  // Track which products have images (to detect when new images are loaded)
+  const productsWithImagesRef = useRef(new Set())
 
   useEffect(() => {
     if (!hasInitialized.current && isAdminUser) {
@@ -102,32 +105,44 @@ export default function AdminProductManagement() {
 
   // Simple image fetching: fetch images for products that don't have them yet
   // Each product's images are fetched once and cached in Redux
+  // Only depends on products array - checks images state inside effect
   useEffect(() => {
     if (!products || products.length === 0) return
 
+    // Update tracking of which products have images
+    const currentThumbnails = thumbnailsByProductId || {}
+    const currentImages = imagesByProductId || {}
+    
     products.forEach((product) => {
       const productId = product?.id
       if (!productId) return
 
       // Check if we already have images for this product
-      const hasThumbnail = thumbnailsByProductId[productId]
-      const hasImages = imagesByProductId[productId] && Array.isArray(imagesByProductId[productId]) && imagesByProductId[productId].length > 0
+      const hasThumbnail = currentThumbnails[productId]
+      const hasImages = currentImages[productId] && Array.isArray(currentImages[productId]) && currentImages[productId].length > 0
       
-      // If we have images, we're done
+      // Update our tracking
       if (hasThumbnail || hasImages) {
-        // Clean up tracking if it was there
+        productsWithImagesRef.current.add(productId)
         requestedProductIdsRef.current.delete(productId)
         return
       }
 
       // If we've already requested images for this product, skip
       if (requestedProductIdsRef.current.has(productId)) return
+      
+      // If we previously had images but don't now, remove from tracking
+      if (productsWithImagesRef.current.has(productId)) {
+        productsWithImagesRef.current.delete(productId)
+      }
 
       // Mark as requested and fetch
       requestedProductIdsRef.current.add(productId)
       dispatch(fetchProductImages(productId))
     })
-  }, [products, thumbnailsByProductId, imagesByProductId, dispatch])
+    // Only depend on products - images state is checked inside the effect
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [products, dispatch])
 
 
   const handleAddProduct = () => {
