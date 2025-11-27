@@ -2,6 +2,7 @@ import { createSlice, createAsyncThunk } from '@reduxjs/toolkit'
 import { api } from '../api/axiosInstance'
 
 import { buildAuthHeaders } from './user.slice'
+import { extractThumbnailUrl } from '../../utils/imageHelpers.js'
 
 // GET /images/{productId}
 // Returns: List<String> (base64 strings)
@@ -76,7 +77,8 @@ export const deleteImage = createAsyncThunk(
 const initialState = {
   images: [],
   pending: false,
-  error: null
+  error: null,
+  thumbnailsByProductId: {},
 }
 
 const imagesSlice = createSlice({
@@ -93,6 +95,14 @@ const imagesSlice = createSlice({
       .addCase(fetchProductImages.fulfilled, (state, action) => {
         state.pending = false
         state.images = Array.isArray(action.payload) ? action.payload : []
+
+        const productId = action.meta.arg
+        if (productId != null) {
+          const imageUrl = extractThumbnailUrl(state.images)
+          if (imageUrl) {
+            state.thumbnailsByProductId[productId] = imageUrl
+          }
+        }
       })
       .addCase(fetchProductImages.rejected, (state, action) => {
         state.pending = false
@@ -172,4 +182,7 @@ const imagesSlice = createSlice({
 })
 
 export default imagesSlice.reducer
+
+export const selectThumbnailByProductId = (state, productId) =>
+  (state.images.thumbnailsByProductId && state.images.thumbnailsByProductId[productId]) || null
 

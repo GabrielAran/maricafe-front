@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from 'react-redux'
 import { fetchCategories, selectCategoryCategories } from '../redux/slices/category.slice.js'
 import { fetchProducts, createProduct, updateProduct, deleteProduct } from '../redux/slices/product.slice.js'
 import { fetchProductImages, fetchProductImagesWithIds, createMultipleImages, deleteImage } from '../redux/slices/images.slice.js'
+import { selectThumbnailByProductId } from '../redux/slices/images.slice.js'
 import { selectIsAdmin } from '../redux/slices/user.slice.js'
 import { formatPrice } from '../utils/priceHelpers.js'
 import { Card, CardContent, CardHeader, CardTitle } from './ui/Card.jsx'
@@ -15,8 +16,10 @@ export default function AdminProductManagement() {
   const dispatch = useDispatch()
   const categoryItems = useSelector(selectCategoryCategories)
   const products = useSelector(state => state.products.products)
-  const loading = useSelector(state => state.products.pending)
-  const error = useSelector(state => state.products.error)
+  const productsState = useSelector(state => state.products)
+  const imagesState = useSelector(state => state.images)
+  const loading = productsState.pending
+  const error = productsState.error
   const isAdminUser = useSelector(selectIsAdmin)
 
   const [editingProduct, setEditingProduct] = useState(null)
@@ -51,8 +54,18 @@ export default function AdminProductManagement() {
     product: null
   })
 
-  const [productImages, setProductImages] = useState({})
+  const thumbnailsByProductId = useSelector(state => state.images.thumbnailsByProductId || {})
   const hasInitialized = useRef(false)
+
+  const [lastAction, setLastAction] = useState(null) // 'create' | 'update' | 'delete'
+  const [lastProductId, setLastProductId] = useState(null)
+  const [createDraft, setCreateDraft] = useState(null)
+
+  const [lastImageAction, setLastImageAction] = useState(null) // 'loadThumbnails' | 'loadEditImages' | 'uploadForCreated' | 'uploadForUpdated' | 'deleteImage'
+  const [lastImageProductId, setLastImageProductId] = useState(null)
+
+  const prevProductsPending = useRef(false)
+  const prevImagesPending = useRef(false)
 
   useEffect(() => {
     if (!hasInitialized.current && isAdminUser) {
@@ -77,26 +90,11 @@ export default function AdminProductManagement() {
 
     products.forEach((product) => {
       // Skip fetch if we already have a thumbnail cached for this product
-      if (productImages[product.id]) return
+      if (thumbnailsByProductId[product.id]) return
 
-      dispatch(fetchProductImages(product.id)).then((result) => {
-        if (result.type === 'images/fetchProductImages/fulfilled' && result.payload && result.payload.length > 0) {
-          const firstImage = result.payload[0]
-          let imageUrl = null
-          if (typeof firstImage === 'string') {
-            const cleanBase64 = firstImage.replace(/\s/g, '').replace(/^data:image\/[a-z]+;base64,/, '')
-            imageUrl = `data:image/png;base64,${cleanBase64}`
-          }
-          if (imageUrl) {
-            setProductImages(prev => ({
-              ...prev,
-              [product.id]: imageUrl
-            }))
-          }
-        }
-      })
+      dispatch(fetchProductImages(product.id))
     })
-  }, [products, dispatch, productImages])
+  }, [products, dispatch, thumbnailsByProductId])
 
 
   const handleAddProduct = () => {
@@ -134,30 +132,9 @@ export default function AdminProductManagement() {
     setCurrentImages([]) // Clear current images while loading
 
     // Load the product's current images with actual database IDs
-    dispatch(fetchProductImagesWithIds(product.id)).then((result) => {
-      if (result.type === 'images/fetchProductImagesWithIds/fulfilled' && result.payload) {
-        const images = result.payload.map((imageResponse) => {
-          if (!imageResponse || !imageResponse.id || !imageResponse.file) {
-            return null
-          }
-          const cleanBase64 = imageResponse.file.toString()
-            .replace(/\s/g, '')
-            .replace(/^data:image\/[a-z]+;base64,/, '')
-          return {
-            id: imageResponse.id,
-            url: `data:image/png;base64,${cleanBase64}`
-          }
-        }).filter(Boolean)
-        console.log('Loaded images with IDs:', images)
-        if (images && images.length > 0) {
-          setCurrentImages(images) // Images now have actual database IDs
-        }
-      } else if (result.type === 'images/fetchProductImagesWithIds/rejected') {
-        console.error('Error loading product images:', result.error)
-        showNotification('Error al cargar las imágenes del producto', 'error')
-        setCurrentImages([])
-      }
-    })
+    setLastImageAction('loadEditImages')
+    setLastImageProductId(product.id)
+    dispatch(fetchProductImagesWithIds(product.id))
   }
 
   const handleDeleteProduct = (product) => {
@@ -166,12 +143,9 @@ export default function AdminProductManagement() {
       return
     }
 
-    const isDeactivate = product.stock >= 1
-    const action = isDeactivate ? 'deactivate' : 'delete'
-    const actionTitle = isDeactivate ? 'Desactivar Producto' : 'Eliminar Producto'
-    const actionMessage = isDeactivate
-      ? `El producto "${product?.nombre || 'sin nombre'}" tiene stock disponible. Se desactivará estableciendo su stock en 0.`
-      : `¿Estás seguro de que quieres eliminar "${product?.nombre || 'este producto'}"? Esta acción no se puede deshacer.`
+    const action = 'deactivate'
+    const actionTitle = 'Desactivar Producto'
+    const actionMessage = `El producto "${product?.nombre || 'sin nombre'}" se desactivará y dejará de mostrarse en la tienda, pero se mantendrá para fines administrativos.`
 
     setConfirmationModal({
       isVisible: true,
@@ -192,94 +166,11 @@ export default function AdminProductManagement() {
       return
     }
 
-    if (confirmationModal.action === 'deactivate') {
-      const product = confirmationModal.product
-      if (!product) {
-        showNotification('No se pudo obtener la información del producto para desactivarlo.', 'error')
-        setConfirmationModal({
-          isVisible: false,
-          title: '',
-          message: '',
-          productId: null,
-          action: 'delete',
-          product: null
-        })
-        return
-      }
+    console.log('Sending soft delete (deactivate) request for product ID:', confirmationModal.productId)
 
-      const basePrice = (product.precioOriginal && product.precioOriginal > 0)
-        ? product.precioOriginal
-        : product.precio
-
-      const numericPrice = Number(basePrice ?? 0)
-      if (Number.isNaN(numericPrice)) {
-        showNotification('El precio del producto es inválido.', 'error')
-        setConfirmationModal({
-          isVisible: false,
-          title: '',
-          message: '',
-          productId: null,
-          action: 'delete',
-          product: null
-        })
-        return
-      }
-
-      const updatePayload = {
-        title: product.nombre,
-        description: (product.descripcion || '').slice(0, 120),
-        price: numericPrice,
-        stock: 0
-      }
-
-      if (product.categoriaId !== null && product.categoriaId !== undefined) {
-        updatePayload.category_id = product.categoriaId
-      }
-
-      console.log('Sending deactivate request for product ID:', product.id, updatePayload)
-
-      dispatch(updateProduct({ productId: product.id, data: updatePayload })).then((result) => {
-        if (result.type === 'products/updateProduct/fulfilled') {
-          showNotification('Producto desactivado (stock 0)', 'success')
-          // Redux state is automatically updated by the slice
-        } else if (result.type === 'products/updateProduct/rejected') {
-          showNotification(`Error al desactivar el producto: ${result.error.message}`, 'error')
-        }
-        setConfirmationModal({
-          isVisible: false,
-          title: '',
-          message: '',
-          productId: null,
-          action: 'delete',
-          product: null
-        })
-      })
-    } else {
-      console.log('Sending delete request for product ID:', confirmationModal.productId)
-
-      dispatch(deleteProduct(confirmationModal.productId)).then((result) => {
-        if (result.type === 'products/deleteProduct/fulfilled') {
-          showNotification('Producto eliminado exitosamente', 'success')
-          // Remove product image from local state
-          setProductImages(prev => {
-            const updated = { ...prev }
-            delete updated[confirmationModal.productId]
-            return updated
-          })
-          // Redux state is automatically updated by the slice
-        } else if (result.type === 'products/deleteProduct/rejected') {
-          showNotification(`Error al eliminar el producto: ${result.error.message}`, 'error')
-        }
-        setConfirmationModal({
-          isVisible: false,
-          title: '',
-          message: '',
-          productId: null,
-          action: 'delete',
-          product: null
-        })
-      })
-    }
+    setLastAction('delete')
+    setLastProductId(confirmationModal.productId)
+    dispatch(deleteProduct(confirmationModal.productId))
   }
 
   const handleCancelDelete = () => {
@@ -365,81 +256,15 @@ export default function AdminProductManagement() {
     console.log('Sending update request with data:', productData)
     console.log('Product ID:', editingProduct.id)
 
-    dispatch(updateProduct({ productId: editingProduct.id, data: productData })).then((updateResult) => {
-      if (updateResult.type === 'products/updateProduct/fulfilled') {
-        // Upload new images if any
-        if (newImages.length > 0) {
-          dispatch(createMultipleImages({ files: newImages, productId: editingProduct.id })).then((uploadResult) => {
-            if (uploadResult.type === 'images/createMultipleImages/fulfilled') {
-              console.log('Upload response:', uploadResult.payload)
-              // Get updated images and set them in state
-              dispatch(fetchProductImagesWithIds(editingProduct.id)).then((imagesResult) => {
-                if (imagesResult.type === 'images/fetchProductImagesWithIds/fulfilled' && imagesResult.payload) {
-                  const updatedImages = imagesResult.payload.map((imageResponse) => {
-                    if (!imageResponse || !imageResponse.id || !imageResponse.file) {
-                      return null
-                    }
-                    const cleanBase64 = imageResponse.file.toString()
-                      .replace(/\s/g, '')
-                      .replace(/^data:image\/[a-z]+;base64,/, '')
-                    return {
-                      id: imageResponse.id,
-                      url: `data:image/png;base64,${cleanBase64}`
-                    }
-                  }).filter(Boolean)
-                  if (updatedImages && updatedImages.length > 0) {
-                    setCurrentImages(updatedImages)
-                  }
-                }
-              })
-            } else if (uploadResult.type === 'images/createMultipleImages/rejected') {
-              console.error('Error uploading new images:', uploadResult.error)
-              showNotification('Error al subir las nuevas imágenes: ' + uploadResult.error.message, 'error')
-            }
-          })
-        }
+    setLastAction('update')
+    setLastProductId(editingProduct.id)
+    dispatch(updateProduct({ productId: editingProduct.id, data: productData }))
 
-        showNotification('Producto actualizado exitosamente', 'success')
-
-        // Update the product's thumbnail image in local state if needed
-        if (editingProduct.id && (newImages.length > 0 || currentImages.length > 0)) {
-          // Fetch updated images to update thumbnail
-          dispatch(fetchProductImages(editingProduct.id)).then((imagesResult) => {
-            if (imagesResult.type === 'images/fetchProductImages/fulfilled' && imagesResult.payload && imagesResult.payload.length > 0) {
-              const firstImage = imagesResult.payload[0]
-              let imageUrl = null
-              if (typeof firstImage === 'string') {
-                const cleanBase64 = firstImage.replace(/\s/g, '').replace(/^data:image\/[a-z]+;base64,/, '')
-                imageUrl = `data:image/png;base64,${cleanBase64}`
-              }
-              if (imageUrl) {
-                setProductImages(prev => ({
-                  ...prev,
-                  [editingProduct.id]: imageUrl
-                }))
-              }
-            }
-          })
-        }
-        // Redux state is automatically updated by the slice - no need to refetch all products
-
-        // If no new images were uploaded, we're done
-        if (newImages.length === 0) {
-          handleCloseEditModal()
-          setSaving(false)
-        } else {
-          // Wait a moment to show the success message before closing if we uploaded images
-          setTimeout(() => {
-            handleCloseEditModal()
-            setSaving(false)
-          }, 1500)
-        }
-      } else if (updateResult.type === 'products/updateProduct/rejected') {
-        console.error('Error updating product:', updateResult.error)
-        showNotification('Error al actualizar el producto: ' + updateResult.error.message, 'error')
-        setSaving(false)
-      }
-    })
+    if (newImages.length > 0) {
+      setLastImageAction('uploadForUpdated')
+      setLastImageProductId(editingProduct.id)
+      dispatch(createMultipleImages({ files: newImages, productId: editingProduct.id }))
+    }
   }
 
   // Handle deleting an existing image
@@ -450,38 +275,9 @@ export default function AdminProductManagement() {
     }
 
     // Delete image with just the image ID
-    dispatch(deleteImage(imageId)).then((result) => {
-      if (result.type === 'images/deleteImage/fulfilled') {
-        // Get updated images after deletion
-        dispatch(fetchProductImagesWithIds(editingProduct.id)).then((imagesResult) => {
-          if (imagesResult.type === 'images/fetchProductImagesWithIds/fulfilled' && imagesResult.payload) {
-            const updatedImages = imagesResult.payload.map((imageResponse) => {
-              if (!imageResponse || !imageResponse.id || !imageResponse.file) {
-                return null
-              }
-              const cleanBase64 = imageResponse.file.toString()
-                .replace(/\s/g, '')
-                .replace(/^data:image\/[a-z]+;base64,/, '')
-              return {
-                id: imageResponse.id,
-                url: `data:image/png;base64,${cleanBase64}`
-              }
-            }).filter(Boolean)
-            if (updatedImages) {
-              setCurrentImages(updatedImages) // Images already have correct database IDs
-            } else {
-              setCurrentImages([])
-            }
-          } else {
-            setCurrentImages([])
-          }
-        })
-        showNotification('Imagen eliminada exitosamente', 'success')
-      } else if (result.type === 'images/deleteImage/rejected') {
-        console.error('Error deleting image:', result.error)
-        showNotification('Error al eliminar la imagen: ' + result.error.message, 'error')
-      }
-    })
+    setLastImageAction('deleteImage')
+    setLastImageProductId(editingProduct.id)
+    dispatch(deleteImage(imageId))
   }
 
   // Handle removing a new image that hasn't been uploaded yet
@@ -569,69 +365,183 @@ export default function AdminProductManagement() {
       category_id: parseInt(formData.category_id)
     }
 
-    dispatch(createProduct(productData)).then((result) => {
-      if (result.type === 'products/createProduct/fulfilled') {
-        const apiResponse = result.payload
-        const createdProduct = apiResponse?.data || apiResponse
-        console.log('Product creation response:', apiResponse)
-        console.log('Extracted product data:', createdProduct)
-
-        // Upload images if selected
-        if (selectedImages.length > 0 && createdProduct) {
-          const productId = createdProduct.product_id || createdProduct.idProduct || createdProduct.id
-          console.log('Product created:', createdProduct)
-
-          if (productId) {
-            dispatch(createMultipleImages({ files: selectedImages, productId })).then((uploadResult) => {
-              if (uploadResult.type === 'images/createMultipleImages/fulfilled') {
-                console.log('Images uploaded successfully:', uploadResult.payload)
-              } else if (uploadResult.type === 'images/createMultipleImages/rejected') {
-                console.error('Images upload error:', uploadResult.error)
-                showNotification('Producto creado pero error al subir imágenes: ' + uploadResult.error.message, 'error')
-              }
-            })
-          } else {
-            console.error('No product ID found for image upload')
-            showNotification('Producto creado pero no se pudo obtener ID para subir imágenes', 'error')
-          }
-        }
-
-        showNotification('Producto creado exitosamente', 'success')
-        handleCloseAddModal()
-        // Redux state is automatically updated by the slice - no need to refetch all products
-        // Fetch image for the new product to display thumbnail
-        if (createdProduct) {
-          const productId = createdProduct.product_id || createdProduct.idProduct || createdProduct.id
-          if (productId && selectedImages.length > 0) {
-            // Wait a bit for images to be processed, then fetch the first image
-            setTimeout(() => {
-              dispatch(fetchProductImages(productId)).then((imagesResult) => {
-                if (imagesResult.type === 'images/fetchProductImages/fulfilled' && imagesResult.payload && imagesResult.payload.length > 0) {
-                  const firstImage = imagesResult.payload[0]
-                  let imageUrl = null
-                  if (typeof firstImage === 'string') {
-                    const cleanBase64 = firstImage.replace(/\s/g, '').replace(/^data:image\/[a-z]+;base64,/, '')
-                    imageUrl = `data:image/png;base64,${cleanBase64}`
-                  }
-                  if (imageUrl) {
-                    setProductImages(prev => ({
-                      ...prev,
-                      [productId]: imageUrl
-                    }))
-                  }
-                }
-              })
-            }, 500)
-          }
-        }
-        setSaving(false)
-      } else if (result.type === 'products/createProduct/rejected') {
-        console.error('Error creating product:', result.error)
-        showNotification('Error al crear el producto: ' + result.error.message, 'error')
-        setSaving(false)
-      }
+    setCreateDraft({
+      title: productData.title,
+      description: productData.description,
+      categoryId: productData.category_id,
+      price: productData.price,
+      stock: productData.stock,
     })
+
+    setLastAction('create')
+    setLastProductId(null)
+    dispatch(createProduct(productData))
   }
+
+  useEffect(() => {
+    const { pending, error: productsError } = productsState
+    const wasPending = prevProductsPending.current
+
+    if (wasPending && !pending && lastAction) {
+      if (lastAction === 'delete') {
+        if (!productsError) {
+          showNotification('Producto desactivado exitosamente', 'success')
+        } else {
+          showNotification(`Error al desactivar el producto: ${productsError}`, 'error')
+        }
+        setConfirmationModal({
+          isVisible: false,
+          title: '',
+          message: '',
+          productId: null,
+          action: 'delete',
+          product: null
+        })
+        setLastAction(null)
+        setLastProductId(null)
+      }
+
+      if (lastAction === 'update') {
+        if (!productsError) {
+          showNotification('Producto actualizado exitosamente', 'success')
+          if (lastProductId) {
+            setLastImageAction('loadThumbnails')
+            setLastImageProductId(lastProductId)
+            dispatch(fetchProductImages(lastProductId))
+          }
+          handleCloseEditModal()
+          setSaving(false)
+        } else {
+          showNotification('Error al actualizar el producto: ' + productsError, 'error')
+          setSaving(false)
+        }
+        setLastAction(null)
+        setLastProductId(null)
+      }
+
+      if (lastAction === 'create') {
+        if (!productsError) {
+          let createdProduct = null
+          if (createDraft) {
+            createdProduct = products.find(p =>
+              p.nombre === createDraft.title &&
+              p.descripcion === createDraft.description &&
+              (p.categoriaId === createDraft.categoryId || String(p.categoriaId) === String(createDraft.categoryId))
+            )
+          }
+
+          showNotification('Producto creado exitosamente', 'success')
+          handleCloseAddModal()
+          setSaving(false)
+
+          if (createdProduct && selectedImages.length > 0) {
+            setLastImageAction('uploadForCreated')
+            setLastImageProductId(createdProduct.id)
+            dispatch(createMultipleImages({ files: selectedImages, productId: createdProduct.id }))
+          }
+        } else {
+          showNotification('Error al crear el producto: ' + productsError, 'error')
+          setSaving(false)
+        }
+
+        setLastAction(null)
+        setLastProductId(null)
+        setCreateDraft(null)
+      }
+    }
+
+    prevProductsPending.current = pending
+  }, [productsState.pending, productsState.error, lastAction, lastProductId, products, createDraft, selectedImages, dispatch])
+
+  useEffect(() => {
+    const { pending, error: imagesError, images } = imagesState
+    const wasPending = prevImagesPending.current
+
+    if (wasPending && !pending && lastImageAction) {
+      if (lastImageAction === 'loadThumbnails' && lastImageProductId && Array.isArray(images) && images.length > 0) {
+        const firstImage = images[0]
+        let base64 = null
+
+        if (typeof firstImage === 'string') {
+          base64 = firstImage
+        } else if (firstImage && typeof firstImage === 'object') {
+          base64 = firstImage.file || firstImage.data || firstImage.imagen || firstImage.base64 || null
+        }
+
+        if (base64) {
+          const cleanBase64 = base64.toString()
+            .replace(/\s/g, '')
+            .replace(/^data:image\/[a-z]+;base64,/, '')
+          const imageUrl = `data:image/png;base64,${cleanBase64}`
+          setProductImages(prev => ({
+            ...prev,
+            [lastImageProductId]: imageUrl
+          }))
+        }
+        setLastImageAction(null)
+        setLastImageProductId(null)
+      }
+
+      if (lastImageAction === 'loadEditImages') {
+        if (!imagesError && Array.isArray(images)) {
+          const mapped = images.map(imageResponse => {
+            if (!imageResponse || !imageResponse.id || !imageResponse.file) return null
+            const cleanBase64 = imageResponse.file.toString()
+              .replace(/\s/g, '')
+              .replace(/^data:image\/[a-z]+;base64,/, '')
+            return {
+              id: imageResponse.id,
+              url: `data:image/png;base64,${cleanBase64}`,
+            }
+          }).filter(Boolean)
+          setCurrentImages(mapped || [])
+        } else if (imagesError) {
+          showNotification('Error al cargar las imágenes del producto', 'error')
+          setCurrentImages([])
+        }
+        setLastImageAction(null)
+        setLastImageProductId(null)
+      }
+
+      if (lastImageAction === 'uploadForUpdated' && lastImageProductId) {
+        if (imagesError) {
+          showNotification('Error al subir las nuevas imágenes: ' + imagesError, 'error')
+        } else {
+          dispatch(fetchProductImagesWithIds(lastImageProductId))
+          dispatch(fetchProductImages(lastImageProductId))
+        }
+        setLastImageAction(null)
+        setLastImageProductId(null)
+        setNewImages([])
+        setNewImagePreviews([])
+      }
+
+      if (lastImageAction === 'uploadForCreated' && lastImageProductId) {
+        if (imagesError) {
+          showNotification('Producto creado pero error al subir imágenes: ' + imagesError, 'error')
+        } else {
+          dispatch(fetchProductImages(lastImageProductId))
+        }
+        setLastImageAction(null)
+        setLastImageProductId(null)
+        setSelectedImages([])
+        setImagePreviews([])
+      }
+
+      if (lastImageAction === 'deleteImage' && lastImageProductId) {
+        if (!imagesError) {
+          dispatch(fetchProductImagesWithIds(lastImageProductId))
+          showNotification('Imagen eliminada exitosamente', 'success')
+        } else {
+          showNotification('Error al eliminar la imagen: ' + imagesError, 'error')
+        }
+        setLastImageAction(null)
+        setLastImageProductId(null)
+      }
+    }
+
+    prevImagesPending.current = pending
+  }, [imagesState.pending, imagesState.error, imagesState.images, lastImageAction, lastImageProductId, dispatch])
 
   const handleInputChange = (field, value) => {
     // If updating description, enforce 120 char limit and set inline error when limit reached
@@ -772,9 +682,9 @@ export default function AdminProductManagement() {
           <Card key={product.id} className="relative">
             <CardHeader>
               <div className="relative w-full h-48 mb-4 bg-gray-100 rounded-t-lg overflow-hidden">
-                {productImages[product.id] ? (
+                {thumbnailsByProductId[product.id] ? (
                   <img
-                    src={productImages[product.id]}
+                    src={thumbnailsByProductId[product.id]}
                     alt={product.nombre}
                     className="w-full h-full object-cover"
                     onError={(e) => {
@@ -824,6 +734,9 @@ export default function AdminProductManagement() {
                     Categoría: {product.categoria}
                   </span>
                   <div className="flex gap-1">
+                    {!product.active && (
+                      <Badge variant="outline">Inactivo</Badge>
+                    )}
                     <Button
                       size="sm"
                       variant="outline"
@@ -844,7 +757,7 @@ export default function AdminProductManagement() {
                         handleDeleteProduct(product)
                       }}
                     >
-                      {product.stock >= 1 ? 'Desactivar' : 'Eliminar'}
+                      Desactivar
                     </Button>
                   </div>
                 </div>
