@@ -59,6 +59,7 @@ export function normalizeProduct(backendProduct) {
     vegana: text.includes('vegan') || text.includes('vegana') || Object.values(attributes).some(attr => attr.name === 'Vegano' && attr.value === 'true'),
     sinTacc: text.includes('tacc') || text.includes('gluten') || text.includes('celiac') || Object.values(attributes).some(attr => attr.name === 'Sin TACC' && attr.value === 'true'),
     stock: backendProduct.stock || 0,
+    active: backendProduct.active !== false,
     attributes: attributes,
     // Preserve original backend attributes array for UIs that need full attribute objects
     attributesList: backendProduct.attributes && Array.isArray(backendProduct.attributes)
@@ -76,8 +77,9 @@ export function normalizeProduct(backendProduct) {
  * @returns {boolean} True if product is available
  */
 export function isProductAvailable(product, isAdmin = false) {
-  // Admin users can see all products, regular users only see products with stock
-  return isAdmin || product.stock > 0
+  // Admin users can see all products, regular users only see products with stock and activs
+  const isActive = product.active !== false
+  return isAdmin || (isActive && product.stock > 0)
 }
 
 /**

@@ -10,12 +10,13 @@ import {
   selectIsAuthenticated,
   selectLoginTimestamp,
 } from '../redux/slices/user.slice.js'
+import { decrementStock } from '../redux/slices/product.slice.js'
 import Button from './ui/Button.jsx'
 
-export default function AddToCartButton({ 
-  product, 
-  className = '', 
-  size = "default", 
+export default function AddToCartButton({
+  product,
+  className = '',
+  size = "default",
   children,
   disabled = false,
   onNavigate,
@@ -33,7 +34,7 @@ export default function AddToCartButton({
 
   const handleAddToCart = () => {
     if (disabled) return
-    
+
     // Check if user is not authenticated
     if (!isAuthenticated) {
       if (onNavigate) {
@@ -43,26 +44,26 @@ export default function AddToCartButton({
       }
       return
     }
-    
+
     // Check if user is admin (admins can't add to cart)
     if (userRole === 'ADMIN') {
       showError(dispatch, 'Los administradores no pueden agregar productos al carrito.')
       return
     }
-    
+
     // Check if user has USER role
     if (userRole !== 'USER') {
       showError(dispatch, 'Solo los usuarios registrados pueden agregar productos al carrito.')
       return
     }
-    
+
     // Check if login session has expired (15 minutes)
     const remainingTime = getLoginRemainingTime(loginTimestamp)
     if (remainingTime <= 0) {
       showError(dispatch, 'Tu sesión ha expirado. Por favor, inicia sesión nuevamente para continuar comprando.')
       return
     }
-    
+
     if (!currentUser || !currentUser.userId) {
       return
     }
@@ -75,14 +76,23 @@ export default function AddToCartButton({
       dispatch(setCartOwner(currentUser.userId))
     }
 
-    const productWithQuantity = { 
-      ...product, 
+    // Check stock availability
+    // Check stock availability
+    if (product.stock < quantity) {
+      const message = product.stock === 0 ? 'Stock agotado' : `Solo quedan ${product.stock} unidades disponibles.`
+      showError(dispatch, message)
+      return
+    }
+
+    const productWithQuantity = {
+      ...product,
       cantidad: quantity,
       imagen: image || product.imagen || null // Include image data if provided
     }
     dispatch(addItem(productWithQuantity))
+    dispatch(decrementStock({ productId: product.id, quantity }))
     setAdded(true)
-    
+
     // Reset the "added" state after 2 seconds
     setTimeout(() => {
       setAdded(false)
@@ -90,9 +100,9 @@ export default function AddToCartButton({
   }
 
   return (
-    <Button 
-      onClick={handleAddToCart} 
-      className={className} 
+    <Button
+      onClick={handleAddToCart}
+      className={className}
       size={size}
       disabled={disabled || added}
     >

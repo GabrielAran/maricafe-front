@@ -93,9 +93,29 @@ export default function CheckoutPage({ onNavigate }) {
     }
   }, [isAuthenticated, token, visibleCartItems.length, onNavigate, dispatch])
 
+  useEffect(() => {
+    if (!isAuthenticated || !token) return
+
+    if (visibleCartItems.length === 0) {
+      onNavigate && onNavigate('home')
+    }
+  }, [visibleCartItems.length, isAuthenticated, token, onNavigate])
+
   const subtotal = useMemo(() => {
     return visibleCartItems.reduce((acc, item) => acc + item.precio * item.cantidad, 0)
   }, [visibleCartItems])
+
+  const originalSubtotal = useMemo(() => {
+    return visibleCartItems.reduce((acc, item) => {
+      const basePrice = item.precioOriginal ?? item.precio
+      return acc + basePrice * item.cantidad
+    }, 0)
+  }, [visibleCartItems])
+
+  const ahorroTotal = useMemo(() => {
+    const diff = originalSubtotal - subtotal
+    return diff > 0 ? diff : 0
+  }, [originalSubtotal, subtotal])
 
   const handleConfirmOrder = () => {
     if (orderPending) {
@@ -252,6 +272,18 @@ export default function CheckoutPage({ onNavigate }) {
                     }).format(subtotal)}
                   </span>
                 </div>
+                {ahorroTotal > 0 && (
+                  <div className="flex items-center justify-between text-sm text-green-700">
+                    <span>Ahorro</span>
+                    <span className="font-medium">
+                      {new Intl.NumberFormat('es-AR', {
+                        style: 'currency',
+                        currency: 'ARS',
+                        minimumFractionDigits: 0
+                      }).format(ahorroTotal)}
+                    </span>
+                  </div>
+                )}
                 <div className="flex items-center justify-between text-sm">
                   <span>Retiro en local</span>
                   <span className="font-medium text-green-600">Sin cargo</span>
