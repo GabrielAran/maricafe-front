@@ -20,10 +20,11 @@ import {
   fetchAllAttributes, 
   fetchAttributesByCategory 
 } from '../redux/slices/attribute.slice.js'
-import { fetchProductImages, selectThumbnailByProductId } from '../redux/slices/images.slice.js'
+import { fetchProductImages } from '../redux/slices/images.slice.js'
 import { formatPrice } from '../utils/priceHelpers.js'
 import { isProductAvailable } from '../utils/productHelpers.js'
 import { selectActiveProducts } from '../redux/selectors/productSelectors.js'
+import { extractThumbnailUrl } from '../utils/imageHelpers.js'
 
 export default function ProductViewNew({ 
   showFilters = false,
@@ -66,10 +67,9 @@ export default function ProductViewNew({
   // State for managing product quantities
   const [productQuantities, setProductQuantities] = React.useState({})
   
-  // Get thumbnails from Redux state (organized by productId)
-  const thumbnailsByProductId = useSelector(state => state.images.thumbnailsByProductId)
-  const imagesPending = useSelector(state => state.images.pending)
+  // Get images from Redux state (organized by productId)
   const imagesByProductId = useSelector(state => state.images.imagesByProductId)
+  const imagesPending = useSelector(state => state.images.pending)
   
   // Track which products we've already requested images for
   const [requestedProductIds, setRequestedProductIds] = React.useState(new Set())
@@ -78,12 +78,12 @@ export default function ProductViewNew({
   React.useEffect(() => {
     if (!products || products.length === 0) return
     
-    // Find products that need images (don't have thumbnail and haven't been requested)
+    // Find products that need images (don't have images and haven't been requested)
     const productsNeedingImages = products.filter(product => {
       const productId = product.id
+      const hasImages = imagesByProductId[productId] && imagesByProductId[productId].length > 0
       return (
-        !thumbnailsByProductId[productId] && 
-        !imagesByProductId[productId] &&
+        !hasImages &&
         !requestedProductIds.has(productId) &&
         !imagesPending
       )
@@ -96,12 +96,14 @@ export default function ProductViewNew({
         dispatch(fetchProductImages(product.id))
       })
     }
-  }, [products, thumbnailsByProductId, imagesByProductId, requestedProductIds, imagesPending, dispatch])
+  }, [products, imagesByProductId, requestedProductIds, imagesPending, dispatch])
   
-  // Helper function to get image URL for a product
+  // Helper function to get image URL for a product using the selector
   const getProductImageUrl = (productId) => {
-    // Use thumbnail from Redux state (already formatted as data URL)
-    return thumbnailsByProductId[productId] || null
+    const images = imagesByProductId[productId] || []
+    if (images.length === 0) return null
+    // Extract thumbnail from first image (index 0 is always the thumbnail/main image)
+    return extractThumbnailUrl([images[0]])
   }
   
   const hasLoadedCategories = React.useRef(false)

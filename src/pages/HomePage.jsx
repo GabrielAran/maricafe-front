@@ -3,8 +3,9 @@ import { useSelector, useDispatch } from 'react-redux'
 import { Cake, Gift, Users, Heart, ArrowRight } from 'lucide-react'
 import CakeCarousel from '../components/CakeCarousel.jsx'
 import { fetchProducts } from '../redux/slices/product.slice.js'
-import { fetchProductImages, selectThumbnailByProductId } from '../redux/slices/images.slice.js'
+import { fetchProductImages } from '../redux/slices/images.slice.js'
 import { selectIsAdmin } from '../redux/slices/user.slice.js'
+import { extractThumbnailUrl } from '../utils/imageHelpers.js'
 
 export default function HomePage({ onNavigate }) {
   const dispatch = useDispatch()
@@ -14,8 +15,7 @@ export default function HomePage({ onNavigate }) {
   const productsPending = useSelector(state => state.products.pending)
   const isAdminUser = useSelector(selectIsAdmin)
   
-  // Images state - get thumbnails from Redux (organized by productId)
-  const thumbnailsByProductId = useSelector(state => state.images.thumbnailsByProductId)
+  // Images state - get images from Redux (organized by productId)
   const imagesByProductId = useSelector(state => state.images.imagesByProductId)
   const imagesPending = useSelector(state => state.images.pending)
   
@@ -64,25 +64,31 @@ export default function HomePage({ onNavigate }) {
       }
       
       // Transform to cake format (UI-specific transformation)
-      const transformedCakes = filteredCakeProducts.slice(0, 5).map(product => ({
-        id: product.id,
-        name: product.nombre,
-        image: thumbnailsByProductId[product.id] || '/placeholder.jpg',
-        description: product.descripcion || 'Deliciosa torta artesanal'
-      }))
+      const transformedCakes = filteredCakeProducts.slice(0, 5).map(product => {
+        const images = imagesByProductId[product.id] || []
+        // Extract thumbnail from first image (index 0 is always the thumbnail/main image)
+        const thumbnail = images.length > 0 ? extractThumbnailUrl([images[0]]) : null
+        return {
+          id: product.id,
+          name: product.nombre,
+          image: thumbnail || '/placeholder.jpg',
+          description: product.descripcion || 'Deliciosa torta artesanal'
+        }
+      })
       
       setCakeProducts(transformedCakes)
       
       // Fetch images for products that don't have them yet
       filteredCakeProducts.slice(0, 5).forEach(product => {
         const productId = product.id
-        if (!thumbnailsByProductId[productId] && !imagesByProductId[productId] && !requestedProductIds.has(productId) && !imagesPending) {
+        const hasImages = imagesByProductId[productId] && imagesByProductId[productId].length > 0
+        if (!hasImages && !requestedProductIds.has(productId) && !imagesPending) {
           setRequestedProductIds(prev => new Set(prev).add(productId))
           dispatch(fetchProductImages(productId))
         }
       })
     }
-  }, [products, thumbnailsByProductId, imagesByProductId, requestedProductIds, imagesPending, dispatch])
+  }, [products, imagesByProductId, requestedProductIds, imagesPending, dispatch])
 
   // Handle cake click navigation
   const handleCakeClick = (cake) => {
