@@ -364,3 +364,68 @@
 .supports-\[backdrop-filter\]\:bg-background\/60:has([style*="backdrop-filter"]) {
   background-color: hsl(var(--background) / 0.6);
 }
+
+@media print {
+  header,
+  footer {
+    display: none !important;
+  }
+
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+
+  .min-h-screen {
+    min-height: auto;
+  }
+
+  .container {
+    max-width: 900px;
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+
+  /* In the order details page, hide everything except the main grid with the cards */
+  .order-details-page > *:not(.container) {
+    display: none !important;
+  }
+
+  .order-details-page .container > *:not(.order-print-root) {
+    display: none !important;
+  }
+
+  .order-details-page .order-print-root {
+    display: block;
+    gap: 1rem;
+  }
+
+  .order-details-page .order-section-card {
+    page-break-inside: avoid;
+    margin-bottom: 1rem;
+  }
+
+  h1 {
+    font-size: 24pt;
+    line-height: 1.2;
+  }
+
+  h2 {
+    font-size: 18pt;
+    line-height: 1.3;
+  }
+
+  p,
+  span,
+  li {
+    font-size: 11pt;
+    line-height: 1.5;
+  }
+
+  button,
+  a {
+    box-shadow: none !important;
+  }
+}
