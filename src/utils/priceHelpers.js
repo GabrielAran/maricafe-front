@@ -8,11 +8,20 @@
  * @returns {string} Formatted price string
  */
 export function formatPrice(price) {
-  return new Intl.NumberFormat("es-AR", {
-    style: "currency",
-    currency: "ARS",
-    minimumFractionDigits: 0,
-  }).format(price)
+  if (price == null || Number.isNaN(price)) return ''
+
+  // Redondear a 2 decimales
+  const rounded = Math.round(Number(price) * 100) / 100
+
+  // Si no hay parte decimal (por ejemplo 100.00), mostrar sin decimales
+  const hasDecimals = rounded % 1 !== 0
+
+  return new Intl.NumberFormat('es-AR', {
+    style: 'currency',
+    currency: 'ARS',
+    minimumFractionDigits: hasDecimals ? 2 : 0,
+    maximumFractionDigits: 2,
+  }).format(rounded)
 }
 
 /**
