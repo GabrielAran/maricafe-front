@@ -59,13 +59,7 @@ export default function CheckoutPage({ onNavigate }) {
       setHasSubmittedOrder(false)
       showSuccess(dispatch, '¡Orden creada exitosamente!')
       dispatch(clearCart())
-
-      const newOrderId = currentOrder?.order_id || currentOrder?.id
-      if (newOrderId) {
-        onNavigate && onNavigate('order-details', { orderId: newOrderId })
-      } else {
-        onNavigate && onNavigate('profile')
-      }
+      onNavigate && onNavigate('profile')
     }
   }, [orderPending, orderError, currentOrder, dispatch, onNavigate])
 
@@ -96,7 +90,7 @@ export default function CheckoutPage({ onNavigate }) {
   useEffect(() => {
     if (!isAuthenticated || !token) return
 
-    if (visibleCartItems.length === 0) {
+    if (visibleCartItems.length === 0 && !hasHandledOrderSuccess.current && !hasSubmittedOrder) {
       onNavigate && onNavigate('home')
     }
   }, [visibleCartItems.length, isAuthenticated, token, onNavigate])
