@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
-import { ArrowLeft, Package, Calendar, DollarSign, ShoppingBag, Clock, CheckCircle } from 'lucide-react'
+import { ArrowLeft, Package, Calendar, DollarSign, ShoppingBag, Clock, CheckCircle, Star } from 'lucide-react'
 import { fetchUserOrderById } from '../redux/slices/order.slice.js'
 import { 
   selectCurrentUser, 
@@ -145,7 +145,7 @@ export default function OrderDetailsPage({ onNavigate, orderId }) {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background order-details-page">
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8">
@@ -161,12 +161,19 @@ export default function OrderDetailsPage({ onNavigate, orderId }) {
           <p className="text-muted-foreground">
             Información completa de tu orden #{order.order_id}
           </p>
+          <button
+            type="button"
+            onClick={() => window.print()}
+            className="mt-4 inline-flex items-center px-4 py-2 rounded-full text-sm font-semibold text-white shadow-md hover:shadow-lg transition-all duration-200 bg-gradient-to-r from-pink-500 via-purple-500 to-blue-500 hover:from-pink-600 hover:via-purple-600 hover:to-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-300"
+          >
+            Descargar PDF
+          </button>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 order-print-root">
           {/* Order Information */}
           <div className="lg:col-span-2 space-y-6">
-            <div className="bg-card rounded-lg border p-6">
+            <div className="bg-card rounded-lg border p-6 order-section-card">
               <h2 className="text-xl font-semibold flex items-center gap-2 mb-6">
                 <Package className="h-5 w-5" />
                 Información de la Orden
@@ -215,7 +222,7 @@ export default function OrderDetailsPage({ onNavigate, orderId }) {
             </div>
 
             {/* Order Items */}
-            <div className="bg-card rounded-lg border p-6">
+            <div className="bg-card rounded-lg border p-6 order-section-card">
               <h2 className="text-xl font-semibold flex items-center gap-2 mb-6">
                 <ShoppingBag className="h-5 w-5" />
                 Productos ({order.items?.length || 0})
@@ -260,7 +267,7 @@ export default function OrderDetailsPage({ onNavigate, orderId }) {
 
           {/* Order Summary */}
           <div className="lg:col-span-1">
-            <div className="bg-card rounded-lg border p-6 sticky top-8">
+            <div className="bg-card rounded-lg border p-6 sticky top-8 order-section-card">
               <h2 className="text-xl font-semibold flex items-center gap-2 mb-6">
                 <DollarSign className="h-5 w-5" />
                 Resumen
@@ -285,6 +292,17 @@ export default function OrderDetailsPage({ onNavigate, orderId }) {
                     <span className="text-xl font-bold text-primary">
                       {formatearPrecio(order.total_price)}
                     </span>
+                  </div>
+                  <div className="mt-6">
+                    <a
+                      href="https://www.google.com/search?sca_esv=6036db4e80af994f&rlz=1C5CHFA_enAR1076AR1084&sxsrf=AE3TifMADxXRcsJKrzzXjcoib5I2lipOwg:1764264218295&q=maricafe&si=AMgyJEtREmoPL4P1I5IDCfuA8gybfVI2d5Uj7QMwYCZHKDZ-EwpCcgqOGKt3E7TPBydbXgLWvtVmiK-BXD_8hOTErnhK3VCEPRc4Prrh_gy4vVs6NthKopFZsOGKtcPookfI3bQ289VdgsKzjBYi57miczg0ZW7zgbHRgqs_QI-ymkm5A85H9qs%3D&sa=X&ved=2ahUKEwjH2pWw7JKRAxVUHLkGHTKHMbcQrrQLegQIHRAA&biw=1440&bih=748&dpr=2#lrd=0x95bccb62920f98fb:0xd36865d11275c69e,3"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-4 inline-flex w-full items-center justify-center px-4 py-2 rounded-full text-sm font-semibold text-white shadow-md hover:shadow-lg transition-all duration-200 bg-gradient-to-r from-pink-500 via-purple-500 to-blue-500 hover:from-pink-600 hover:via-purple-600 hover:to-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-300"
+                   >
+                      <Star className="w-4 h-4 mr-2" />
+                      Dejanos tu reseña en Google
+                    </a>
                   </div>
                 </div>
               </div>

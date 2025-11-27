@@ -116,3 +116,34 @@ export function isGlutenFree(text) {
   return glutenFreeKeywords.some(keyword => lowerText.includes(keyword))
 }
 
+/**
+ * Adjusts product stock based on cart content
+ * Reduces the displayed stock by the quantity of items in the cart
+ * 
+ * @param {Object|Array|Object} data - Product data (single item, array, or paginated response)
+ * @param {Array} cart - Array of cart items with id and cantidad properties
+ * @returns {Object|Array|Object} Adjusted product data with updated stock values
+ */
+export function adjustStock(data, cart) {
+  if (!data || !cart) return data
+  const cartMap = new Map(cart.map(c => [c.id, c.cantidad]))
+
+  const processItem = (item) => {
+    if (!item) return item
+    const qty = cartMap.get(item.product_id)
+    if (qty) {
+      return { ...item, stock: Math.max(0, item.stock - qty) }
+    }
+    return item
+  }
+
+  if (Array.isArray(data)) {
+    return data.map(processItem)
+  }
+  if (data.content && Array.isArray(data.content)) {
+    return { ...data, content: data.content.map(processItem) }
+  }
+  // Single item
+  return processItem(data)
+}
+
