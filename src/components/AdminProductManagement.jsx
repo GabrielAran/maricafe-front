@@ -16,12 +16,41 @@ import ConfirmationModal from './ui/ConfirmationModal.jsx'
 export default function AdminProductManagement() {
   const dispatch = useDispatch()
   const categoryItems = useSelector(selectCategoryCategories)
-  const products = useSelector(state => state.products.products)
-  const productsState = useSelector(state => state.products)
-  const imagesState = useSelector(state => state.images)
-  const loading = productsState.pending
-  const error = productsState.error
-  const isAdminUser = useSelector(selectIsAdmin)
+  // Safely access Redux state with proper null checks
+  const products = useSelector(state => {
+    try {
+      return state?.products?.products || []
+    } catch (error) {
+      console.error('Error accessing products state:', error)
+      return []
+    }
+  })
+  const productsState = useSelector(state => {
+    try {
+      return state?.products || { pending: false, error: null }
+    } catch (error) {
+      console.error('Error accessing productsState:', error)
+      return { pending: false, error: null }
+    }
+  })
+  const imagesState = useSelector(state => {
+    try {
+      return state?.images || { pending: false, error: null, imagesByProductId: {} }
+    } catch (error) {
+      console.error('Error accessing imagesState:', error)
+      return { pending: false, error: null, imagesByProductId: {} }
+    }
+  })
+  const loading = productsState?.pending || false
+  const error = productsState?.error || null
+  const isAdminUser = useSelector(state => {
+    try {
+      return selectIsAdmin(state)
+    } catch (error) {
+      console.error('Error accessing admin state:', error)
+      return false
+    }
+  })
 
   const [editingProduct, setEditingProduct] = useState(null)
   const [showEditModal, setShowEditModal] = useState(false)
@@ -67,7 +96,15 @@ export default function AdminProductManagement() {
   const [searchTerm, setSearchTerm] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('all')
 
-  const imagesByProductId = useSelector(state => state.images.imagesByProductId || {})
+  // Safely get imagesByProductId with proper null checks
+  const imagesByProductId = useSelector(state => {
+    try {
+      return state?.images?.imagesByProductId || {}
+    } catch (error) {
+      console.error('Error accessing images state:', error)
+      return {}
+    }
+  })
   const hasInitialized = useRef(false)
 
   const [lastAction, setLastAction] = useState(null) // 'create' | 'update' | 'delete' | 'activate'
@@ -87,10 +124,20 @@ export default function AdminProductManagement() {
   const productsWithImagesRef = useRef(new Set())
 
   useEffect(() => {
-    if (!hasInitialized.current && isAdminUser) {
-      hasInitialized.current = true
-      dispatch(fetchProducts())
-      dispatch(fetchCategories())
+    // Only initialize if user is admin and we haven't initialized yet
+    // Also check that isAdminUser is not undefined (wait for auth state to be ready)
+    if (!hasInitialized.current && isAdminUser !== undefined) {
+      if (isAdminUser) {
+        hasInitialized.current = true
+        try {
+          dispatch(fetchProducts())
+          dispatch(fetchCategories())
+        } catch (error) {
+          console.error('Error initializing product management:', error)
+          // Reset initialization flag so we can retry
+          hasInitialized.current = false
+        }
+      }
     }
   }, [isAdminUser, dispatch])
 
@@ -107,42 +154,58 @@ export default function AdminProductManagement() {
   // Each product's images are fetched once and cached in Redux
   // Only depends on products array - checks images state inside effect
   useEffect(() => {
-    if (!products || products.length === 0) return
+    // Guard against undefined/null products or empty array
+    if (!products || !Array.isArray(products) || products.length === 0) return
 
-    // Check which products have images
-    const currentImages = imagesByProductId || {}
+    // Ensure imagesByProductId is a valid object
+    const currentImages = imagesByProductId && typeof imagesByProductId === 'object' ? imagesByProductId : {}
     
-    products.forEach((product) => {
-      const productId = product?.id
-      if (!productId) return
+    try {
+      products.forEach((product) => {
+        // Validate product structure
+        if (!product || typeof product !== 'object') return
+        
+        const productId = product?.id
+        if (!productId || (typeof productId !== 'number' && typeof productId !== 'string')) {
+          return
+        }
 
-      // Check if we already have images for this product
-      // First image (index 0) is the thumbnail
-      const productImages = currentImages[productId]
-      const hasImages = productImages && Array.isArray(productImages) && productImages.length > 0
-      
-      // Update our tracking
-      if (hasImages) {
-        productsWithImagesRef.current.add(productId)
-        requestedProductIdsRef.current.delete(productId)
-        return
-      }
+        // Check if we already have images for this product
+        // First image (index 0) is the thumbnail
+        const productImages = currentImages[productId]
+        const hasImages = productImages && Array.isArray(productImages) && productImages.length > 0
+        
+        // Update our tracking
+        if (hasImages) {
+          productsWithImagesRef.current.add(productId)
+          requestedProductIdsRef.current.delete(productId)
+          return
+        }
 
-      // If we've already requested images for this product, skip
-      if (requestedProductIdsRef.current.has(productId)) return
-      
-      // If we previously had images but don't now, remove from tracking
-      if (productsWithImagesRef.current.has(productId)) {
-        productsWithImagesRef.current.delete(productId)
-      }
+        // If we've already requested images for this product, skip
+        if (requestedProductIdsRef.current.has(productId)) return
+        
+        // If we previously had images but don't now, remove from tracking
+        if (productsWithImagesRef.current.has(productId)) {
+          productsWithImagesRef.current.delete(productId)
+        }
 
-      // Mark as requested and fetch
-      requestedProductIdsRef.current.add(productId)
-      dispatch(fetchProductImages(productId))
-    })
-    // Only depend on products - images state is checked inside the effect
+        // Mark as requested and fetch
+        requestedProductIdsRef.current.add(productId)
+        try {
+          dispatch(fetchProductImages(productId))
+        } catch (error) {
+          console.error(`Error fetching images for product ${productId}:`, error)
+          // Remove from requested set so we can retry later
+          requestedProductIdsRef.current.delete(productId)
+        }
+      })
+    } catch (error) {
+      console.error('Error in image fetching effect:', error)
+    }
+    // Include imagesByProductId in dependencies to react to image state changes
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [products, dispatch])
+  }, [products, imagesByProductId, dispatch])
 
 
   const handleAddProduct = () => {
@@ -784,12 +847,26 @@ export default function AdminProductManagement() {
     }))
   }
 
-  if (!isAdminUser) {
+  // Wait for auth state to be determined before showing access denied
+  // If isAdminUser is undefined, it means auth state is still loading
+  if (isAdminUser === false) {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="text-center">
           <h2 className="text-2xl font-bold text-destructive">Acceso Denegado</h2>
           <p className="text-muted-foreground">Solo los administradores pueden acceder a esta sección.</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Show loading while auth state is being determined
+  if (isAdminUser === undefined) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-2 text-muted-foreground">Verificando acceso...</p>
         </div>
       </div>
     )
@@ -823,18 +900,30 @@ export default function AdminProductManagement() {
   // No need for frontend filtering since the backend handles role-based logic
   // Filter products based on search term and category
   const filteredProducts = useMemo(() => {
-    return products.filter(product => {
-      // Search filter
-      const matchesSearch = searchTerm === '' ||
-        (product.nombre || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (product.descripcion || '').toLowerCase().includes(searchTerm.toLowerCase())
+    // Ensure products is an array before filtering
+    if (!Array.isArray(products)) {
+      return []
+    }
+    try {
+      return products.filter(product => {
+        // Validate product structure
+        if (!product || typeof product !== 'object') return false
+        
+        // Search filter
+        const matchesSearch = searchTerm === '' ||
+          (product.nombre || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+          (product.descripcion || '').toLowerCase().includes(searchTerm.toLowerCase())
 
-      // Category filter
-      const matchesCategory = categoryFilter === 'all' ||
-        String(product.categoriaId || product.category?.category_id) === String(categoryFilter)
+        // Category filter
+        const matchesCategory = categoryFilter === 'all' ||
+          String(product.categoriaId || product.category?.category_id) === String(categoryFilter)
 
-      return matchesSearch && matchesCategory
-    })
+        return matchesSearch && matchesCategory
+      })
+    } catch (error) {
+      console.error('Error filtering products:', error)
+      return []
+    }
   }, [products, searchTerm, categoryFilter])
 
   return (
@@ -892,23 +981,36 @@ export default function AdminProductManagement() {
           <Card key={product.id} className="relative">
             <CardHeader>
               <div className="relative w-full h-48 mb-4 bg-gray-100 rounded-t-lg overflow-hidden">
-                {imagesByProductId[product.id] && imagesByProductId[product.id].length > 0 ? (
-                  <img
-                    src={extractThumbnailUrl([imagesByProductId[product.id][0]])}
-                    alt={product.nombre}
-                    className="w-full h-full object-cover"
-                    onError={(e) => {
-                      console.error('Error loading image for product:', product.id)
-                      e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjIwMCIgaGVpZ2h0PSIyMDAiIGZpbGw9IiNFNUU3RUIiLz48cGF0aCBkPSJNODAgOTBIMTIwVjExMEg4MFY5MFoiIGZpbGw9IiM5Q0EzQUYiLz48L3N2Zz4=' // Placeholder SVG
-                    }}
-                  />
-                ) : (
-                  <div className="flex items-center justify-center w-full h-full">
-                    <svg className="w-12 h-12 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                    </svg>
-                  </div>
-                )}
+                {(() => {
+                  try {
+                    const productImages = imagesByProductId && imagesByProductId[product?.id]
+                    if (productImages && Array.isArray(productImages) && productImages.length > 0 && productImages[0]) {
+                      const thumbnailUrl = extractThumbnailUrl([productImages[0]])
+                      if (thumbnailUrl) {
+                        return (
+                          <img
+                            src={thumbnailUrl}
+                            alt={product.nombre || 'Product image'}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              console.error('Error loading image for product:', product.id)
+                              e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjIwMCIgaGVpZ2h0PSIyMDAiIGZpbGw9IiNFNUU3RUIiLz48cGF0aCBkPSJNODAgOTBIMTIwVjExMEg4MFY5MFoiIGZpbGw9IiM5Q0EzQUYiLz48L3N2Zz4=' // Placeholder SVG
+                            }}
+                          />
+                        )
+                      }
+                    }
+                  } catch (error) {
+                    console.error('Error rendering product image:', error)
+                  }
+                  return (
+                    <div className="flex items-center justify-center w-full h-full">
+                      <svg className="w-12 h-12 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                    </div>
+                  )
+                })()}
               </div>
               <CardTitle className="flex items-start justify-between gap-3">
                 {/* Allow product names to wrap to multiple lines and prevent
