@@ -3,6 +3,30 @@ import { api } from '../api/axiosInstance'
 import { buildAuthHeaders } from './user.slice'
 import { normalizeProduct } from '../../utils/productHelpers.js'
 
+// Helper to adjust stock based on cart content
+const adjustStock = (data, cart) => {
+  if (!data || !cart) return data
+  const cartMap = new Map(cart.map(c => [c.id, c.cantidad]))
+
+  const processItem = (item) => {
+    if (!item) return item
+    const qty = cartMap.get(item.product_id)
+    if (qty) {
+      return { ...item, stock: Math.max(0, item.stock - qty) }
+    }
+    return item
+  }
+
+  if (Array.isArray(data)) {
+    return data.map(processItem)
+  }
+  if (data.content && Array.isArray(data.content)) {
+    return { ...data, content: data.content.map(processItem) }
+  }
+  // Single item
+  return processItem(data)
+}
+
 // 3.8 GET /products?sort=price,asc|desc
 export const fetchProducts = createAsyncThunk(
   'products/fetchProducts',
@@ -15,7 +39,7 @@ export const fetchProducts = createAsyncThunk(
     const response = await api.get(url, {
       headers: buildAuthHeaders(getState()),
     })
-    return response.data
+    return adjustStock(response.data, getState().cart.cart)
   }
 )
 
@@ -26,7 +50,7 @@ export const fetchProductById = createAsyncThunk(
     const response = await api.get(`/products/${productId}`, {
       headers: buildAuthHeaders(getState()),
     })
-    return response.data
+    return adjustStock(response.data, getState().cart.cart)
   }
 )
 
@@ -44,7 +68,7 @@ export const fetchProductsByCategory = createAsyncThunk(
     const response = await api.get(url, {
       headers: buildAuthHeaders(getState()),
     })
-    return response.data
+    return adjustStock(response.data, getState().cart.cart)
   }
 )
 
@@ -61,7 +85,7 @@ export const fetchProductsFilteredByPrice = createAsyncThunk(
     const response = await api.get(url, {
       headers: buildAuthHeaders(getState()),
     })
-    return response.data
+    return adjustStock(response.data, getState().cart.cart)
   }
 )
 
@@ -78,7 +102,7 @@ export const fetchProductsByAttributes = createAsyncThunk(
     const response = await api.get(url, {
       headers: buildAuthHeaders(getState()),
     })
-    return response.data
+    return adjustStock(response.data, getState().cart.cart)
   }
 )
 
@@ -96,7 +120,7 @@ export const fetchProductsWithAttributes = createAsyncThunk(
     const response = await api.get(url, {
       headers: buildAuthHeaders(getState()),
     })
-    return response.data
+    return adjustStock(response.data, getState().cart.cart)
   }
 )
 
@@ -113,7 +137,7 @@ export const fetchProductsFilteredByAttributes = createAsyncThunk(
     const response = await api.get(url, {
       headers: buildAuthHeaders(getState()),
     })
-    return response.data
+    return adjustStock(response.data, getState().cart.cart)
   }
 )
 
@@ -160,7 +184,28 @@ const initialState = {
 const productSlice = createSlice({
   name: 'products',
   initialState,
-  reducers: {},
+  reducers: {
+    decrementStock: (state, action) => {
+      const { productId, quantity } = action.payload
+      const product = state.products.find((p) => p.id === productId)
+      if (product) {
+        product.stock = Math.max(0, product.stock - quantity)
+      }
+      if (state.currentItem && state.currentItem.id === productId) {
+        state.currentItem.stock = Math.max(0, state.currentItem.stock - quantity)
+      }
+    },
+    incrementStock: (state, action) => {
+      const { productId, quantity } = action.payload
+      const product = state.products.find((p) => p.id === productId)
+      if (product) {
+        product.stock += quantity
+      }
+      if (state.currentItem && state.currentItem.id === productId) {
+        state.currentItem.stock += quantity
+      }
+    },
+  },
   extraReducers: (builder) => {
     // List / basic fetch
     builder
@@ -348,6 +393,8 @@ const productSlice = createSlice({
       })
   },
 })
+
+export const { decrementStock, incrementStock } = productSlice.actions
 
 export default productSlice.reducer
 

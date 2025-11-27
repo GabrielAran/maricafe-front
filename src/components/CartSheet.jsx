@@ -2,37 +2,38 @@ import React, { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useSelector, useDispatch } from 'react-redux'
 import { ShoppingCart, Plus, Minus, Trash2, X } from 'lucide-react'
-import { 
-  updateQuantity, 
-  removeItem, 
+import {
+  updateQuantity,
+  removeItem,
   clearCart,
   selectCart,
   selectCartTotal,
   selectCartItemCount,
   selectCartOwnerUserId,
 } from '../redux/slices/cartSlice.js'
-import { 
-  selectCurrentUser, 
-  selectToken, 
-  selectIsAuthenticated 
+import {
+  selectCurrentUser,
+  selectToken,
+  selectIsAuthenticated
 } from '../redux/slices/user.slice.js'
+import { incrementStock, decrementStock } from '../redux/slices/product.slice.js'
 import { showError } from '../utils/toastHelper.js'
 import Button from './ui/Button.jsx'
 
 export default function CartSheet({ onNavigate }) {
   const dispatch = useDispatch()
-  
+
   // Redux state - Cart
   const cartItems = useSelector(selectCart)
   const cartTotal = useSelector(selectCartTotal)
   const cartItemCount = useSelector(selectCartItemCount)
   const cartOwnerUserId = useSelector(selectCartOwnerUserId)
-  
+
   // Redux state - Auth
   const currentUser = useSelector(selectCurrentUser)
   const token = useSelector(selectToken)
   const isAuthenticated = useSelector(selectIsAuthenticated)
-  
+
   // UI state
   const [isOpen, setIsOpen] = useState(false)
 
@@ -60,14 +61,31 @@ export default function CartSheet({ onNavigate }) {
       // Don't allow quantity below 1
       return
     }
+    const diff = cantidad - item.cantidad
+
+    // Dispatch stock update first
+    if (diff > 0) {
+      dispatch(decrementStock({ productId: id, quantity: diff }))
+    } else if (diff < 0) {
+      dispatch(incrementStock({ productId: id, quantity: Math.abs(diff) }))
+    }
+
     dispatch(updateQuantity({ id, cantidad }))
   }
 
   const handleRemoveItem = (id) => {
+    const item = cartItems.find(item => item.id === id)
+    if (item) {
+      dispatch(incrementStock({ productId: id, quantity: item.cantidad }))
+    }
     dispatch(removeItem(id))
   }
 
   const handleClearCart = () => {
+    // Restore stock for all items
+    cartItems.forEach(item => {
+      dispatch(incrementStock({ productId: item.id, quantity: item.cantidad }))
+    })
     dispatch(clearCart())
   }
 
@@ -98,19 +116,19 @@ export default function CartSheet({ onNavigate }) {
       onNavigate && onNavigate('login')
       return
     }
-    
+
     // Check if user is admin (admins can't access cart)
     if (currentUser?.role === 'ADMIN') {
       showError(dispatch, 'Los administradores no pueden acceder al carrito de compras.')
       return
     }
-    
+
     // Check if user has USER role
     if (currentUser?.role !== 'USER') {
       showError(dispatch, 'Solo los usuarios registrados pueden acceder al carrito de compras.')
       return
     }
-    
+
     // Open cart for authenticated USER
     setIsOpen(true)
   }
@@ -118,7 +136,7 @@ export default function CartSheet({ onNavigate }) {
   return (
     <>
       {/* Cart Button */}
-      <button 
+      <button
         className="relative p-2 text-foreground hover:text-primary transition-colors"
         onClick={handleCartClick}
       >
@@ -132,7 +150,7 @@ export default function CartSheet({ onNavigate }) {
 
       {/* Cart Modal */}
       {isOpen && createPortal(
-        <div 
+        <div
           className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
           style={{
             position: 'fixed',
@@ -144,13 +162,13 @@ export default function CartSheet({ onNavigate }) {
           }}
         >
           {/* Backdrop */}
-          <div 
+          <div
             className="absolute inset-0 bg-black/50 backdrop-blur-sm"
             onClick={() => setIsOpen(false)}
           />
-          
+
           {/* Modal */}
-          <div 
+          <div
             className="relative bg-background border rounded-lg shadow-2xl w-full max-w-lg flex flex-col overflow-hidden"
             style={{ maxHeight: 'calc(100vh - 2rem)' }}
           >
@@ -160,7 +178,7 @@ export default function CartSheet({ onNavigate }) {
                 <ShoppingCart className="h-5 w-5" />
                 <h2 className="text-lg font-semibold">Tu Carrito ({visibleCartItemCount})</h2>
               </div>
-              <button 
+              <button
                 onClick={() => setIsOpen(false)}
                 className="p-2 hover:bg-muted rounded-lg transition-colors"
               >
@@ -170,7 +188,7 @@ export default function CartSheet({ onNavigate }) {
 
             {/* Content */}
             <div className="flex-1 overflow-hidden flex flex-col">
-              
+
               {visibleCartItems.length === 0 ? (
                 <div className="flex-1 flex flex-col items-center justify-center space-y-4 p-8 min-h-0">
                   <ShoppingCart className="h-16 w-16 text-muted-foreground" />
@@ -254,8 +272,8 @@ export default function CartSheet({ onNavigate }) {
                     </div>
 
                     <div className="space-y-2">
-                      <Button 
-                        className="w-full" 
+                      <Button
+                        className="w-full"
                         size="lg"
                         onClick={handleCheckoutClick}
                       >
