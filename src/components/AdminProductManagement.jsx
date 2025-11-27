@@ -6,6 +6,7 @@ import { fetchProducts, createProduct, updateProduct, deleteProduct, activatePro
 import { fetchProductImages, fetchProductImagesWithIds, createMultipleImages, deleteImage } from '../redux/slices/images.slice.js'
 import { selectIsAdmin } from '../redux/slices/user.slice.js'
 import { formatPrice } from '../utils/priceHelpers.js'
+import { extractThumbnailUrl } from '../utils/imageHelpers.js'
 import { Card, CardContent, CardHeader, CardTitle } from './ui/Card.jsx'
 import Button from './ui/Button.jsx'
 import Badge from './ui/Badge.jsx'
@@ -66,7 +67,6 @@ export default function AdminProductManagement() {
   const [searchTerm, setSearchTerm] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('all')
 
-  const thumbnailsByProductId = useSelector(state => state.images.thumbnailsByProductId || {})
   const imagesByProductId = useSelector(state => state.images.imagesByProductId || {})
   const hasInitialized = useRef(false)
 
@@ -109,8 +109,7 @@ export default function AdminProductManagement() {
   useEffect(() => {
     if (!products || products.length === 0) return
 
-    // Update tracking of which products have images
-    const currentThumbnails = thumbnailsByProductId || {}
+    // Check which products have images
     const currentImages = imagesByProductId || {}
     
     products.forEach((product) => {
@@ -118,11 +117,12 @@ export default function AdminProductManagement() {
       if (!productId) return
 
       // Check if we already have images for this product
-      const hasThumbnail = currentThumbnails[productId]
-      const hasImages = currentImages[productId] && Array.isArray(currentImages[productId]) && currentImages[productId].length > 0
+      // First image (index 0) is the thumbnail
+      const productImages = currentImages[productId]
+      const hasImages = productImages && Array.isArray(productImages) && productImages.length > 0
       
       // Update our tracking
-      if (hasThumbnail || hasImages) {
+      if (hasImages) {
         productsWithImagesRef.current.add(productId)
         requestedProductIdsRef.current.delete(productId)
         return
@@ -892,9 +892,9 @@ export default function AdminProductManagement() {
           <Card key={product.id} className="relative">
             <CardHeader>
               <div className="relative w-full h-48 mb-4 bg-gray-100 rounded-t-lg overflow-hidden">
-                {thumbnailsByProductId[product.id] ? (
+                {imagesByProductId[product.id] && imagesByProductId[product.id].length > 0 ? (
                   <img
-                    src={thumbnailsByProductId[product.id]}
+                    src={extractThumbnailUrl([imagesByProductId[product.id][0]])}
                     alt={product.nombre}
                     className="w-full h-full object-cover"
                     onError={(e) => {

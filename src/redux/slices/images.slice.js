@@ -77,11 +77,9 @@ export const deleteImage = createAsyncThunk(
 const initialState = {
   // Store images organized by productId
   // Format: { [productId]: [base64String1, base64String2, ...] }
-  // Images are sorted by imageOrder from backend (0 = main image, 1+ = additional)
+  // Images are sorted by imageOrder from backend (0 = main image/thumbnail, 1+ = additional)
+  // The first image (index 0) is always the thumbnail/main image
   imagesByProductId: {},
-  // Quick access to thumbnail (main image) for each product
-  // Format: { [productId]: "data:image/png;base64,..." }
-  thumbnailsByProductId: {},
   pending: false,
   error: null,
 }
@@ -104,16 +102,8 @@ const imagesSlice = createSlice({
         if (productId != null) {
           const images = Array.isArray(action.payload) ? action.payload : []
           // Store images by productId (backend returns them sorted by imageOrder)
+          // First image (index 0) is the thumbnail/main image
           state.imagesByProductId[productId] = images
-          
-          // Extract thumbnail (first image, which has imageOrder = 0 = main image)
-          const thumbnailUrl = extractThumbnailUrl(images)
-          if (thumbnailUrl) {
-            state.thumbnailsByProductId[productId] = thumbnailUrl
-          } else {
-            // Remove thumbnail if no images
-            delete state.thumbnailsByProductId[productId]
-          }
         }
       })
       .addCase(fetchProductImages.rejected, (state, action) => {
@@ -134,16 +124,8 @@ const imagesSlice = createSlice({
         if (productId != null) {
           const images = Array.isArray(action.payload) ? action.payload : []
           // Store images by productId (backend returns them sorted by imageOrder)
+          // First image (index 0) is the thumbnail/main image
           state.imagesByProductId[productId] = images
-          
-          // Extract thumbnail (first image, which has imageOrder = 0 = main image)
-          const thumbnailUrl = extractThumbnailUrl(images)
-          if (thumbnailUrl) {
-            state.thumbnailsByProductId[productId] = thumbnailUrl
-          } else {
-            // Remove thumbnail if no images
-            delete state.thumbnailsByProductId[productId]
-          }
         }
       })
       .addCase(fetchProductImagesWithIds.rejected, (state, action) => {
@@ -191,32 +173,33 @@ const imagesSlice = createSlice({
       })
       .addCase(deleteImage.fulfilled, (state, action) => {
         state.pending = false
-        // Remove the deleted image from all product image arrays
+        // Remove the deleted image from product image arrays
         const imageId = action.payload.imageId
         
-        // Iterate through all products and remove the image with matching ID
-        Object.keys(state.imagesByProductId).forEach(productId => {
+        // Find and update the product that has this image
+        for (const productId in state.imagesByProductId) {
           const images = state.imagesByProductId[productId]
           if (Array.isArray(images)) {
-            const filteredImages = images.filter((item) => {
-              // Handle both ImageResponse format {id, file} and simple string format
-              if (typeof item === 'object' && item.id) {
-                return item.id !== imageId
-              }
-              return true // Keep non-object images (base64 strings) - they don't have IDs
-            })
+            // Check if this product has the image we're deleting
+            const hasImage = images.some(item => 
+              typeof item === 'object' && item.id && item.id === imageId
+            )
             
-            state.imagesByProductId[productId] = filteredImages
-            
-            // Update thumbnail if needed (first image after deletion)
-            const thumbnailUrl = extractThumbnailUrl(filteredImages)
-            if (thumbnailUrl) {
-              state.thumbnailsByProductId[productId] = thumbnailUrl
-            } else {
-              delete state.thumbnailsByProductId[productId]
+            if (hasImage) {
+              // Filter out the deleted image
+              const filteredImages = images.filter((item) => {
+                if (typeof item === 'object' && item.id) {
+                  return item.id !== imageId
+                }
+                return true // Keep non-object images (base64 strings) - they don't have IDs
+              })
+              
+              state.imagesByProductId[productId] = filteredImages
+              // First image (index 0) is automatically the new thumbnail
+              break // Found and updated, no need to continue
             }
           }
-        })
+        }
       })
       .addCase(deleteImage.rejected, (state, action) => {
         state.pending = false
@@ -227,11 +210,16 @@ const imagesSlice = createSlice({
 
 export default imagesSlice.reducer
 
-// Selector to get thumbnail (main image) for a product
-export const selectThumbnailByProductId = (state, productId) =>
-  (state.images.thumbnailsByProductId && state.images.thumbnailsByProductId[productId]) || null
-
 // Selector to get all images for a product
 export const selectImagesByProductId = (state, productId) =>
   (state.images.imagesByProductId && state.images.imagesByProductId[productId]) || []
+
+// Selector to get thumbnail (main image) for a product - derived from first image in array
+export const selectThumbnailByProductId = (state, productId) => {
+  const images = selectImagesByProductId(state, productId)
+  if (!Array.isArray(images) || images.length === 0) return null
+  
+  // First image (index 0) is always the thumbnail/main image
+  return extractThumbnailUrl([images[0]])
+}
 
