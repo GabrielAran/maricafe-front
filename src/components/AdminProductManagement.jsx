@@ -700,6 +700,31 @@ export default function AdminProductManagement() {
       return
     }
 
+    // Limitar el precio a máximo dos decimales
+    if (field === 'price') {
+      if (typeof value === 'string') {
+        // Reemplazar coma por punto para decimal
+        let normalized = value.replace(',', '.')
+
+        // Eliminar caracteres que no sean dígitos o punto
+        normalized = normalized.replace(/[^0-9.]/g, '')
+
+        // Si hay más de un punto, conservar solo el primero
+        const parts = normalized.split('.')
+        if (parts.length > 2) {
+          normalized = parts[0] + '.' + parts.slice(1).join('')
+        }
+
+        const [intPart, decPartRaw] = normalized.split('.')
+        if (decPartRaw !== undefined) {
+          const decPart = decPartRaw.slice(0, 2)
+          normalized = decPart.length > 0 ? `${intPart}.${decPart}` : intPart
+        }
+
+        value = normalized
+      }
+    }
+
     setFormData(prev => ({
       ...prev,
       [field]: value
