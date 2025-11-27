@@ -337,9 +337,13 @@ const productSlice = createSlice({
       .addCase(deleteProduct.fulfilled, (state, action) => {
         state.pending = false
         const productId = action.meta.arg
-        state.products = state.products.filter((p) => p.id !== productId)
+        // Soft delete: marcar producto como inactivo en el estado
+        const product = state.products.find((p) => p.id === productId)
+        if (product) {
+          product.active = false
+        }
         if (state.currentItem && state.currentItem.id === productId) {
-          state.currentItem = null
+          state.currentItem = { ...state.currentItem, active: false }
         }
       })
       .addCase(deleteProduct.rejected, (state, action) => {

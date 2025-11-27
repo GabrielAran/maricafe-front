@@ -23,6 +23,7 @@ import {
 import { fetchProductImages } from '../redux/slices/images.slice.js'
 import { formatPrice } from '../utils/priceHelpers.js'
 import { isProductAvailable } from '../utils/productHelpers.js'
+import { selectActiveProducts } from '../redux/selectors/productSelectors.js'
 
 export default function ProductViewNew({ 
   showFilters = false,
@@ -33,7 +34,8 @@ export default function ProductViewNew({
   const dispatch = useDispatch()
   
   // Redux state
-  const products = useSelector(state => state.products.products)
+  const products = useSelector(selectActiveProducts)
+
   const productsPending = useSelector(state => state.products.pending)
   const productsError = useSelector(state => state.products.error)
   

@@ -39,3 +39,9 @@ export const selectProductsWithDiscounts = (state) => {
   })
 }
 
+export const selectActiveProducts = (state) => {
+  const products = state.products.products
+  if (!Array.isArray(products)) return []
+  return products.filter((product) => product.active !== false)
+}
+
