@@ -5,7 +5,6 @@ import { fetchProducts, createProduct, updateProduct, deleteProduct } from '../r
 import { fetchProductImages, fetchProductImagesWithIds, createMultipleImages, deleteImage } from '../redux/slices/images.slice.js'
 import { selectIsAdmin } from '../redux/slices/user.slice.js'
 import { formatPrice } from '../utils/priceHelpers.js'
-import { isProductAvailable } from '../utils/productHelpers.js'
 import { Card, CardContent, CardHeader, CardTitle } from './ui/Card.jsx'
 import Button from './ui/Button.jsx'
 import Badge from './ui/Badge.jsx'
@@ -55,19 +54,6 @@ export default function AdminProductManagement() {
   const [productImages, setProductImages] = useState({})
   const hasInitialized = useRef(false)
 
-  /**
-   * FIX: Prevent duplicate dispatch calls to fetchProducts()
-   * 
-   * Problem: 
-   * 1. React StrictMode in development intentionally double-invokes effects
-   * 2. The original dependency array included `isAdmin` (a function reference)
-   *    which could change between renders, causing the effect to re-run
-   * 
-   * Solution: 
-   * - Use a ref to track initialization status (prevents duplicate calls even with StrictMode)
-   * - Use Redux selector `selectIsAdmin` instead of function call for stable dependency
-   * - This ensures only one fetch call per component lifecycle
-   */
   useEffect(() => {
     if (!hasInitialized.current && isAdminUser) {
       hasInitialized.current = true
@@ -85,30 +71,32 @@ export default function AdminProductManagement() {
     )
   }, [categoryItems])
 
-  // Load images for all products
+  // Load images for all products (cache per product to avoid refetching)
   useEffect(() => {
-    if (products.length > 0) {
-      products.forEach(product => {
-        dispatch(fetchProductImages(product.id)).then((result) => {
-          if (result.type === 'images/fetchProductImages/fulfilled' && result.payload && result.payload.length > 0) {
-            // Process base64 images from Redux response
-            const firstImage = result.payload[0]
-            let imageUrl = null
-            if (typeof firstImage === 'string') {
-              const cleanBase64 = firstImage.replace(/\s/g, '').replace(/^data:image\/[a-z]+;base64,/, '')
-              imageUrl = `data:image/png;base64,${cleanBase64}`
-            }
-            if (imageUrl) {
-              setProductImages(prev => ({
-                ...prev,
-                [product.id]: imageUrl
-              }))
-            }
+    if (products.length === 0) return
+
+    products.forEach((product) => {
+      // Skip fetch if we already have a thumbnail cached for this product
+      if (productImages[product.id]) return
+
+      dispatch(fetchProductImages(product.id)).then((result) => {
+        if (result.type === 'images/fetchProductImages/fulfilled' && result.payload && result.payload.length > 0) {
+          const firstImage = result.payload[0]
+          let imageUrl = null
+          if (typeof firstImage === 'string') {
+            const cleanBase64 = firstImage.replace(/\s/g, '').replace(/^data:image\/[a-z]+;base64,/, '')
+            imageUrl = `data:image/png;base64,${cleanBase64}`
           }
-        })
+          if (imageUrl) {
+            setProductImages(prev => ({
+              ...prev,
+              [product.id]: imageUrl
+            }))
+          }
+        }
       })
-    }
-  }, [products, dispatch])
+    })
+  }, [products, dispatch, productImages])
 
 
   const handleAddProduct = () => {
