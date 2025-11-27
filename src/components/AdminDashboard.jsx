@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useLayoutEffect } from 'react'
+import React, { useState, useEffect, useRef, useLayoutEffect, useMemo } from 'react'
 import { useSelector, useDispatch } from 'react-redux'
 import { selectIsAdmin } from '../redux/slices/user.slice.js'
 import {
@@ -9,6 +9,7 @@ import {
   fetchTopSpendingUsers,
   fetchDiscountedProducts,
 } from '../redux/slices/adminStats.slice.js'
+import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts'
 
 export default function AdminDashboard() {
   const dispatch = useDispatch()
@@ -54,6 +55,50 @@ export default function AdminDashboard() {
       style: 'currency',
       currency: 'ARS'
     }).format(amount)
+  }
+
+  // Prepare data for pie chart
+  const productChartData = useMemo(() => {
+    if (!topSellingProducts || topSellingProducts.length === 0) return []
+    // Limit to top 8 products for better visualization
+    return topSellingProducts.slice(0, 8).map(product => ({
+      name: product.productName,
+      value: product.totalSold,
+    }))
+  }, [topSellingProducts])
+
+  // Color palette for pie chart
+  const COLORS = [
+    '#3B82F6', // blue
+    '#10B981', // green
+    '#F59E0B', // yellow
+    '#EF4444', // red
+    '#8B5CF6', // purple
+    '#EC4899', // pink
+    '#06B6D4', // cyan
+    '#F97316', // orange
+  ]
+
+  // Custom label function for pie chart
+  const renderCustomLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent }) => {
+    const RADIAN = Math.PI / 180
+    const radius = innerRadius + (outerRadius - innerRadius) * 0.5
+    const x = cx + radius * Math.cos(-midAngle * RADIAN)
+    const y = cy + radius * Math.sin(-midAngle * RADIAN)
+
+    return (
+      <text
+        x={x}
+        y={y}
+        fill="white"
+        textAnchor={x > cx ? 'start' : 'end'}
+        dominantBaseline="central"
+        fontSize={12}
+        fontWeight="bold"
+      >
+        {`${(percent * 100).toFixed(0)}%`}
+      </text>
+    )
   }
 
   // Small helper component that reduces font-size so the text fits on one line
@@ -209,16 +254,64 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* Products by Category */}
-      <div className="bg-white p-6 rounded-lg shadow border">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Productos por Categoría</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {Object.entries(productsByCategory).map(([category, count]) => (
-            <div key={category} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-              <span className="font-medium text-gray-700">{category}</span>
-              <span className="text-lg font-semibold text-primary">{count}</span>
+      {/* Products by Category and Top Selling Products - Two Columns */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Products by Category */}
+        <div className="bg-white p-6 rounded-lg shadow border">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Productos por Categoría</h3>
+          <div className="grid grid-cols-1 gap-4">
+            {Object.entries(productsByCategory).map(([category, count]) => (
+              <div key={category} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                <span className="font-medium text-gray-700">{category}</span>
+                <span className="text-lg font-semibold text-primary">{count}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Top Selling Products - Pie Chart */}
+        <div className="bg-white p-6 rounded-lg shadow border">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Productos Más Vendidos</h3>
+          {productChartData.length === 0 ? (
+            <p className="text-gray-500 text-center py-8">No hay datos de ventas disponibles</p>
+          ) : (
+            <div className="w-full">
+              <ResponsiveContainer width="100%" height={400}>
+                <PieChart>
+                  <Pie
+                    data={productChartData}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={renderCustomLabel}
+                    outerRadius={130}
+                    innerRadius={35}
+                    fill="#8884d8"
+                    dataKey="value"
+                    paddingAngle={2}
+                  >
+                    {productChartData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} stroke="#fff" strokeWidth={2} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    formatter={(value, name) => [`${value} unidades`, name]}
+                    contentStyle={{
+                      backgroundColor: '#fff',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '8px',
+                      padding: '12px',
+                      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                    }}
+                    labelStyle={{
+                      fontWeight: 'bold',
+                      marginBottom: '4px',
+                    }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
             </div>
-          ))}
+          )}
         </div>
       </div>
 
@@ -228,9 +321,9 @@ export default function AdminDashboard() {
         {lowStockProducts.length === 0 ? (
           <p className="text-gray-500 text-center py-4">No hay productos con stock bajo</p>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto overflow-y-auto" style={{ maxHeight: '500px' }}>
             <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+              <thead className="bg-gray-50 sticky top-0">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Producto</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Categoría</th>
@@ -255,31 +348,6 @@ export default function AdminDashboard() {
                 ))}
               </tbody>
             </table>
-          </div>
-        )}
-      </div>
-
-      {/* Top Selling Products */}
-      <div className="bg-white p-6 rounded-lg shadow border">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Productos Más Vendidos</h3>
-        {topSellingProducts.length === 0 ? (
-          <p className="text-gray-500 text-center py-4">No hay datos de ventas disponibles</p>
-        ) : (
-          <div className="space-y-3">
-            {topSellingProducts.map((product, index) => (
-              <div key={index} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                <div className="flex items-center">
-                  <span className="text-lg font-bold text-primary mr-3">#{index + 1}</span>
-                  <div>
-                    <p className="font-medium text-gray-900">{product.productName}</p>
-                    <p className="text-sm text-gray-500">{formatCurrency(product.price)}</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="text-lg font-semibold text-gray-900">{product.totalSold} vendidos</p>
-                </div>
-              </div>
-            ))}
           </div>
         )}
       </div>
@@ -315,9 +383,9 @@ export default function AdminDashboard() {
         {discountedProducts.length === 0 ? (
           <p className="text-gray-500 text-center py-4">No hay productos con descuento actualmente</p>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto overflow-y-auto" style={{ maxHeight: '500px' }}>
             <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+              <thead className="bg-gray-50 sticky top-0">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Producto</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Categoría</th>
