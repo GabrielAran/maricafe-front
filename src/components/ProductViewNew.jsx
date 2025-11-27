@@ -480,24 +480,27 @@ export default function ProductViewNew({
                 <p className="text-sm text-muted-foreground line-clamp-2 flex-1">{product.descripcion}</p>
 
                 {/* Price + Discount */}
-                <div className="flex items-center gap-2">
+                <div className="flex items-start justify-between gap-3">
                   {product.descuento > 0 ? (
                     <div className="flex flex-col">
-                      <span className="text-sm text-muted-foreground line-through">
+                      <span className="text-xs text-muted-foreground line-through">
                         {formatPrice(product.precioOriginal)}
                       </span>
-                      <span className="text-xl font-semibold text-primary">
+                      <span className="text-xl font-semibold text-primary leading-tight">
                         {formatPrice(product.precio)}
                       </span>
                     </div>
                   ) : (
-                    <span className="text-2xl font-bold">
+                    <span className="text-xl font-semibold">
                       {formatPrice(product.precio)}
                     </span>
                   )}
 
                   {product.descuento > 0 && (
-                    <Badge variant="destructive">
+                    <Badge
+                      variant="destructive"
+                      className="text-xs font-semibold px-2 py-1 self-start"
+                    >
                       -{product.descuento}%
                     </Badge>
                   )}
